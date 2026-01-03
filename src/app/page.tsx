@@ -19,6 +19,10 @@ export default function HomePage() {
     return () => clearInterval(timer)
   }, [])
 
+  // Конвертируем period в русский текст
+  const periodText = period === 'day' ? 'ДЕНЬ' : 'НОЧЬ'
+  const periodEmoji = period === 'day' ? '☀️' : '🌙'
+
   const panels = [
     {
       title: '📡 Диспетчерская',
@@ -200,14 +204,14 @@ export default function HomePage() {
                   👔 {shift.shiftName}
                 </div>
                 <div style={{
-                  background: period === 'ДЕНЬ' ? 'rgba(234,179,8,0.2)' : 'rgba(139,92,246,0.2)',
-                  border: period === 'ДЕНЬ' ? '1px solid rgba(234,179,8,0.3)' : '1px solid rgba(139,92,246,0.3)',
+                  background: period === 'day' ? 'rgba(234,179,8,0.2)' : 'rgba(139,92,246,0.2)',
+                  border: period === 'day' ? '1px solid rgba(234,179,8,0.3)' : '1px solid rgba(139,92,246,0.3)',
                   borderRadius: '8px',
                   padding: '6px 12px',
                   fontSize: '13px',
                   color: 'white'
                 }}>
-                  {period === 'ДЕНЬ' ? '☀️' : '🌙'} {period}
+                  {periodEmoji} {periodText}
                 </div>
               </div>
             </div>
