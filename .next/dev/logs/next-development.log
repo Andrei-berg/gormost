@@ -1,1 +1,145 @@
-[00:00:02.577] Server  LOG     ✓ Ready in 1814ms
+[00:00:02.378] Server  LOG     ✓ Ready in 1770ms
+[00:00:27.632] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/dispatcher" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+            <SegmentViewNode type="page" pagePath="dispatcher...">
+              <SegmentTrieNode>
+              <ClientPageRoot Component={function DispatcherPage} serverProvidedParams={{...}}>
+                <DispatcherPage params={Promise} searchParams={Promise}>
+                  <div style={{...}}>
+                    <Header title="📡 ДИСПЕТЧ..." subtitle="Центральны..." userRole="Начальник ..." userName="ДДС">
+                      <div style={{...}}>
+                        <div>
+                        <div style={{display:"flex", ...}}>
+                          <div style={{...}}>
+                            <div>
+                            <div style={{color:"white", ...}}>
++                             05:17:13
+-                             05:17:12
+                          ...
+                    ...
+            ...
+          ...
+
+[00:01:48.543] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/dispatcher" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+            <SegmentViewNode type="page" pagePath="dispatcher...">
+              <SegmentTrieNode>
+              <ClientPageRoot Component={function DispatcherPage} serverProvidedParams={{...}}>
+                <DispatcherPage params={Promise} searchParams={Promise}>
+                  <div style={{...}}>
+                    <Header title="📡 ДИСПЕТЧ..." subtitle="Центральны..." userRole="Начальник ..." userName="ДДС">
+                      <div style={{...}}>
+                        <div>
+                        <div style={{display:"flex", ...}}>
+                          <div style={{...}}>
+                            <div>
+                            <div style={{color:"white", ...}}>
++                             05:18:34
+-                             05:18:33
+                          ...
+                    ...
+            ...
+          ...
+
+[00:01:53.606] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/service-c..." tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+            <SegmentViewNode type="page" pagePath="service-ch...">
+              <SegmentTrieNode>
+              <ClientPageRoot Component={function ServiceChiefPage} serverProvidedParams={{...}}>
+                <ServiceChiefPage params={Promise} searchParams={Promise}>
+                  <div style={{...}}>
+                    <Header title="🏢 НАЧАЛЬН..." subtitle="План работ..." userRole="Начальник ..." userName="🔧 СЭИС">
+                      <div style={{...}}>
+                        <div>
+                        <div style={{display:"flex", ...}}>
+                          <div style={{...}}>
+                            <div>
+                            <div style={{color:"white", ...}}>
++                             05:18:39
+-                             05:18:38
+                          ...
+                    ...
+            ...
+          ...
+
+[00:02:47.478] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/planner" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+            <SegmentViewNode type="page" pagePath="planner/pa...">
+              <SegmentTrieNode>
+              <ClientPageRoot Component={function PlannerPage} serverProvidedParams={{...}}>
+                <PlannerPage params={Promise} searchParams={Promise}>
+                  <div style={{...}}>
+                    <Header title="📋 ЗАМ/ПРО..." subtitle="Сбор плано..." userRole="Зам/прораб" userName="Планирован...">
+                      <div style={{...}}>
+                        <div>
+                        <div style={{display:"flex", ...}}>
+                          <div style={{...}}>
+                            <div>
+                            <div style={{color:"white", ...}}>
++                             05:19:33
+-                             05:19:32
+                          ...
+                    ...
+            ...
+          ...
+

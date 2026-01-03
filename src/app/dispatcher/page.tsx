@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Header from '@/components/Header'
 import KPIPanel from '@/components/dispatcher/KPIPanel'
 import KanbanBoard from '@/components/dispatcher/KanbanBoard'
 import TableView from '@/components/dispatcher/TableView'
@@ -51,6 +52,15 @@ export default function DispatcherPage() {
       background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
       padding: '20px'
     }}>
+      {/* HEADER - ДОБАВЛЕН */}
+      <Header
+        title="📡 ДИСПЕТЧЕРСКАЯ"
+        subtitle="Центральный узел управления • Контроль смены • Мониторинг всех служб"
+        userRole="Начальник смены"
+        userName="ДДС"
+      />
+
+      {/* ФИЛЬТРЫ */}
       <div style={{
         background: 'rgba(255,255,255,0.05)',
         borderRadius: '16px',
@@ -60,8 +70,7 @@ export default function DispatcherPage() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
-            <h1 style={{ fontSize: '32px', color: 'white', margin: 0 }}>🎯 ДИСПЕТЧЕРСКАЯ</h1>
-            <p style={{ color: 'rgba(255,255,255,0.6)', margin: '5px 0 0 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', margin: '5px 0 0 0', fontSize: '14px' }}>
               Мониторинг смены в режиме реального времени
             </p>
           </div>
@@ -113,8 +122,10 @@ export default function DispatcherPage() {
         </div>
       </div>
 
+      {/* KPI */}
       <KPIPanel data={kpiData} />
 
+      {/* ПЕРЕКЛЮЧАТЕЛЬ ВИДОВ */}
       <div style={{
         background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '10px',
         marginTop: '20px', marginBottom: '20px', border: '1px solid rgba(255,255,255,0.1)',
@@ -134,6 +145,7 @@ export default function DispatcherPage() {
         }}>📊 Таблица</button>
       </div>
 
+      {/* КОНТЕНТ */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.5)' }}>⏳ Загрузка...</div>
       ) : viewMode === 'kanban' ? (

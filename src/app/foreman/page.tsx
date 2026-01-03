@@ -1,56 +1,111 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Header from '@/components/Header'
+
+interface Request {
+  request_id: string
+  service_id: string
+  location_text: string
+  work_description: string
+  status: string
+  priority?: string
+  urgency?: string
+  fact_start?: string
+  fact_finish?: string
+  date_work: string
+  shift_type: string
+}
 
 export default function ForemanPage() {
-  const [requests, setRequests] = useState<any[]>([])
+  const [myTasks, setMyTasks] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState('USR-0051') // TODO: из auth
 
   useEffect(() => {
-    loadMyRequests()
+    loadMyTasks()
+
+    // Real-time обновления
+    const channel = supabase
+      .channel('foreman-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'requests'
+      }, () => {
+        loadMyTasks()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
-  async function loadMyRequests() {
+  async function loadMyTasks() {
     setLoading(true)
+
+    // TODO: фильтр по текущему пользователю (assigned_users)
     const { data } = await supabase
       .from('requests')
       .select('*')
-      .contains('assigned_users', [userId])
-      .order('date_work', { ascending: true })
-    
-    setRequests(data || [])
+      .in('status', ['PLANNED', 'IN_PROGRESS', 'CHECKING'])
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    setMyTasks(data || [])
     setLoading(false)
   }
 
-  async function startWork(requestId: string) {
+  async function startTask(requestId: string) {
+    const now = new Date().toISOString()
+
     await supabase
       .from('requests')
-      .update({ 
-        fact_start: new Date().toISOString(),
-        status: 'IN_PROGRESS'
+      .update({
+        status: 'IN_PROGRESS',
+        fact_start: now
       })
       .eq('request_id', requestId)
-    
-    loadMyRequests()
+
+    loadMyTasks()
   }
 
-  async function finishWork(requestId: string) {
+  async function finishTask(requestId: string) {
+    const now = new Date().toISOString()
+
     await supabase
       .from('requests')
-      .update({ 
-        fact_finish: new Date().toISOString(),
-        status: 'DONE'
+      .update({
+        status: 'DONE',
+        fact_finish: now
       })
       .eq('request_id', requestId)
-    
-    loadMyRequests()
+
+    loadMyTasks()
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const myToday = requests.filter(r => r.date_work === today)
-  const upcoming = requests.filter(r => r.date_work > today)
-  const completed = requests.filter(r => r.fact_finish)
+  const statusGroups: Record<string, Request[]> = {
+    'PLANNED': [],
+    'IN_PROGRESS': [],
+    'CHECKING': []
+  }
+
+  myTasks.forEach(task => {
+    const status = task.status || 'PLANNED'
+    if (statusGroups[status]) {
+      statusGroups[status].push(task)
+    }
+  })
+
+  const statusLabels: Record<string, string> = {
+    'PLANNED': '📋 Запланировано',
+    'IN_PROGRESS': '⚙️ В работе',
+    'CHECKING': '🔍 На проверке'
+  }
+
+  const statusColors: Record<string, string> = {
+    'PLANNED': 'rgba(59,130,246,0.2)',
+    'IN_PROGRESS': 'rgba(139,92,246,0.2)',
+    'CHECKING': 'rgba(249,115,22,0.2)'
+  }
 
   return (
     <div style={{
@@ -59,304 +114,219 @@ export default function ForemanPage() {
       padding: '20px'
     }}>
       {/* HEADER */}
+      <Header
+        title="👷 МАСТЕР / БРИГАДИР"
+        subtitle="Мои задачи • Выполнение работ • Отчёты"
+        userRole="Мастер"
+        userName="Бригада"
+      />
+
+      {/* KPI */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '15px',
+        marginBottom: '20px'
+      }}>
+        {Object.entries(statusLabels).map(([status, label]) => (
+          <div key={status} style={{
+            background: statusColors[status],
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: 'bold',
+              color: 'white',
+              marginBottom: '8px'
+            }}>
+              {statusGroups[status].length}
+            </div>
+            <div style={{
+              fontSize: '13px',
+              color: 'rgba(255,255,255,0.7)'
+            }}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ЗАДАЧИ */}
       <div style={{
         background: 'rgba(255,255,255,0.05)',
         borderRadius: '16px',
         padding: '20px',
-        marginBottom: '20px',
         border: '1px solid rgba(255,255,255,0.1)'
       }}>
-        <h1 style={{ color: 'white', margin: 0, fontSize: '28px' }}>👷 МОИ ЗАЯВКИ</h1>
-        <p style={{ color: 'rgba(255,255,255,0.6)', margin: '8px 0 0 0' }}>
-          Иванов П.И. • ДЕНЬ ({new Date().toLocaleDateString('ru')})
-        </p>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.5)' }}>
-          ⏳ Загрузка...
-        </div>
-      ) : (
-        <>
-          {/* СЕГОДНЯ */}
-          <div style={{ marginBottom: '30px' }}>
-            <h2 style={{ color: 'white', fontSize: '18px', marginBottom: '15px' }}>
-              📋 СЕГОДНЯ ({myToday.length})
-            </h2>
-            
-            {myToday.length === 0 ? (
-              <div style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '30px',
-                textAlign: 'center',
-                color: 'rgba(255,255,255,0.5)'
-              }}>
-                Нет заявок на сегодня
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {myToday.map(req => (
-                  <RequestCard 
-                    key={req.request_id} 
-                    request={req} 
-                    onStart={startWork}
-                    onFinish={finishWork}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ЗАПЛАНИРОВАНО */}
-          {upcoming.length > 0 && (
-            <div style={{ marginBottom: '30px' }}>
-              <h2 style={{ color: 'white', fontSize: '18px', marginBottom: '15px' }}>
-                ⏰ ЗАПЛАНИРОВАНО ({upcoming.length})
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {upcoming.map(req => (
-                  <RequestCard 
-                    key={req.request_id} 
-                    request={req}
-                    onStart={startWork}
-                    onFinish={finishWork}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ВЫПОЛНЕНО */}
-          {completed.length > 0 && (
-            <div>
-              <h2 style={{ color: 'white', fontSize: '18px', marginBottom: '15px' }}>
-                ✅ ВЫПОЛНЕНО ({completed.length})
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {completed.slice(0, 5).map(req => (
-                  <RequestCard 
-                    key={req.request_id} 
-                    request={req}
-                    onStart={startWork}
-                    onFinish={finishWork}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-function RequestCard({ request, onStart, onFinish }: any) {
-  const isStarted = !!request.fact_start
-  const isFinished = !!request.fact_finish
-  const isProblem = !request.fact_finish && request.status !== 'DONE'
-
-  return (
-    <div style={{
-      background: isProblem 
-        ? 'linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.05) 100%)'
-        : isFinished
-        ? 'linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(34,197,94,0.05) 100%)'
-        : 'rgba(255,255,255,0.05)',
-      border: isProblem 
-        ? '1px solid rgba(239,68,68,0.3)'
-        : isFinished
-        ? '1px solid rgba(34,197,94,0.3)'
-        : '1px solid rgba(255,255,255,0.1)',
-      borderRadius: '16px',
-      padding: '20px'
-    }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-        <div>
-          <div style={{ 
-            fontSize: '12px', 
-            color: 'rgba(255,255,255,0.5)',
-            fontFamily: 'monospace',
-            marginBottom: '6px'
-          }}>
-            {request.request_id}
-          </div>
-          
-          {isFinished ? (
-            <span style={{
-              background: 'rgba(34,197,94,0.3)',
-              color: '#22c55e',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              border: '1px solid rgba(34,197,94,0.4)'
-            }}>
-              ✅ ВЫПОЛНЕНО
-            </span>
-          ) : isStarted ? (
-            <span style={{
-              background: 'rgba(59,130,246,0.3)',
-              color: '#3b82f6',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              border: '1px solid rgba(59,130,246,0.4)'
-            }}>
-              ⏳ В РАБОТЕ
-            </span>
-          ) : (
-            <span style={{
-              background: 'rgba(234,179,8,0.3)',
-              color: '#eab308',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              border: '1px solid rgba(234,179,8,0.4)'
-            }}>
-              ⏰ ПЛАН
-            </span>
-          )}
-        </div>
-
-        {isProblem && (
-          <span style={{ fontSize: '24px' }}>🔴</span>
-        )}
-      </div>
-
-      {/* LOCATION */}
-      <div style={{ 
-        fontSize: '18px', 
-        color: 'white',
-        fontWeight: 'bold',
-        marginBottom: '10px'
-      }}>
-        📍 {request.location_text}
-      </div>
-
-      {/* DESCRIPTION */}
-      <div style={{ 
-        fontSize: '14px', 
-        color: 'rgba(255,255,255,0.8)',
-        lineHeight: '1.6',
-        marginBottom: '15px'
-      }}>
-        🔧 {request.work_description}
-      </div>
-
-      {/* META */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '10px', 
-        marginBottom: '20px',
-        flexWrap: 'wrap'
-      }}>
-        <span style={{
-          background: 'rgba(255,255,255,0.1)',
-          padding: '6px 12px',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: 'rgba(255,255,255,0.7)'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
         }}>
-          ⏰ {request.date_work}
-        </span>
-        
-        {request.priority && (
-          <span style={{
-            background: 'rgba(234,179,8,0.2)',
-            border: '1px solid rgba(234,179,8,0.3)',
-            color: '#eab308',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
-            ⚡ {request.priority}
-          </span>
-        )}
-      </div>
-
-      {/* TIMING */}
-      {(isStarted || isFinished) && (
-        <div style={{ 
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: '10px',
-          padding: '12px',
-          marginBottom: '15px'
-        }}>
-          {isStarted && (
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>
-              ▶️ Начало: {new Date(request.fact_start).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          )}
-          {isFinished && (
-            <div style={{ fontSize: '13px', color: '#22c55e' }}>
-              ✅ Окончание: {new Date(request.fact_finish).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          )}
+          <h2 style={{ color: 'white', fontSize: '18px', margin: 0 }}>
+            📝 Мои задачи
+          </h2>
+          <button
+            onClick={loadMyTasks}
+            style={{
+              background: 'rgba(59,130,246,0.2)',
+              border: '1px solid rgba(59,130,246,0.3)',
+              borderRadius: '10px',
+              padding: '8px 16px',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            🔄 Обновить
+          </button>
         </div>
-      )}
 
-      {/* BUTTONS */}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        {!isStarted && !isFinished && (
-          <button
-            onClick={() => onStart(request.request_id)}
-            style={{
-              flex: 1,
-              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '16px',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'transform 0.2s'
-            }}
-          >
-            ▶️ Начать работу
-          </button>
-        )}
-        
-        {isStarted && !isFinished && (
-          <button
-            onClick={() => onFinish(request.request_id)}
-            style={{
-              flex: 1,
-              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '16px',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'transform 0.2s'
-            }}
-          >
-            ✅ Завершить
-          </button>
-        )}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.5)' }}>
+            ⏳ Загрузка...
+          </div>
+        ) : myTasks.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.4)' }}>
+            ✅ Активных задач нет
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {myTasks.map(task => (
+              <div
+                key={task.request_id}
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px',
+                  padding: '16px'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '12px'
+                }}>
+                  <div>
+                    <div style={{
+                      color: 'white',
+                      fontWeight: 'bold',
+                      marginBottom: '6px',
+                      fontSize: '14px',
+                      fontFamily: 'monospace'
+                    }}>
+                      {task.request_id}
+                    </div>
+                    <div style={{
+                      color: 'rgba(255,255,255,0.6)',
+                      fontSize: '12px'
+                    }}>
+                      {task.service_id} • {task.date_work} • {task.shift_type === 'DAY' ? '🌞 День' : '🌙 Ночь'}
+                    </div>
+                  </div>
 
-        {!isFinished && (
-          <button
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '12px',
-              padding: '16px 20px',
-              color: 'white',
-              fontSize: '16px',
-              cursor: 'pointer'
-            }}
-          >
-            📝
-          </button>
+                  <div style={{
+                    background: statusColors[task.status] || 'rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    color: 'white'
+                  }}>
+                    {statusLabels[task.status] || task.status}
+                  </div>
+                </div>
+
+                <div style={{
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: '14px',
+                  marginBottom: '8px'
+                }}>
+                  📍 {task.location_text}
+                </div>
+
+                <div style={{
+                  color: 'rgba(255,255,255,0.9)',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  lineHeight: '1.5'
+                }}>
+                  {task.work_description}
+                </div>
+
+                {task.priority === 'HIGH' && (
+                  <div style={{
+                    display: 'inline-block',
+                    background: 'rgba(239,68,68,0.2)',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    color: 'white',
+                    marginBottom: '12px'
+                  }}>
+                    🔥 Высокий приоритет
+                  </div>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  gap: '10px',
+                  marginTop: '12px'
+                }}>
+                  {task.status === 'PLANNED' && (
+                    <button
+                      onClick={() => startTask(task.request_id)}
+                      style={{
+                        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        padding: '10px 20px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ▶️ Начать работу
+                    </button>
+                  )}
+
+                  {task.status === 'IN_PROGRESS' && (
+                    <button
+                      onClick={() => finishTask(task.request_id)}
+                      style={{
+                        background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        padding: '10px 20px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ✅ Завершить задачу
+                    </button>
+                  )}
+
+                  {task.fact_start && (
+                    <div style={{
+                      color: 'rgba(255,255,255,0.6)',
+                      fontSize: '12px',
+                      alignSelf: 'center'
+                    }}>
+                      🕒 Начало: {new Date(task.fact_start).toLocaleString('ru')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

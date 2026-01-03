@@ -1,35 +1,109 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Header from '@/components/Header'
 
-type GroupBy = 'status' | 'worker' | 'date'
+// Тип для заявки
+interface Request {
+  request_id: string
+  service_id: string
+  location_text: string
+  work_description: string
+  status: string
+  created_at: string
+  priority?: string
+  urgency?: string
+  assigned_users?: string
+  date_work: string
+  shift_type: string
+  fact_start?: string
+  fact_finish?: string
+}
 
 export default function ServiceChiefPage() {
-  const [requests, setRequests] = useState<any[]>([])
+  const [serviceRequests, setServiceRequests] = useState<Request[]>([])
+  const [selectedService, setSelectedService] = useState('SRV-STR')
   const [loading, setLoading] = useState(true)
-  const [groupBy, setGroupBy] = useState<GroupBy>('status')
-  const [selectedService] = useState('SRV-STR') // TODO: из auth
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-  const [selectedShift, setSelectedShift] = useState<'DAY' | 'NIGHT'>('DAY')
 
   useEffect(() => {
-    loadRequests()
-  }, [selectedDate, selectedShift])
+    loadServiceRequests()
 
-  async function loadRequests() {
+    // Real-time обновления
+    const channel = supabase
+      .channel('service-chief-updates')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'requests',
+        filter: `service_id=eq.${selectedService}`
+      }, () => {
+        loadServiceRequests()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [selectedService])
+
+  async function loadServiceRequests() {
     setLoading(true)
-    const { data } = await supabase
+
+    const { data, error } = await supabase
       .from('requests')
       .select('*')
       .eq('service_id', selectedService)
-      .eq('date_work', selectedDate)
-      .eq('shift_type', selectedShift)
-    
-    setRequests(data || [])
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Ошибка загрузки заявок:', error)
+      setLoading(false)
+      return
+    }
+
+    setServiceRequests(data || [])
     setLoading(false)
   }
 
-  const grouped = groupRequests(requests, groupBy)
+  // Группировка по статусам (с явной типизацией)
+  const groupedRequests: Record<string, Request[]> = {
+    'NEW': [],
+    'PLANNED': [],
+    'IN_PROGRESS': [],
+    'CHECKING': [],
+    'DONE': []
+  }
+
+  serviceRequests.forEach(req => {
+    const status = req.status || 'NEW'
+    if (groupedRequests[status]) {
+      groupedRequests[status].push(req)
+    } else {
+      groupedRequests['NEW'].push(req)
+    }
+  })
+
+  const statusLabels: Record<string, string> = {
+    'NEW': '🆕 Новые',
+    'PLANNED': '📋 Запланированные',
+    'IN_PROGRESS': '⚙️ В работе',
+    'CHECKING': '🔍 На проверке',
+    'DONE': '✅ Выполнено'
+  }
+
+  const statusColors: Record<string, string> = {
+    'NEW': 'rgba(234,179,8,0.2)',
+    'PLANNED': 'rgba(59,130,246,0.2)',
+    'IN_PROGRESS': 'rgba(139,92,246,0.2)',
+    'CHECKING': 'rgba(249,115,22,0.2)',
+    'DONE': 'rgba(34,197,94,0.2)'
+  }
+
+  const serviceNames: Record<string, string> = {
+    'SRV-STR': '🔧 СЭИС',
+    'SRV-ENG': '⚡ Энергетика',
+    'SRV-FIRE': '🔥 Пожарка/Сантехника',
+    'SRV-VENT': '💨 Вентиляция',
+    'SRV-CCTV': '📹 Видеонаблюдение'
+  }
 
   return (
     <div style={{
@@ -38,334 +112,260 @@ export default function ServiceChiefPage() {
       padding: '20px'
     }}>
       {/* HEADER */}
+      <Header
+        title="🏢 НАЧАЛЬНИК СЛУЖБЫ"
+        subtitle="План работ • Назначение людей • Контроль выполнения"
+        userRole="Начальник службы"
+        userName={serviceNames[selectedService] || selectedService}
+      />
+
+      {/* ФИЛЬТР ПО СЛУЖБЕ */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        borderRadius: '16px',
+        padding: '16px',
+        marginBottom: '20px',
+        border: '1px solid rgba(255,255,255,0.1)'
+      }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              color: 'rgba(255,255,255,0.7)', 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px'
+            }}>
+              Выберите службу:
+            </label>
+            <select
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                padding: '10px',
+                color: 'white',
+                fontSize: '14px',
+                width: '100%',
+                maxWidth: '300px',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="SRV-STR">🔧 СЭИС (STR)</option>
+              <option value="SRV-ENG">⚡ Энергетика (ENG)</option>
+              <option value="SRV-FIRE">🔥 Пожарка/Сантехника (FIRE)</option>
+              <option value="SRV-VENT">💨 Вентиляция (VENT)</option>
+              <option value="SRV-CCTV">📹 Видеонаблюдение/СКС (CCTV)</option>
+            </select>
+          </div>
+
+          <button
+            onClick={loadServiceRequests}
+            style={{
+              background: 'rgba(59,130,246,0.2)',
+              border: '1px solid rgba(59,130,246,0.3)',
+              borderRadius: '10px',
+              padding: '10px 20px',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            🔄 Обновить
+          </button>
+        </div>
+      </div>
+
+      {/* KPI */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '16px',
+        marginBottom: '20px'
+      }}>
+        {Object.entries(statusLabels).map(([status, label]) => (
+          <div
+            key={status}
+            style={{
+              background: statusColors[status],
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              padding: '16px',
+              textAlign: 'center'
+            }}
+          >
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: 'bold', 
+              color: 'white',
+              marginBottom: '8px'
+            }}>
+              {groupedRequests[status].length}
+            </div>
+            <div style={{ 
+              fontSize: '13px', 
+              color: 'rgba(255,255,255,0.7)' 
+            }}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* КАНБАН-ДОСКА */}
       <div style={{
         background: 'rgba(255,255,255,0.05)',
         borderRadius: '16px',
         padding: '20px',
-        marginBottom: '20px',
         border: '1px solid rgba(255,255,255,0.1)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ color: 'white', margin: 0, fontSize: '28px' }}>⚡ СЛУЖБА СЭИС</h1>
-            <p style={{ color: 'rgba(255,255,255,0.6)', margin: '8px 0 0 0' }}>
-              Контроль работ и распределение персонала
-            </p>
+        <h2 style={{ color: 'white', marginBottom: '20px', fontSize: '18px' }}>
+          📊 Заявки службы {serviceNames[selectedService]} ({serviceRequests.length})
+        </h2>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.5)' }}>
+            ⏳ Загрузка...
           </div>
-          <button
-            onClick={loadRequests}
-            style={{
-              background: 'rgba(59,130,246,0.2)',
-              border: '1px solid rgba(59,130,246,0.3)',
-              borderRadius: '12px',
-              padding: '12px 24px',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            ⟳ Обновить
-          </button>
-        </div>
-
-        {/* FILTERS */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
-          <div>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '5px' }}>
-              Дата
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                padding: '10px',
-                color: 'white'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '5px' }}>
-              Смена
-            </label>
-            <select
-              value={selectedShift}
-              onChange={(e) => setSelectedShift(e.target.value as 'DAY' | 'NIGHT')}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                padding: '10px',
-                color: 'white',
-                minWidth: '120px'
-              }}
-            >
-              <option value="DAY">🌞 ДЕНЬ</option>
-              <option value="NIGHT">🌙 НОЧЬ</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '5px' }}>
-              Группировка
-            </label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                padding: '10px',
-                color: 'white',
-                minWidth: '150px'
-              }}
-            >
-              <option value="status">По статусу</option>
-              <option value="worker">По исполнителю</option>
-              <option value="date">По дате</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* STATS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '15px',
-        marginBottom: '20px'
-      }}>
-        <StatCard title="Всего" value={requests.length} color="#3b82f6" />
-        <StatCard title="Новых" value={requests.filter(r => r.status === 'NEW').length} color="#eab308" />
-        <StatCard title="В работе" value={requests.filter(r => r.status === 'IN_PROGRESS').length} color="#8b5cf6" />
-        <StatCard title="Проблемы" value={requests.filter(r => !r.fact_finish && r.status !== 'DONE').length} color="#ef4444" />
-        <StatCard title="Готово" value={requests.filter(r => r.status === 'DONE').length} color="#22c55e" />
-      </div>
-
-      {/* GROUPED LIST */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.5)' }}>
-          ⏳ Загрузка...
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {Object.entries(grouped).map(([groupName, groupRequests]) => (
-            <GroupSection 
-              key={groupName}
-              title={groupName}
-              requests={groupRequests}
-              count={groupRequests.length}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StatCard({ title, value, color }: any) {
-  return (
-    <div style={{
-      background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-      border: `1px solid ${color}40`,
-      borderRadius: '12px',
-      padding: '15px',
-      textAlign: 'center'
-    }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
-        {title}
-      </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color }}>
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function GroupSection({ title, requests, count }: any) {
-  const [collapsed, setCollapsed] = useState(false)
-  
-  const statusColors: any = {
-    'NEW': '#eab308',
-    'PLANNED': '#3b82f6',
-    'IN_PROGRESS': '#8b5cf6',
-    'CHECKING': '#f97316',
-    'DONE': '#22c55e'
-  }
-
-  const getGroupColor = () => {
-    if (title === 'NEW' || title === 'НОВАЯ') return '#eab308'
-    if (title === 'PLANNED' || title === 'ПЛАН') return '#3b82f6'
-    if (title === 'IN_PROGRESS' || title === 'В РАБОТЕ') return '#8b5cf6'
-    if (title === 'CHECKING' || title === 'ПРОВЕРКА') return '#f97316'
-    if (title === 'DONE' || title === 'ВЫПОЛНЕНО') return '#22c55e'
-    return '#64748b'
-  }
-
-  const color = getGroupColor()
-
-  return (
-    <div style={{
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: '16px',
-      overflow: 'hidden'
-    }}>
-      {/* GROUP HEADER */}
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-          padding: '15px 20px',
-          cursor: 'pointer',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.1)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '18px' }}>
-            {collapsed ? '▶️' : '🔽'}
-          </span>
-          <span style={{ color: 'white', fontWeight: 'bold', fontSize: '16px' }}>
-            {title}
-          </span>
-          <span style={{
-            background: `${color}40`,
-            color,
-            padding: '4px 10px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 'bold'
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px'
           }}>
-            {count}
-          </span>
-        </div>
-      </div>
+            {Object.entries(groupedRequests).map(([status, requests]) => (
+              <div key={status}>
+                <h3 style={{ 
+                  color: 'white', 
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}>
+                  {statusLabels[status]} ({requests.length})
+                </h3>
 
-      {/* GROUP CONTENT */}
-      {!collapsed && (
-        <div style={{ padding: '15px' }}>
-          {requests.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '30px', 
-              color: 'rgba(255,255,255,0.4)',
-              fontSize: '14px'
-            }}>
-              Нет заявок
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {requests.map((req: any) => (
-                <RequestRow key={req.request_id} request={req} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '12px',
+                  minHeight: '200px'
+                }}>
+                  {requests.map(req => (
+                    <div
+                      key={req.request_id}
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                      }}
+                    >
+                      <div style={{ 
+                        color: 'white', 
+                        fontWeight: 'bold', 
+                        marginBottom: '8px',
+                        fontSize: '13px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {req.request_id}
+                      </div>
+
+                      <div style={{ 
+                        color: 'rgba(255,255,255,0.6)', 
+                        fontSize: '11px',
+                        marginBottom: '8px'
+                      }}>
+                        {req.date_work} • {req.shift_type === 'DAY' ? '🌞 День' : '🌙 Ночь'}
+                      </div>
+
+                      <div style={{ 
+                        color: 'rgba(255,255,255,0.7)', 
+                        fontSize: '13px',
+                        marginBottom: '8px'
+                      }}>
+                        📍 {req.location_text}
+                      </div>
+
+                      <div style={{ 
+                        color: 'rgba(255,255,255,0.9)', 
+                        fontSize: '13px',
+                        marginBottom: '12px',
+                        lineHeight: '1.4'
+                      }}>
+                        {req.work_description}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {req.priority === 'HIGH' && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 8px',
+                            background: 'rgba(239,68,68,0.2)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            color: 'white'
+                          }}>
+                            🔥 Приоритет
+                          </span>
+                        )}
+
+                        {req.assigned_users && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 8px',
+                            background: 'rgba(59,130,246,0.2)',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            color: 'white'
+                          }}>
+                            👤 {req.assigned_users}
+                          </span>
+                        )}
+
+                        {req.fact_start && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 8px',
+                            background: 'rgba(139,92,246,0.2)',
+                            border: '1px solid rgba(139,92,246,0.3)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            color: 'white'
+                          }}>
+                            ▶️ Начато
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {requests.length === 0 && (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '40px 20px', 
+                      color: 'rgba(255,255,255,0.3)',
+                      fontSize: '13px'
+                    }}>
+                      Нет заявок
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-function RequestRow({ request }: any) {
-  const isProblem = !request.fact_finish && request.status !== 'DONE'
-  
-  return (
-    <div style={{
-      background: isProblem ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.02)',
-      border: isProblem ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(255,255,255,0.05)',
-      borderRadius: '10px',
-      padding: '15px',
-      cursor: 'pointer',
-      transition: 'all 0.2s'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ 
-            fontSize: '11px', 
-            color: 'rgba(255,255,255,0.5)',
-            fontFamily: 'monospace',
-            marginBottom: '6px'
-          }}>
-            {request.request_id}
-            {isProblem && <span style={{ marginLeft: '8px', color: '#ef4444' }}>🔴</span>}
-          </div>
-          
-          <div style={{ fontSize: '15px', color: 'white', fontWeight: 'bold', marginBottom: '6px' }}>
-            📍 {request.location_text}
-          </div>
-          
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '10px' }}>
-            {request.work_description}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {request.assigned_users && request.assigned_users.length > 0 && (
-              <span style={{
-                background: 'rgba(59,130,246,0.2)',
-                color: '#3b82f6',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '11px'
-              }}>
-                👤 {request.assigned_users.length} чел.
-              </span>
-            )}
-            
-            {request.priority && (
-              <span style={{
-                background: 'rgba(234,179,8,0.2)',
-                color: '#eab308',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 'bold'
-              }}>
-                ⚡ {request.priority}
-              </span>
-            )}
-
-            {request.fact_start && (
-              <span style={{
-                background: 'rgba(34,197,94,0.2)',
-                color: '#22c55e',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '11px'
-              }}>
-                ▶️ {new Date(request.fact_start).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function groupRequests(requests: any[], groupBy: GroupBy) {
-  const groups: any = {}
-  
-  requests.forEach(req => {
-    let key = ''
-    
-    if (groupBy === 'status') {
-      key = req.status || 'NEW'
-    } else if (groupBy === 'worker') {
-      key = req.assigned_users?.[0] || 'Не назначено'
-    } else if (groupBy === 'date') {
-      key = req.date_work || 'Без даты'
-    }
-    
-    if (!groups[key]) groups[key] = []
-    groups[key].push(req)
-  })
-  
-  return groups
 }
