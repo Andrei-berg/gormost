@@ -1,0 +1,7 @@
+{
+  "/dispatcher/page": "app/dispatcher/page.js",
+  "/foreman/page": "app/foreman/page.js",
+  "/page": "app/page.js",
+  "/planner/page": "app/planner/page.js",
+  "/service-chief/page": "app/service-chief/page.js"
+}

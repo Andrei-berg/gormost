@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///Users/andrei/Desktop/gormost/src/app/globals.css"],"sourcesContent":["* {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n}\n\nbody {\n  font-family: system-ui, -apple-system, sans-serif;\n  background: #f5f5f5;\n  color: #333;\n}\n"],"names":[],"mappings":"AAAA;;;;;;AAMA"}}]
+}
