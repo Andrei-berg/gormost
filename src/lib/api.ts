@@ -90,19 +90,19 @@ export const requestsApi = {
 };
 
 // ============================================
-// USERS API
+// USERS API (employees таблица)
 // ============================================
 
 export const usersApi = {
   async getUsers(): Promise<User[]> {
-    const { data, error } = await supabase.from('users').select('*');
+    const { data, error } = await supabase.from('employees').select('*');
     if (error) throw error;
     return data || [];
   },
 
   async getUserById(id: string): Promise<User | null> {
     const { data, error } = await supabase
-      .from('users')
+      .from('employees')
       .select('*')
       .eq('user_id', id)
       .single();
