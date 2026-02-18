@@ -1,174 +1,231 @@
 // ============================================
-// ТИПЫ ДЛЯ LEFORTOVO PLANNER
+// GORMOST v2.0 — TypeScript Types
+// Matches real Supabase schema
 // ============================================
 
-// Перечисления
-export enum RoleLevel {
-  BRIGADIER = 'BRIGADIER',
-  MASTER = 'MASTER',
-  SERVICE_HEAD = 'SERVICE_HEAD',
-  DISPATCHER = 'DISPATCHER',
-  ZAMPORAB = 'ZAMPORAB',
-  BOSS = 'BOSS',
-  TRANSPORT_MANAGER = 'TRANSPORT_MANAGER',
-  ADMIN = 'ADMIN',
-}
+export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER'
+export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+export type Urgency = 'NORMAL' | 'URGENT' | 'EMERGENCY'
+export type ShiftType = 'DAY' | 'NIGHT'
+export type StaffRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
-export enum RequestStatus {
-  NEW = 'NEW',
-  PLANNED = 'PLANNED',
-  IN_PROGRESS = 'IN_PROGRESS',
-  CHECKING = 'CHECKING',
-  DONE = 'DONE',
-}
-
-export enum Priority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
-}
-
-export enum Urgency {
-  NORMAL = 'NORMAL',
-  URGENT = 'URGENT',
-  EMERGENCY = 'EMERGENCY',
-}
-
-export enum ShiftType {
-  DAY = 'DAY',
-  NIGHT = 'NIGHT',
-}
-
-// Интерфейсы
-export interface Service {
-  service_id: string;
-  service_code: string;
-  service_name: string;
-  service_emoji?: string;
-  created_at: string;
-}
+// ---- DB Tables ----
 
 export interface User {
-  user_id: string;
-  tab_number?: string;
-  last_name: string;
-  first_name: string;
-  middle_name?: string;
-  position?: string;
-  role_level: RoleLevel;
-  service_id?: string;
-  can_report_fact: boolean;
-  created_at: string;
-  updated_at: string;
+  user_id: string
+  tab_number: string
+  full_name: string
+  position: string | null
+  role_level: RoleLevel
+  service_id: string | null
+  is_active: boolean
+  phone: string | null
+  pin_code: string | null
+  created_at: string
 }
 
-export interface Request {
-  request_id: string;
-  service_id?: string;
-  category_id?: string;
-  object_id?: string;
-  construction_id?: string;
-  work_type_id?: string;
-  work_description?: string;
-  location_text?: string;
-  date_work: string;
-  shift_no?: number;
-  shift_type?: ShiftType;
-  is_night_work: boolean;
-  status: RequestStatus;
-  priority?: Priority;
-  urgency?: Urgency;
-  fact_start?: string;
-  fact_finish?: string;
-  transport_type?: string;
-  transport_note?: string;
-  approved_by_zamporab: boolean;
-  approved_by_boss: boolean;
-  approved_at_zamporab?: string;
-  approved_at_boss?: string;
-  created_by?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StaffRequest {
-  staff_request_id: string;
-  request_id?: string;
-  from_service_id?: string;
-  to_service_id?: string;
-  requested_users?: string[];
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  approved_by?: string;
-  approved_at?: string;
-  rejected_reason?: string;
-  created_by?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Remark {
-  remark_id: string;
-  request_id?: string;
-  user_id?: string;
-  remark_text: string;
-  is_critical: boolean;
-  created_at: string;
-}
-
-export interface ChangeLog {
-  log_id: string;
-  request_id?: string;
-  user_id?: string;
-  action_type: string;
-  old_value?: string;
-  new_value?: string;
-  description?: string;
-  created_at: string;
-}
-
-export interface RequestAssignment {
-  assignment_id: string;
-  request_id?: string;
-  user_id?: string;
-  assigned_by?: string;
-  assigned_at: string;
+export interface Service {
+  service_id: string
+  service_name: string
+  created_at: string
 }
 
 export interface Category {
-  category_id: string;
-  category_name: string;
-  created_at: string;
+  category_id: string
+  category_name: string
+  created_at: string
 }
 
-export interface ObjectType {
-  object_id: string;
-  category_id?: string;
-  object_name: string;
-  created_at: string;
+export interface GObject {
+  object_id: string
+  category_id: string
+  object_name: string
+  location: string | null
+  created_at: string
 }
 
 export interface Construction {
-  construction_id: string;
-  object_id?: string;
-  construction_name: string;
-  created_at: string;
+  construction_id: string
+  object_id: string
+  construction_name: string
+  created_at: string
 }
 
 export interface WorkType {
-  work_type_id: string;
-  construction_id?: string;
-  work_name: string;
-  created_at: string;
+  work_type_id: string
+  construction_id: string
+  work_name: string
+  created_at: string
 }
 
-// Фильтры
-export interface RequestFilters {
-  date?: string;
-  shift?: number;
-  service?: string;
-  status?: RequestStatus;
-  priority?: Priority;
-  urgency?: Urgency;
-  onlyProblems?: boolean;
+export interface Request {
+  request_id: string
+  service_id: string | null
+  category_id: string | null
+  object_id: string | null
+  construction_id: string | null
+  work_type_id: string | null
+  description: string | null
+  date_work: string | null
+  shift_no: number | null
+  shift_type: ShiftType | null
+  status: RequestStatus
+  priority: Priority
+  urgency: Urgency
+  transport_type: string | null
+  fact_start: string | null
+  fact_finish: string | null
+  approved_by_head: string | null
+  approved_by_zamporab: string | null
+  approved_by_boss: string | null
+  created_by: string | null
+  created_at: string
+  updated_at?: string
 }
+
+export interface RequestAssignment {
+  id: string
+  request_id: string
+  user_id: string
+  assigned_by: string | null
+  created_at: string
+}
+
+export interface StaffRequest {
+  id: string
+  from_service_id: string
+  to_service_id: string
+  requested_users: string[] | null
+  status: StaffRequestStatus
+  approved_by: string | null
+  date_work: string | null
+  shift_no: number | null
+  reason: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface Remark {
+  id: string
+  request_id: string
+  user_id: string
+  remark_text: string
+  is_critical: boolean
+  created_at: string
+}
+
+export interface ChangelogEntry {
+  id: string
+  user_id: string | null
+  action_type: string
+  entity_type: string | null
+  entity_id: string | null
+  details: Record<string, unknown> | null
+  created_at: string
+}
+
+// ---- Auth session (localStorage) ----
+export interface AuthSession {
+  user_id: string
+  tab_number: string
+  full_name: string
+  role_level: RoleLevel
+  service_id: string | null
+  position: string | null
+}
+
+// ---- Panel config ----
+export interface PanelConfig {
+  id: string
+  path: string
+  title: string
+  subtitle: string
+  emoji: string
+  roles: RoleLevel[]
+  color: string
+  roleLabel: string
+}
+
+// ---- Service color/emoji map ----
+export const SERVICE_META: Record<string, { emoji: string; color: string; bg: string }> = {
+  'SRV-ENG': { emoji: '⚡', color: '#eab308', bg: 'bg-yellow-500/20' },
+  'SRV-STR': { emoji: '🏗️', color: '#8b5cf6', bg: 'bg-violet-500/20' },
+  'SRV-FIRE': { emoji: '🚒', color: '#ef4444', bg: 'bg-red-500/20' },
+  'SRV-VENT': { emoji: '💨', color: '#06b6d4', bg: 'bg-cyan-500/20' },
+  'SRV-CCTV': { emoji: '📹', color: '#22c55e', bg: 'bg-green-500/20' },
+}
+
+export const STATUS_CONFIG: Record<RequestStatus, { label: string; color: string; bg: string }> = {
+  NEW: { label: 'Новая', color: '#eab308', bg: 'bg-yellow-500/20 border-yellow-500/30' },
+  PLANNED: { label: 'Запланирована', color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  IN_PROGRESS: { label: 'В работе', color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
+  CHECKING: { label: 'Проверка', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  DONE: { label: 'Выполнена', color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+}
+
+export const STATUS_ORDER: RequestStatus[] = ['NEW', 'PLANNED', 'IN_PROGRESS', 'CHECKING', 'DONE']
+
+export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }> = {
+  LOW: { label: 'Низкий', color: '#64748b' },
+  MEDIUM: { label: 'Средний', color: '#3b82f6' },
+  HIGH: { label: 'Высокий', color: '#f97316' },
+  CRITICAL: { label: 'Критический', color: '#ef4444' },
+}
+
+export const URGENCY_CONFIG: Record<Urgency, { label: string; color: string }> = {
+  NORMAL: { label: 'Обычная', color: '#64748b' },
+  URGENT: { label: 'Срочная', color: '#f97316' },
+  EMERGENCY: { label: 'Аварийная', color: '#ef4444' },
+}
+
+export const PANELS: PanelConfig[] = [
+  {
+    id: 'dispatcher', path: '/dispatcher', title: 'Диспетчерская',
+    subtitle: 'Центральный узел управления · Мониторинг смены', emoji: '🗂️',
+    roles: ['DISPATCHER', 'ADMIN', 'BOSS'], color: 'from-blue-600/40 to-blue-800/40 border-blue-500/30',
+    roleLabel: 'Начальник смены',
+  },
+  {
+    id: 'zamporab', path: '/zamporab', title: 'Зам/Прораб',
+    subtitle: 'Планирование смены · Распределение людей', emoji: '👷',
+    roles: ['ZAMPORAB', 'ADMIN', 'BOSS'], color: 'from-emerald-600/40 to-emerald-800/40 border-emerald-500/30',
+    roleLabel: 'Заместитель прораба',
+  },
+  {
+    id: 'foreman', path: '/foreman', title: 'Мастер/Бригадир',
+    subtitle: 'Мои задачи · Выполнение работ', emoji: '👷‍♂️',
+    roles: ['FOREMAN', 'ADMIN', 'BOSS', 'ZAMPORAB'], color: 'from-green-600/40 to-green-800/40 border-green-500/30',
+    roleLabel: 'Мастер участка',
+  },
+  {
+    id: 'head', path: '/head', title: 'Начальник службы',
+    subtitle: 'План работ службы · Контроль выполнения', emoji: '🏢',
+    roles: ['HEAD', 'ADMIN', 'BOSS'], color: 'from-violet-600/40 to-violet-800/40 border-violet-500/30',
+    roleLabel: 'Начальник службы',
+  },
+  {
+    id: 'boss', path: '/boss', title: 'Босс (Дашборд)',
+    subtitle: 'KPI · Статистика · Проблемы · Heatmap', emoji: '🏠',
+    roles: ['BOSS', 'ADMIN'], color: 'from-amber-600/40 to-amber-800/40 border-amber-500/30',
+    roleLabel: 'Начальник участка',
+  },
+  {
+    id: 'transport', path: '/transport', title: 'Транспорт',
+    subtitle: 'Парк машин · Назначение транспорта', emoji: '🚗',
+    roles: ['TRANSPORT', 'ADMIN', 'BOSS', 'ZAMPORAB'], color: 'from-red-600/40 to-red-800/40 border-red-500/30',
+    roleLabel: 'Главный механик',
+  },
+  {
+    id: 'complaints', path: '/complaints', title: 'Жалобы',
+    subtitle: 'Регистрация жалоб · Обработка обращений', emoji: '📞',
+    roles: ['COMPLAINTS', 'ADMIN', 'BOSS', 'DISPATCHER'], color: 'from-cyan-600/40 to-cyan-800/40 border-cyan-500/30',
+    roleLabel: 'Обработчик жалоб',
+  },
+  {
+    id: 'admin', path: '/admin', title: 'Админ-панель',
+    subtitle: 'Справочники · Объекты · Пользователи', emoji: '⚙️',
+    roles: ['ADMIN'], color: 'from-slate-600/40 to-slate-800/40 border-slate-500/30',
+    roleLabel: 'Администратор',
+  },
+]

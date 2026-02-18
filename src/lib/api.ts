@@ -1,161 +1,312 @@
-// ============================================
-// API LAYER ДЛЯ SUPABASE
-// ============================================
+import { supabase } from './supabase'
+import { logAction } from './logger'
+import type {
+  User, Service, Category, GObject, Construction, WorkType,
+  Request, RequestAssignment, StaffRequest, Remark, ChangelogEntry,
+  RequestStatus, Priority, Urgency, StaffRequestStatus,
+} from '@/types'
 
-import { createClient } from '@supabase/supabase-js';
-import type { Request, User, Service, StaffRequest, Remark, ChangeLog, RequestFilters } from '@/types';
+// ============ USERS ============
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+export async function fetchUsers(activeOnly = true): Promise<User[]> {
+  let q = supabase.from('users').select('*').order('full_name')
+  if (activeOnly) q = q.eq('is_active', true)
+  const { data } = await q
+  return (data || []) as User[]
+}
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export async function fetchUsersByService(serviceId: string): Promise<User[]> {
+  const { data } = await supabase.from('users').select('*')
+    .eq('service_id', serviceId).eq('is_active', true).order('full_name')
+  return (data || []) as User[]
+}
 
-// ============================================
-// REQUESTS API
-// ============================================
+export async function fetchUserById(userId: string): Promise<User | null> {
+  const { data } = await supabase.from('users').select('*').eq('user_id', userId).single()
+  return data as User | null
+}
 
-export const requestsApi = {
-  async getRequests(filters?: RequestFilters): Promise<Request[]> {
-    let query = supabase.from('requests').select('*');
-    
-    if (filters?.date) {
-      query = query.eq('date_work', filters.date);
-    }
-    if (filters?.shift) {
-      query = query.eq('shift_no', filters.shift);
-    }
-    if (filters?.service) {
-      query = query.eq('service_id', filters.service);
-    }
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-    if (filters?.onlyProblems) {
-      query = query.is('fact_finish', null).not('fact_start', 'is', null);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  },
+export async function createUser(user: Partial<User>): Promise<User | null> {
+  const { data } = await supabase.from('users').insert(user).select().single()
+  return data as User | null
+}
 
-  async getRequestById(id: string): Promise<Request | null> {
-    const { data, error } = await supabase
-      .from('requests')
-      .select('*')
-      .eq('request_id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
+export async function updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
+  const { data } = await supabase.from('users').update(updates).eq('user_id', userId).select().single()
+  return data as User | null
+}
 
-  async updateRequestStatus(id: string, status: string, userId?: string): Promise<void> {
-    const { error } = await supabase
-      .from('requests')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('request_id', id);
-    
-    if (error) throw error;
-    
-    if (userId) {
-      await changeLogApi.log(id, userId, 'STATUS_CHANGE', '', status);
-    }
-  },
+export async function deleteUser(userId: string): Promise<boolean> {
+  const { error } = await supabase.from('users').update({ is_active: false }).eq('user_id', userId)
+  return !error
+}
 
-  async reportFactStart(id: string, userId: string): Promise<void> {
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('requests')
-      .update({ fact_start: now, status: 'IN_PROGRESS', updated_at: now })
-      .eq('request_id', id);
-    
-    if (error) throw error;
-    
-    await changeLogApi.log(id, userId, 'FACT_START', '', now);
-  },
+// ============ SERVICES ============
 
-  async reportFactFinish(id: string, userId: string): Promise<void> {
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('requests')
-      .update({ fact_finish: now, status: 'CHECKING', updated_at: now })
-      .eq('request_id', id);
-    
-    if (error) throw error;
-    
-    await changeLogApi.log(id, userId, 'FACT_FINISH', '', now);
-  },
-};
+export async function fetchServices(): Promise<Service[]> {
+  const { data } = await supabase.from('services').select('*').order('service_name')
+  return (data || []) as Service[]
+}
 
-// ============================================
-// USERS API (employees таблица)
-// ============================================
+export async function createService(service: Partial<Service>): Promise<Service | null> {
+  const { data } = await supabase.from('services').insert(service).select().single()
+  return data as Service | null
+}
 
-export const usersApi = {
-  async getUsers(): Promise<User[]> {
-    const { data, error } = await supabase.from('employees').select('*');
-    if (error) throw error;
-    return data || [];
-  },
+export async function updateService(serviceId: string, updates: Partial<Service>): Promise<Service | null> {
+  const { data } = await supabase.from('services').update(updates).eq('service_id', serviceId).select().single()
+  return data as Service | null
+}
 
-  async getUserById(id: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('user_id', id)
-      .single();
-    if (error) throw error;
-    return data;
-  },
-};
+export async function deleteService(serviceId: string): Promise<boolean> {
+  const { error } = await supabase.from('services').delete().eq('service_id', serviceId)
+  return !error
+}
 
-// ============================================
-// SERVICES API
-// ============================================
+// ============ CATEGORIES ============
 
-export const servicesApi = {
-  async getServices(): Promise<Service[]> {
-    const { data, error } = await supabase.from('services').select('*');
-    if (error) throw error;
-    return data || [];
-  },
-};
+export async function fetchCategories(): Promise<Category[]> {
+  const { data } = await supabase.from('categories').select('*').order('category_name')
+  return (data || []) as Category[]
+}
 
-// ============================================
-// CHANGELOG API
-// ============================================
+export async function createCategory(cat: Partial<Category>): Promise<Category | null> {
+  const { data } = await supabase.from('categories').insert(cat).select().single()
+  return data as Category | null
+}
 
-export const changeLogApi = {
-  async log(
-    requestId: string,
-    userId: string,
-    actionType: string,
-    oldValue: string,
-    newValue: string,
-    description?: string
-  ): Promise<void> {
-    const { error } = await supabase.from('changelog').insert({
-      request_id: requestId,
-      user_id: userId,
-      action_type: actionType,
-      old_value: oldValue,
-      new_value: newValue,
-      description,
-    });
-    
-    if (error) throw error;
-  },
+export async function updateCategory(catId: string, updates: Partial<Category>): Promise<Category | null> {
+  const { data } = await supabase.from('categories').update(updates).eq('category_id', catId).select().single()
+  return data as Category | null
+}
 
-  async getChangeLogForRequest(requestId: string): Promise<ChangeLog[]> {
-    const { data, error } = await supabase
-      .from('changelog')
-      .select('*')
-      .eq('request_id', requestId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  },
-};
+export async function deleteCategory(catId: string): Promise<boolean> {
+  const { error } = await supabase.from('categories').delete().eq('category_id', catId)
+  return !error
+}
+
+// ============ OBJECTS ============
+
+export async function fetchObjects(categoryId?: string): Promise<GObject[]> {
+  let q = supabase.from('objects').select('*').order('object_name')
+  if (categoryId) q = q.eq('category_id', categoryId)
+  const { data } = await q
+  return (data || []) as GObject[]
+}
+
+export async function createObject(obj: Partial<GObject>): Promise<GObject | null> {
+  const { data } = await supabase.from('objects').insert(obj).select().single()
+  return data as GObject | null
+}
+
+export async function updateObject(objId: string, updates: Partial<GObject>): Promise<GObject | null> {
+  const { data } = await supabase.from('objects').update(updates).eq('object_id', objId).select().single()
+  return data as GObject | null
+}
+
+export async function deleteObject(objId: string): Promise<boolean> {
+  const { error } = await supabase.from('objects').delete().eq('object_id', objId)
+  return !error
+}
+
+// ============ CONSTRUCTIONS ============
+
+export async function fetchConstructions(objectId?: string): Promise<Construction[]> {
+  let q = supabase.from('constructions').select('*').order('construction_name')
+  if (objectId) q = q.eq('object_id', objectId)
+  const { data } = await q
+  return (data || []) as Construction[]
+}
+
+export async function createConstruction(c: Partial<Construction>): Promise<Construction | null> {
+  const { data } = await supabase.from('constructions').insert(c).select().single()
+  return data as Construction | null
+}
+
+export async function updateConstruction(cId: string, updates: Partial<Construction>): Promise<Construction | null> {
+  const { data } = await supabase.from('constructions').update(updates).eq('construction_id', cId).select().single()
+  return data as Construction | null
+}
+
+export async function deleteConstruction(cId: string): Promise<boolean> {
+  const { error } = await supabase.from('constructions').delete().eq('construction_id', cId)
+  return !error
+}
+
+// ============ WORK TYPES ============
+
+export async function fetchWorkTypes(constructionId?: string): Promise<WorkType[]> {
+  let q = supabase.from('work_types').select('*').order('work_name')
+  if (constructionId) q = q.eq('construction_id', constructionId)
+  const { data } = await q
+  return (data || []) as WorkType[]
+}
+
+export async function createWorkType(wt: Partial<WorkType>): Promise<WorkType | null> {
+  const { data } = await supabase.from('work_types').insert(wt).select().single()
+  return data as WorkType | null
+}
+
+export async function updateWorkType(wtId: string, updates: Partial<WorkType>): Promise<WorkType | null> {
+  const { data } = await supabase.from('work_types').update(updates).eq('work_type_id', wtId).select().single()
+  return data as WorkType | null
+}
+
+export async function deleteWorkType(wtId: string): Promise<boolean> {
+  const { error } = await supabase.from('work_types').delete().eq('work_type_id', wtId)
+  return !error
+}
+
+// ============ REQUESTS ============
+
+export async function fetchRequests(filters?: {
+  serviceId?: string
+  status?: RequestStatus
+  dateWork?: string
+  shiftNo?: number
+  createdBy?: string
+}): Promise<Request[]> {
+  let q = supabase.from('requests').select('*').order('created_at', { ascending: false })
+  if (filters?.serviceId) q = q.eq('service_id', filters.serviceId)
+  if (filters?.status) q = q.eq('status', filters.status)
+  if (filters?.dateWork) q = q.eq('date_work', filters.dateWork)
+  if (filters?.shiftNo) q = q.eq('shift_no', filters.shiftNo)
+  if (filters?.createdBy) q = q.eq('created_by', filters.createdBy)
+  const { data } = await q
+  return (data || []) as Request[]
+}
+
+export async function fetchRequestById(requestId: string): Promise<Request | null> {
+  const { data } = await supabase.from('requests').select('*').eq('request_id', requestId).single()
+  return data as Request | null
+}
+
+export async function createRequest(req: Partial<Request>, userId: string): Promise<Request | null> {
+  const id = `REQ-${Date.now()}`
+  const payload = { ...req, request_id: id, created_by: userId, created_at: new Date().toISOString() }
+  const { data } = await supabase.from('requests').insert(payload).select().single()
+  if (data) {
+    await logAction(userId, 'CREATE_REQUEST', 'request', id, { status: req.status, service_id: req.service_id })
+  }
+  return data as Request | null
+}
+
+export async function updateRequest(requestId: string, updates: Partial<Request>, userId: string): Promise<Request | null> {
+  const { data } = await supabase.from('requests').update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('request_id', requestId).select().single()
+  if (data) {
+    await logAction(userId, 'UPDATE_REQUEST', 'request', requestId, updates as Record<string, unknown>)
+  }
+  return data as Request | null
+}
+
+export async function updateRequestStatus(requestId: string, status: RequestStatus, userId: string): Promise<boolean> {
+  const updates: Partial<Request> = { status }
+  if (status === 'IN_PROGRESS' ) updates.fact_start = new Date().toISOString()
+  if (status === 'DONE') updates.fact_finish = new Date().toISOString()
+  const result = await updateRequest(requestId, updates, userId)
+  return !!result
+}
+
+export async function approveRequest(requestId: string, role: 'head' | 'zamporab' | 'boss', userId: string): Promise<boolean> {
+  const key = `approved_by_${role}` as keyof Request
+  const result = await updateRequest(requestId, { [key]: userId } as Partial<Request>, userId)
+  if (result) {
+    await logAction(userId, `APPROVE_${role.toUpperCase()}`, 'request', requestId, null)
+  }
+  return !!result
+}
+
+export async function deleteRequest(requestId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase.from('requests').delete().eq('request_id', requestId)
+  if (!error) await logAction(userId, 'DELETE_REQUEST', 'request', requestId, null)
+  return !error
+}
+
+// ============ REQUEST ASSIGNMENTS ============
+
+export async function fetchAssignments(requestId: string): Promise<RequestAssignment[]> {
+  const { data } = await supabase.from('request_assignments').select('*').eq('request_id', requestId)
+  return (data || []) as RequestAssignment[]
+}
+
+export async function assignUsers(requestId: string, userIds: string[], assignedBy: string): Promise<boolean> {
+  // Remove existing
+  await supabase.from('request_assignments').delete().eq('request_id', requestId)
+  if (userIds.length === 0) return true
+  const rows = userIds.map(uid => ({
+    request_id: requestId, user_id: uid, assigned_by: assignedBy, created_at: new Date().toISOString()
+  }))
+  const { error } = await supabase.from('request_assignments').insert(rows)
+  if (!error) {
+    await logAction(assignedBy, 'ASSIGN_USERS', 'request', requestId, { user_ids: userIds })
+  }
+  return !error
+}
+
+// ============ STAFF REQUESTS ============
+
+export async function fetchStaffRequests(filters?: { fromServiceId?: string; toServiceId?: string; status?: StaffRequestStatus }): Promise<StaffRequest[]> {
+  let q = supabase.from('staff_requests').select('*').order('created_at', { ascending: false })
+  if (filters?.fromServiceId) q = q.eq('from_service_id', filters.fromServiceId)
+  if (filters?.toServiceId) q = q.eq('to_service_id', filters.toServiceId)
+  if (filters?.status) q = q.eq('status', filters.status)
+  const { data } = await q
+  return (data || []) as StaffRequest[]
+}
+
+export async function createStaffRequest(sr: Partial<StaffRequest>, userId: string): Promise<StaffRequest | null> {
+  const { data } = await supabase.from('staff_requests')
+    .insert({ ...sr, created_by: userId, created_at: new Date().toISOString() }).select().single()
+  if (data) await logAction(userId, 'CREATE_STAFF_REQUEST', 'staff_request', data.id, sr as Record<string, unknown>)
+  return data as StaffRequest | null
+}
+
+export async function updateStaffRequestStatus(id: string, status: StaffRequestStatus, approvedBy: string): Promise<boolean> {
+  const { error } = await supabase.from('staff_requests').update({ status, approved_by: approvedBy }).eq('id', id)
+  if (!error) await logAction(approvedBy, `STAFF_REQUEST_${status}`, 'staff_request', id, null)
+  return !error
+}
+
+// ============ REMARKS ============
+
+export async function fetchRemarks(requestId: string): Promise<Remark[]> {
+  const { data } = await supabase.from('remarks').select('*').eq('request_id', requestId).order('created_at')
+  return (data || []) as Remark[]
+}
+
+export async function createRemark(remark: Partial<Remark>): Promise<Remark | null> {
+  const { data } = await supabase.from('remarks').insert({ ...remark, created_at: new Date().toISOString() }).select().single()
+  return data as Remark | null
+}
+
+// ============ CHANGELOG ============
+
+export async function fetchChangelog(limit = 50, entityType?: string, entityId?: string): Promise<ChangelogEntry[]> {
+  let q = supabase.from('changelog').select('*').order('created_at', { ascending: false }).limit(limit)
+  if (entityType) q = q.eq('entity_type', entityType)
+  if (entityId) q = q.eq('entity_id', entityId)
+  const { data } = await q
+  return (data || []) as ChangelogEntry[]
+}
+
+// ============ STATS (for Boss dashboard) ============
+
+export async function fetchRequestStats(): Promise<{
+  total: number
+  byStatus: Record<string, number>
+  byService: Record<string, number>
+  byPriority: Record<string, number>
+}> {
+  const { data } = await supabase.from('requests').select('status, service_id, priority')
+  const rows = (data || []) as Pick<Request, 'status' | 'service_id' | 'priority'>[]
+  const byStatus: Record<string, number> = {}
+  const byService: Record<string, number> = {}
+  const byPriority: Record<string, number> = {}
+  for (const r of rows) {
+    byStatus[r.status] = (byStatus[r.status] || 0) + 1
+    if (r.service_id) byService[r.service_id] = (byService[r.service_id] || 0) + 1
+    byPriority[r.priority] = (byPriority[r.priority] || 0) + 1
+  }
+  return { total: rows.length, byStatus, byService, byPriority }
+}

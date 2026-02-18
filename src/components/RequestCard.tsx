@@ -1,96 +1,75 @@
 'use client'
-import type { RequestWithRelations } from '@/types'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import type { Request, Category, GObject, Construction, WorkType, Service } from '@/types'
+import { STATUS_CONFIG, PRIORITY_CONFIG, URGENCY_CONFIG, SERVICE_META } from '@/types'
 
-interface RequestCardProps {
-  request: RequestWithRelations
-  onClick: () => void
-  isDragging?: boolean
+interface Props {
+  request: Request
+  categories?: Category[]
+  objects?: GObject[]
+  constructions?: Construction[]
+  workTypes?: WorkType[]
+  services?: Service[]
+  onClick?: () => void
+  showService?: boolean
 }
 
-const SERVICE_COLORS: Record<string, string> = {
-  'SRV-STR': 'service-str',
-  'SRV-ENG': 'service-eng',
-  'SRV-FIRE': 'service-fire',
-  'SRV-VENT': 'service-vent',
-  'SRV-CCTV': 'service-cctv'
-}
-
-export default function RequestCard({ request, onClick, isDragging }: RequestCardProps) {
-  const isProblem = !request.fact_finish && request.status !== 'DONE'
-  const serviceColorClass = SERVICE_COLORS[request.service_id] || 'gray-500'
+export default function RequestCard({
+  request: r, categories = [], objects = [], constructions = [], workTypes = [], services = [], onClick, showService = false
+}: Props) {
+  const cat = categories.find(c => c.category_id === r.category_id)
+  const obj = objects.find(o => o.object_id === r.object_id)
+  const con = constructions.find(c => c.construction_id === r.construction_id)
+  const wt = workTypes.find(w => w.work_type_id === r.work_type_id)
+  const svc = services.find(s => s.service_id === r.service_id)
+  const svcMeta = r.service_id ? SERVICE_META[r.service_id] : null
+  const pri = PRIORITY_CONFIG[r.priority]
+  const urg = URGENCY_CONFIG[r.urgency]
 
   return (
     <div
       onClick={onClick}
-      className={`
-        rounded-xl p-3 cursor-pointer transition-all duration-200
-        border
-        ${isDragging ? 'opacity-50 scale-95' : 'hover:scale-102 hover:shadow-lg'}
-        ${isProblem 
-          ? 'bg-gradient-to-br from-red-500/15 to-red-500/5 border-red-500/40' 
-          : 'glass border-white/10'
-        }
-      `}
+      className="glass rounded-xl p-3 hover:bg-white/10 transition-all cursor-pointer group border border-white/5 hover:border-white/20"
     >
-      {/* Заголовок карточки */}
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-[10px] text-white/50 font-mono">
-          {request.request_id}
+      {/* Top: ID + badges */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-mono text-white/40">{r.request_id}</span>
+        <div className="flex items-center gap-1">
+          {r.urgency !== 'NORMAL' && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ color: urg.color, background: urg.color + '20', border: `1px solid ${urg.color}40` }}>
+              {urg.label}
+            </span>
+          )}
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ color: pri.color, background: pri.color + '20', border: `1px solid ${pri.color}40` }}>
+            {pri.label}
+          </span>
         </div>
-        {isProblem && (
-          <span className="text-red-500 text-sm">🔴</span>
-        )}
       </div>
 
-      {/* Локация */}
-      <div className="text-white font-semibold text-sm mb-1">
-        📍 {request.location_text || 'Локация не указана'}
-      </div>
+      {/* Service badge */}
+      {showService && svc && svcMeta && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <span>{svcMeta.emoji}</span>
+          <span className="text-xs text-white/60">{svc.service_name}</span>
+        </div>
+      )}
 
-      {/* Описание работы */}
-      <div className="text-white/70 text-xs mb-3 line-clamp-2">
-        {request.work_description?.substring(0, 80)}
-        {request.work_description && request.work_description.length > 80 && '...'}
-      </div>
+      {/* Content */}
+      {cat && <div className="text-xs text-white/40 mb-0.5">{cat.category_name}</div>}
+      {obj && <div className="text-sm text-white/80 font-medium mb-0.5">{obj.object_name}</div>}
+      {con && <div className="text-xs text-white/50">{con.construction_name}</div>}
+      {wt && <div className="text-xs text-cyan-400/70 mt-1">{wt.work_name}</div>}
+      {r.description && <div className="text-xs text-white/40 mt-1 line-clamp-2">{r.description}</div>}
 
-      {/* Бейджи */}
-      <div className="flex flex-wrap gap-1.5">
-        {/* Служба */}
-        <span className={`
-          px-2 py-0.5 rounded-md text-[10px] font-bold
-          bg-${serviceColorClass}/20 border border-${serviceColorClass}/30 text-${serviceColorClass}
-        `}>
-          {request.service?.service_code || request.service_id?.replace('SRV-', '')}
-        </span>
-
-        {/* Приоритет */}
-        {request.priority && (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/20 border border-yellow-500/30 text-yellow-500">
-            ⚡ {request.priority}
-          </span>
+      {/* Bottom: Transport + Fact */}
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+        {r.transport_type ? (
+          <span className="text-[10px] text-white/40">🚗 {r.transport_type}</span>
+        ) : <span />}
+        {r.fact_start && !r.fact_finish && (
+          <span className="text-[10px] text-green-400">▶ В работе</span>
         )}
-
-        {/* Срочность */}
-        {request.urgency && request.urgency !== 'NORMAL' && (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/20 border border-red-500/30 text-red-500">
-            🔥 {request.urgency}
-          </span>
-        )}
-
-        {/* Факт старт */}
-        {request.fact_start && (
-          <span className="px-2 py-0.5 rounded-md text-[10px] bg-green-500/20 text-green-500">
-            ▶️
-          </span>
-        )}
-
-        {/* Транспорт */}
-        {request.transport_type && (
-          <span className="px-2 py-0.5 rounded-md text-[10px] bg-blue-500/20 text-blue-500">
-            🚗 {request.transport_type}
-          </span>
+        {r.fact_finish && (
+          <span className="text-[10px] text-green-400">✓ Завершена</span>
         )}
       </div>
     </div>

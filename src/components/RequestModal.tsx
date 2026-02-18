@@ -1,152 +1,251 @@
 'use client'
-import { useEffect } from 'react'
-import type { RequestWithRelations } from '@/types'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useState, useEffect } from 'react'
+import { fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchUsersByService, createRequest, updateRequest, assignUsers, fetchAssignments } from '@/lib/api'
+import type { Request, Category, GObject, Construction, WorkType, Service, User, RequestStatus, Priority, Urgency, AuthSession } from '@/types'
 
-interface RequestModalProps {
-  request: RequestWithRelations | null
+interface Props {
+  session: AuthSession
+  existingRequest?: Request | null
+  defaultServiceId?: string | null
   onClose: () => void
-  onStatusChange?: (newStatus: string) => void
-  onFactStart?: () => void
-  onFactFinish?: () => void
+  onSaved: () => void
 }
 
-export default function RequestModal({
-  request,
-  onClose,
-  onStatusChange,
-  onFactStart,
-  onFactFinish
-}: RequestModalProps) {
+export default function RequestModal({ session, existingRequest, defaultServiceId, onClose, onSaved }: Props) {
+  const isEdit = !!existingRequest
+
+  // Reference data
+  const [categories, setCategories] = useState<Category[]>([])
+  const [objects, setObjects] = useState<GObject[]>([])
+  const [constructions, setConstructions] = useState<Construction[]>([])
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [availableUsers, setAvailableUsers] = useState<User[]>([])
+
+  // Form state
+  const [serviceId, setServiceId] = useState(existingRequest?.service_id || defaultServiceId || '')
+  const [categoryId, setCategoryId] = useState(existingRequest?.category_id || '')
+  const [objectId, setObjectId] = useState(existingRequest?.object_id || '')
+  const [constructionId, setConstructionId] = useState(existingRequest?.construction_id || '')
+  const [workTypeId, setWorkTypeId] = useState(existingRequest?.work_type_id || '')
+  const [description, setDescription] = useState(existingRequest?.description || '')
+  const [priority, setPriority] = useState<Priority>(existingRequest?.priority || 'MEDIUM')
+  const [urgency, setUrgency] = useState<Urgency>(existingRequest?.urgency || 'NORMAL')
+  const [transportType, setTransportType] = useState(existingRequest?.transport_type || '')
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+
+  // Load reference data
   useEffect(() => {
-    if (!request) return
+    fetchCategories().then(setCategories)
+    fetchServices().then(setServices)
+  }, [])
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+  // Load existing assignments
+  useEffect(() => {
+    if (existingRequest) {
+      fetchAssignments(existingRequest.request_id).then(a => setSelectedUsers(a.map(x => x.user_id)))
     }
+  }, [existingRequest])
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [request, onClose])
+  // Cascade: Category → Objects
+  useEffect(() => {
+    if (categoryId) fetchObjects(categoryId).then(setObjects)
+    else setObjects([])
+    setObjectId('')
+    setConstructionId('')
+    setWorkTypeId('')
+  }, [categoryId])
 
-  if (!request) return null
+  // Cascade: Object → Constructions
+  useEffect(() => {
+    if (objectId) fetchConstructions(objectId).then(setConstructions)
+    else setConstructions([])
+    setConstructionId('')
+    setWorkTypeId('')
+  }, [objectId])
+
+  // Cascade: Construction → Work Types
+  useEffect(() => {
+    if (constructionId) fetchWorkTypes(constructionId).then(setWorkTypes)
+    else setWorkTypes([])
+    setWorkTypeId('')
+  }, [constructionId])
+
+  // Load users for selected service
+  useEffect(() => {
+    if (serviceId) fetchUsersByService(serviceId).then(setAvailableUsers)
+    else setAvailableUsers([])
+  }, [serviceId])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const payload: Partial<Request> = {
+        service_id: serviceId || null,
+        category_id: categoryId || null,
+        object_id: objectId || null,
+        construction_id: constructionId || null,
+        work_type_id: workTypeId || null,
+        description: description || null,
+        priority,
+        urgency,
+        transport_type: transportType || null,
+      }
+
+      let reqId: string | null = null
+
+      if (isEdit && existingRequest) {
+        const updated = await updateRequest(existingRequest.request_id, payload, session.user_id)
+        reqId = updated?.request_id || null
+      } else {
+        payload.status = 'NEW'
+        payload.date_work = new Date().toISOString().slice(0, 10)
+        const created = await createRequest(payload, session.user_id)
+        reqId = created?.request_id || null
+      }
+
+      if (reqId && selectedUsers.length > 0) {
+        await assignUsers(reqId, selectedUsers, session.user_id)
+      }
+
+      onSaved()
+      onClose()
+    } catch (err) {
+      console.error('Save error:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleUser = (uid: string) => {
+    setSelectedUsers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid])
+  }
+
+  const selectClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none'
+  const labelClass = 'block text-xs text-white/50 mb-1'
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="glass-strong rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-slide-down"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Заголовок */}
-        <div className="flex justify-between items-start mb-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="glass-strong rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-white/10">
+          <h2 className="text-lg font-bold text-white">{isEdit ? 'Редактирование заявки' : 'Новая заявка'}</h2>
+          <button onClick={onClose} className="text-white/40 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Service */}
           <div>
-            <div className="text-xs text-white/50 font-mono mb-1">
-              {request.request_id}
-            </div>
-            <h2 className="text-2xl font-bold text-white">
-              📍 {request.location_text}
-            </h2>
+            <label className={labelClass}>Служба</label>
+            <select value={serviceId} onChange={e => setServiceId(e.target.value)} className={selectClass}>
+              <option value="">-- Выберите службу --</option>
+              {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}
+            </select>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white text-2xl"
-          >
-            ×
+
+          {/* Cascading: Category → Object → Construction → WorkType */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Категория</label>
+              <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={selectClass}>
+                <option value="">-- Категория --</option>
+                {categories.map(c => <option key={c.category_id} value={c.category_id}>{c.category_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Объект</label>
+              <select value={objectId} onChange={e => setObjectId(e.target.value)} className={selectClass} disabled={!categoryId}>
+                <option value="">-- Объект --</option>
+                {objects.map(o => <option key={o.object_id} value={o.object_id}>{o.object_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Конструктив</label>
+              <select value={constructionId} onChange={e => setConstructionId(e.target.value)} className={selectClass} disabled={!objectId}>
+                <option value="">-- Конструктив --</option>
+                {constructions.map(c => <option key={c.construction_id} value={c.construction_id}>{c.construction_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Вид работ</label>
+              <select value={workTypeId} onChange={e => setWorkTypeId(e.target.value)} className={selectClass} disabled={!constructionId}>
+                <option value="">-- Вид работ --</option>
+                {workTypes.map(w => <option key={w.work_type_id} value={w.work_type_id}>{w.work_name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className={labelClass}>Описание</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+              className={`${selectClass} resize-none`} placeholder="Описание работ..." />
+          </div>
+
+          {/* Priority + Urgency + Transport */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelClass}>Приоритет</label>
+              <select value={priority} onChange={e => setPriority(e.target.value as Priority)} className={selectClass}>
+                <option value="LOW">Низкий</option>
+                <option value="MEDIUM">Средний</option>
+                <option value="HIGH">Высокий</option>
+                <option value="CRITICAL">Критический</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Срочность</label>
+              <select value={urgency} onChange={e => setUrgency(e.target.value as Urgency)} className={selectClass}>
+                <option value="NORMAL">Обычная</option>
+                <option value="URGENT">Срочная</option>
+                <option value="EMERGENCY">Аварийная</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Транспорт</label>
+              <input value={transportType} onChange={e => setTransportType(e.target.value)}
+                className={selectClass} placeholder="Тип транспорта" />
+            </div>
+          </div>
+
+          {/* Assign users */}
+          {availableUsers.length > 0 && (
+            <div>
+              <label className={labelClass}>Назначить людей ({selectedUsers.length} выбрано)</label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                {availableUsers.map(u => (
+                  <label key={u.user_id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${
+                    selectedUsers.includes(u.user_id) ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-white/5 border border-white/5 hover:bg-white/10'
+                  }`}>
+                    <input type="checkbox" checked={selectedUsers.includes(u.user_id)} onChange={() => toggleUser(u.user_id)} className="sr-only" />
+                    <div className={`w-4 h-4 rounded flex items-center justify-center text-xs ${
+                      selectedUsers.includes(u.user_id) ? 'bg-blue-500 text-white' : 'bg-white/10'
+                    }`}>
+                      {selectedUsers.includes(u.user_id) && '✓'}
+                    </div>
+                    <div>
+                      <div className="text-sm text-white">{u.full_name}</div>
+                      <div className="text-[10px] text-white/40">{u.position || u.tab_number}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 text-sm">
+            Отмена
           </button>
-        </div>
-
-        {/* Основная информация */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <InfoBlock label="Служба" value={request.service?.service_name || request.service_id} />
-          <InfoBlock label="Статус" value={request.status} />
-          <InfoBlock label="Категория" value={request.category?.category_name} />
-          <InfoBlock label="Объект" value={request.object?.object_name} />
-          <InfoBlock label="Конструктив" value={request.construction?.construction_name} />
-          <InfoBlock label="Вид работ" value={request.work_type?.work_name} />
-          <InfoBlock label="Приоритет" value={request.priority || '—'} />
-          <InfoBlock label="Срочность" value={request.urgency || '—'} />
-        </div>
-
-        {/* Описание работы */}
-        <div className="glass rounded-xl p-4 mb-6">
-          <div className="text-white/60 text-xs mb-2">Описание работы:</div>
-          <div className="text-white text-sm leading-relaxed">
-            {request.work_description || 'Нет описания'}
-          </div>
-        </div>
-
-        {/* Факт выполнения */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <InfoBlock
-            label="Факт старт"
-            value={request.fact_start 
-              ? format(new Date(request.fact_start), 'dd.MM.yyyy HH:mm', { locale: ru })
-              : '—'
-            }
-          />
-          <InfoBlock
-            label="Факт финиш"
-            value={request.fact_finish
-              ? format(new Date(request.fact_finish), 'dd.MM.yyyy HH:mm', { locale: ru })
-              : '—'
-            }
-          />
-        </div>
-
-        {/* Транспорт */}
-        {request.transport_type && (
-          <div className="glass rounded-xl p-4 mb-6">
-            <div className="text-white/60 text-xs mb-2">Транспорт:</div>
-            <div className="text-white text-sm">
-              🚗 {request.transport_type}
-              {request.transport_note && (
-                <div className="text-white/70 text-xs mt-1">{request.transport_note}</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Кнопки действий */}
-        <div className="flex gap-3">
-          {onFactStart && !request.fact_start && (
-            <button
-              onClick={onFactStart}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-semibold transition-colors"
-            >
-              ▶️ Факт старт
-            </button>
-          )}
-
-          {onFactFinish && request.fact_start && !request.fact_finish && (
-            <button
-              onClick={onFactFinish}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 font-semibold transition-colors"
-            >
-              ✅ Факт финиш
-            </button>
-          )}
-
-          <button
-            onClick={onClose}
-            className="flex-1 glass hover:bg-white/10 text-white rounded-xl py-3 font-semibold transition-colors"
-          >
-            Закрыть
+          <button onClick={handleSave} disabled={saving}
+            className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm disabled:opacity-50 transition-all">
+            {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать заявку'}
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function InfoBlock({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <div className="text-white/50 text-xs mb-1">{label}</div>
-      <div className="text-white text-sm font-semibold">{value || '—'}</div>
     </div>
   )
 }
