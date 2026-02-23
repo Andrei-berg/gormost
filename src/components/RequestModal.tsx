@@ -34,6 +34,7 @@ export default function RequestModal({ session, existingRequest, defaultServiceI
   const [transportType, setTransportType] = useState(existingRequest?.transport_type || '')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Load reference data
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function RequestModal({ session, existingRequest, defaultServiceI
 
   const handleSave = async () => {
     setSaving(true)
+    setError(null)
     try {
       const payload: Partial<Request> = {
         service_id: serviceId || null,
@@ -112,6 +114,8 @@ export default function RequestModal({ session, existingRequest, defaultServiceI
       onSaved()
       onClose()
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
+      setError(msg)
       console.error('Save error:', err)
     } finally {
       setSaving(false)
@@ -234,6 +238,13 @@ export default function RequestModal({ session, existingRequest, defaultServiceI
             </div>
           )}
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-5 mb-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
+            ⚠ {error}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10">

@@ -2,11 +2,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
+import VehicleGrid, { type Vehicle } from '@/components/transport/VehicleGrid'
+import TransportRequests from '@/components/transport/TransportRequests'
 import { fetchRequests, fetchServices, updateRequest } from '@/lib/api'
 import type { Request, Service, AuthSession } from '@/types'
-import { STATUS_CONFIG, SERVICE_META } from '@/types'
 
-const VEHICLES = [
+const VEHICLES: Vehicle[] = [
   { id: 'V-01', name: 'ГАЗель фургон', plate: 'А001МО77', type: 'Грузовой' },
   { id: 'V-02', name: 'КамАЗ самосвал', plate: 'В002РА77', type: 'Спецтехника' },
   { id: 'V-03', name: 'УАЗ Патриот', plate: 'С003ЕН77', type: 'Легковой' },
@@ -73,60 +74,8 @@ function Content({ session }: { session: AuthSession }) {
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      {tab === 'vehicles' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {VEHICLES.map(v => {
-            const assigned = requests.filter(r => r.transport_type === v.name && r.status !== 'DONE')
-            return (
-              <div key={v.id} className="glass rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-3xl">🚛</span>
-                  <div>
-                    <div className="text-white font-medium">{v.name}</div>
-                    <div className="text-xs text-white/40">{v.plate} · {v.type}</div>
-                  </div>
-                </div>
-                <div className={`text-xs px-2 py-1 rounded-lg ${assigned.length > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
-                  {assigned.length > 0 ? `Занят: ${assigned.length} заявок` : 'Свободен'}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {tab === 'requests' && (
-        <div className="space-y-3">
-          {needTransport.length === 0 && (
-            <div className="text-center text-white/20 py-20">Все заявки обеспечены транспортом</div>
-          )}
-          {needTransport.map(r => {
-            const svc = services.find(s => s.service_id === r.service_id)
-            const meta = r.service_id ? SERVICE_META[r.service_id] : null
-            return (
-              <div key={r.request_id} className="glass rounded-xl p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-white/30">{r.request_id}</span>
-                      {meta && <span className="text-xs text-white/40">{meta.emoji} {svc?.service_name}</span>}
-                    </div>
-                    <div className="text-white/80">{r.description || 'Без описания'}</div>
-                  </div>
-                  <select
-                    onChange={e => { if (e.target.value) handleAssignVehicle(r.request_id, e.target.value) }}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none shrink-0"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Назначить</option>
-                    {VEHICLES.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                  </select>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {tab === 'vehicles' && <VehicleGrid vehicles={VEHICLES} requests={requests} />}
+      {tab === 'requests' && <TransportRequests requests={needTransport} services={services} vehicles={VEHICLES} onAssign={handleAssignVehicle} />}
     </div>
   )
 }

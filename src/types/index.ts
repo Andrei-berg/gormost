@@ -77,8 +77,8 @@ export interface Request {
   fact_start: string | null
   fact_finish: string | null
   approved_by_head: string | null
-  approved_by_zamporab: string | null
-  approved_by_boss: string | null
+  approved_by_zamporab: boolean | null
+  approved_by_boss: boolean | null
   created_by: string | null
   created_at: string
   updated_at?: string

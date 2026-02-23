@@ -9,6 +9,7 @@ import {
   fetchServices, fetchUsersByService, fetchAssignments, assignUsers, approveRequest
 } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, User, AuthSession, RequestAssignment } from '@/types'
+import ServiceStats from '@/components/head/ServiceStats'
 
 export default function HeadPage() {
   return (
@@ -75,6 +76,8 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Начальник службы" emoji="🏢" mode="PLANNING" />
+
+      <ServiceStats requests={requests} users={myUsers} assignments={assignments} />
 
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-4">

@@ -10,6 +10,7 @@ import {
 } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, StaffRequest, User, AuthSession } from '@/types'
 import { SERVICE_META } from '@/types'
+import PlanStats from '@/components/zamporab/PlanStats'
 
 export default function ZamPorabPage() {
   return (
@@ -78,6 +79,12 @@ function Content({ session }: { session: AuthSession }) {
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
 
+      <PlanStats
+        requests={requests}
+        services={services}
+        pendingApproval={requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length}
+      />
+
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => setTab('kanban')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
@@ -105,10 +112,51 @@ function Content({ session }: { session: AuthSession }) {
 
       {tab === 'kanban' ? (
         <div className="overflow-x-auto pb-4">
-          {/* Group by service */}
+          {/* Ожидают согласования зампрораба */}
+          {(() => {
+            const pending = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab)
+            if (pending.length === 0) return null
+            return (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">⏳</span>
+                  <h3 className="text-lg font-bold text-amber-400">Ожидают вашего согласования</h3>
+                  <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">{pending.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {pending.map(r => {
+                    const obj = objects.find(o => o.object_id === r.object_id)
+                    const svc = services.find(s => s.service_id === r.service_id)
+                    const cat = categories.find(c => c.category_id === r.category_id)
+                    return (
+                      <div key={r.request_id} className="glass rounded-xl p-4 border border-amber-500/20 flex items-center justify-between gap-4">
+                        <div className="flex-1 cursor-pointer" onClick={() => { setSelectedReq(r); setShowModal(true) }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-mono text-white/30">{r.request_id}</span>
+                            <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">✓ Согл. нач.службы</span>
+                          </div>
+                          <div className="text-white font-medium">{obj?.object_name || '—'}</div>
+                          <div className="text-xs text-white/40 mt-0.5">{svc?.service_name} · {cat?.category_name}</div>
+                          {r.description && <div className="text-xs text-white/30 mt-1">{r.description}</div>}
+                        </div>
+                        <button
+                          onClick={() => handleApprove(r.request_id)}
+                          className="shrink-0 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-all"
+                        >
+                          ✓ Согласовать
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="border-b border-white/10 mt-6 mb-6" />
+              </div>
+            )
+          })()}
+
+          {/* Group by service — показываем все службы */}
           {services.map(svc => {
             const svcReqs = requests.filter(r => r.service_id === svc.service_id)
-            if (svcReqs.length === 0) return null
             const meta = SERVICE_META[svc.service_id]
             return (
               <div key={svc.service_id} className="mb-6">
@@ -117,19 +165,22 @@ function Content({ session }: { session: AuthSession }) {
                   <h3 className="text-lg font-bold text-white">{svc.service_name}</h3>
                   <span className="text-xs text-white/40 font-mono">{svcReqs.length} заявок</span>
                 </div>
-                <KanbanBoard
-                  requests={svcReqs} session={session}
-                  categories={categories} objects={objects} constructions={constructions}
-                  workTypes={workTypes} services={services}
-                  onCardClick={r => { setSelectedReq(r); setShowModal(true) }}
-                  onStatusChange={loadData}
-                />
+                {svcReqs.length > 0 ? (
+                  <KanbanBoard
+                    requests={svcReqs} session={session}
+                    categories={categories} objects={objects} constructions={constructions}
+                    workTypes={workTypes} services={services}
+                    onCardClick={r => { setSelectedReq(r); setShowModal(true) }}
+                    onStatusChange={loadData}
+                  />
+                ) : (
+                  <div className="glass rounded-xl p-6 text-center text-white/20 text-sm border border-dashed border-white/10">
+                    Нет заявок — план не составлен
+                  </div>
+                )}
               </div>
             )
           })}
-          {requests.length === 0 && (
-            <div className="text-center text-white/20 py-20">Нет заявок для планирования</div>
-          )}
         </div>
       ) : (
         <StaffRequestsView staffReqs={staffReqs} services={services} users={allUsers} session={session} onRefresh={loadData} />

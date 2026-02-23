@@ -182,9 +182,10 @@ export async function fetchRequestById(requestId: string): Promise<Request | nul
 }
 
 export async function createRequest(req: Partial<Request>, userId: string): Promise<Request | null> {
-  const id = `REQ-${Date.now()}`
+  const id = `RQ-${Date.now()}`
   const payload = { ...req, request_id: id, created_by: userId, created_at: new Date().toISOString() }
-  const { data } = await supabase.from('requests').insert(payload).select().single()
+  const { data, error } = await supabase.from('requests').insert(payload).select().single()
+  if (error) throw new Error(error.message)
   if (data) {
     await logAction(userId, 'CREATE_REQUEST', 'request', id, { status: req.status, service_id: req.service_id })
   }
@@ -192,8 +193,9 @@ export async function createRequest(req: Partial<Request>, userId: string): Prom
 }
 
 export async function updateRequest(requestId: string, updates: Partial<Request>, userId: string): Promise<Request | null> {
-  const { data } = await supabase.from('requests').update({ ...updates, updated_at: new Date().toISOString() })
+  const { data, error } = await supabase.from('requests').update({ ...updates, updated_at: new Date().toISOString() })
     .eq('request_id', requestId).select().single()
+  if (error) throw new Error(error.message)
   if (data) {
     await logAction(userId, 'UPDATE_REQUEST', 'request', requestId, updates as Record<string, unknown>)
   }
@@ -209,8 +211,17 @@ export async function updateRequestStatus(requestId: string, status: RequestStat
 }
 
 export async function approveRequest(requestId: string, role: 'head' | 'zamporab' | 'boss', userId: string): Promise<boolean> {
-  const key = `approved_by_${role}` as keyof Request
-  const result = await updateRequest(requestId, { [key]: userId } as Partial<Request>, userId)
+  let updates: Partial<Request>
+  if (role === 'head') {
+    updates = { approved_by_head: userId }
+  } else if (role === 'zamporab') {
+    // Boolean column + status moves to PLANNED so dispatcher sees it
+    updates = { approved_by_zamporab: true, status: 'PLANNED' }
+  } else {
+    // boss — boolean column
+    updates = { approved_by_boss: true }
+  }
+  const result = await updateRequest(requestId, updates, userId)
   if (result) {
     await logAction(userId, `APPROVE_${role.toUpperCase()}`, 'request', requestId, null)
   }
@@ -288,6 +299,64 @@ export async function fetchChangelog(limit = 50, entityType?: string, entityId?:
   if (entityId) q = q.eq('entity_id', entityId)
   const { data } = await q
   return (data || []) as ChangelogEntry[]
+}
+
+// ============ PEOPLE STATS ============
+
+export async function fetchPeopleStats(): Promise<{
+  totalDeployed: number
+  byService: Record<string, number>
+  activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }>
+}> {
+  // Get all IN_PROGRESS requests with their assignments
+  const { data: reqs } = await supabase
+    .from('requests')
+    .select('request_id, object_id, service_id')
+    .eq('status', 'IN_PROGRESS')
+
+  const requestIds = (reqs || []).map((r: { request_id: string }) => r.request_id)
+
+  if (requestIds.length === 0) return { totalDeployed: 0, byService: {}, activeAssignments: [] }
+
+  const { data: assignments } = await supabase
+    .from('request_assignments')
+    .select('user_id, request_id')
+    .in('request_id', requestIds)
+
+  const userIds = Array.from(new Set((assignments || []).map((a: { user_id: string }) => a.user_id)))
+
+  if (userIds.length === 0) return { totalDeployed: 0, byService: {}, activeAssignments: [] }
+
+  const { data: users } = await supabase
+    .from('users')
+    .select('user_id, full_name, service_id')
+    .in('user_id', userIds)
+
+  const { data: objects } = await supabase
+    .from('objects')
+    .select('object_id, object_name')
+
+  const byService: Record<string, number> = {}
+  const activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> = []
+
+  for (const a of (assignments || [])) {
+    const user = (users || []).find((u: { user_id: string }) => u.user_id === a.user_id)
+    const req = (reqs || []).find((r: { request_id: string }) => r.request_id === a.request_id)
+    const obj = (objects || []).find((o: { object_id: string }) => o.object_id === req?.object_id)
+    if (user) {
+      const svcId = user.service_id || 'unknown'
+      byService[svcId] = (byService[svcId] || 0) + 1
+      activeAssignments.push({
+        user_id: user.user_id,
+        full_name: user.full_name,
+        service_id: user.service_id,
+        request_id: a.request_id,
+        object_name: obj?.object_name,
+      })
+    }
+  }
+
+  return { totalDeployed: userIds.length, byService, activeAssignments }
 }
 
 // ============ STATS (for Boss dashboard) ============

@@ -1,9 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
-import { logout } from '@/lib/auth'
+import { logout, hasRole } from '@/lib/auth'
 import type { AuthSession } from '@/types'
+import { PANELS } from '@/types'
 
 interface Props {
   session: AuthSession
@@ -15,7 +16,10 @@ interface Props {
 
 export default function Header({ session, title, emoji, mode = 'LIVE', showTimer }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const [now, setNow] = useState(new Date())
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const shift = getCurrentShift()
   const period = getCurrentPeriod()
 
@@ -23,6 +27,18 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const visiblePanels = PANELS.filter(p => hasRole(session, p.roles))
 
   const handleLogout = () => {
     logout()
@@ -91,6 +107,51 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
               </span>
             </div>
           </div>
+          {/* Nav menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="ml-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/50 hover:text-white"
+              title="Панели"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-12 z-50 w-56 glass-strong rounded-2xl p-2 border border-white/10 shadow-2xl">
+                <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Панели</div>
+                {visiblePanels.map(p => {
+                  const isActive = pathname === p.path
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => { router.push(p.path); setMenuOpen(false) }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
+                        isActive
+                          ? 'bg-blue-600/30 text-white border border-blue-500/30'
+                          : 'text-white/60 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base">{p.emoji}</span>
+                      <span>{p.title}</span>
+                      {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                    </button>
+                  )
+                })}
+                <div className="border-t border-white/10 mt-2 pt-2">
+                  <button
+                    onClick={() => { router.push('/'); setMenuOpen(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-white/40 hover:bg-white/5 hover:text-white transition-all text-left"
+                  >
+                    <span className="text-base">🏠</span>
+                    <span>Главная</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={handleLogout}
             className="ml-2 p-2 rounded-xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 transition-all text-white/50 hover:text-red-400"
