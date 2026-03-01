@@ -27,11 +27,12 @@
 
 ### Phase 1 — UI/UX improvements
 
-- [ ] **Настройки** — вынести из основной навигации в угол/вторичное меню — REQ-130
-- [ ] **Навигация** — показывать только панели, доступные текущей роли — REQ-131
-- [ ] **Автообновление** — индикатор «обновлено N сек. назад» вместо невидимого таймера — REQ-020
-- [ ] **Пустые состояния** — внятные сообщения когда заявок нет / список пуст — REQ-132
-- [ ] **Мобильный вид** — базовая адаптация для телефонов (хотя бы Диспетчер и Мастер) — REQ-133
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — EmptyState component: replace bare empty-state strings in 5 locations (REQ-132)
+- [ ] 01-02-PLAN.md — Header enhancements: LIVE elapsed counter, Admin hamburger section, mobile clock hide, home page admin filter (REQ-020, REQ-130, REQ-131, REQ-133)
+- [ ] 01-03-PLAN.md — Wire lastUpdated to 4 LIVE panels, mobile KPI grid collapse, KanbanBoard scroll audit (REQ-020, REQ-133)
 
 ---
 
