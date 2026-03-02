@@ -11,7 +11,7 @@ Requirements for HR module release. Each maps to roadmap phases.
 
 ### Database & Infrastructure
 
-- [ ] **HR-01**: Система создаёт таблицу `employee_status` (append-only event log: user_id, status, date_from, date_to, reason, created_by) и добавляет колонки `date_hired`/`date_fired` в `users`
+- [x] **HR-01**: Система создаёт таблицу `employee_status` (append-only event log: user_id, status, date_from, date_to, reason, created_by) и добавляет колонки `date_hired`/`date_fired` в `users`
 - [ ] **HR-02**: Система показывает «На работе» по умолчанию для сотрудников без записи о статусе на сегодня (presence-by-default)
 
 ### Daily Operations
@@ -72,7 +72,7 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HR-01 | Phase 02 | Pending |
+| HR-01 | Phase 02 | Complete |
 | HR-02 | Phase 02 | Pending |
 | HR-03 | Phase 03 | Pending |
 | HR-04 | Phase 03 | Pending |

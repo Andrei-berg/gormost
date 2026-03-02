@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-03-02T12:19:01.933Z"
+progress:
+  total_phases: 2
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 4
+---
+
 # Project State
 
 ## Project Reference
@@ -42,6 +55,8 @@ Progress: [##--------] 20% (v1.0 + v1.1 complete, v2.0 starting)
 - [Research]: Presence-by-default — no status row today means "Na rabote"
 - [Research]: ZAMPORAB edits own service only; ADMIN edits all services
 - [Research]: HEAD gets read-only access to own service HR panel
+- [Phase 02-db-foundation]: employee_status is append-only event log — no updated_at column; all status changes are new INSERTs
+- [Phase 02-db-foundation]: date_hired/date_fired added to existing users table — no separate employees table needed
 
 ### Pending Todos
 

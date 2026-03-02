@@ -1,5 +1,7 @@
 {
-  "workflow": "interactive",
+  "workflow": {
+    "research": true
+  },
   "planning": {
     "commit_docs": true,
     "search_gitignored": false
