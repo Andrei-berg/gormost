@@ -35,7 +35,11 @@ Build order is strict: DB schema must be correct before types, types before API,
   3. `src/types/index.ts` exports `EmployeeStatusType`, `EmployeeStatus`, `EMPLOYEE_STATUS_CONFIG`, `EnrichedEmployee`, and updated `User` interface — `npm run build` passes
   4. `src/lib/api.ts` has 6 HR functions: `fetchAllCurrentStatuses`, `fetchEmployeeStatusHistory`, `setEmployeeStatus`, `fetchStatusesForPeriod`, `hireEmployee`, `fireEmployee` — each calls `logAction()`
   5. Presence-by-default logic is encoded in `fetchAllCurrentStatuses`: employees with no status record today return "Na rabote" without requiring a row
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — SQL migrations for employee_status table and users HR columns + human checkpoint
+- [ ] 02-02-PLAN.md — TypeScript types and 6 HR API functions
 
 ### Phase 03: Core HR Panel UI
 **Goal**: ZAMPORAB can open `/hr` and immediately see who is present today, change a status with one click, and review status history per employee
@@ -79,7 +83,7 @@ Build order is strict: DB schema must be correct before types, types before API,
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
-| 02. DB Foundation | v2.0 | 0/? | Not started | - |
+| 02. DB Foundation | v2.0 | 0/2 | Not started | - |
 | 03. Core HR Panel UI | v2.0 | 0/? | Not started | - |
 | 04. Staff Management | v2.0 | 0/? | Not started | - |
 | 05. Reporting & Export | v2.0 | 0/? | Not started | - |
