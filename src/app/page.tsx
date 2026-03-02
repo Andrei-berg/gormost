@@ -27,8 +27,8 @@ export default function HomePage() {
   const shift = getCurrentShift()
   const period = getCurrentPeriod()
 
-  // Filter panels by role (ADMIN sees all)
-  const visiblePanels = PANELS.filter(p => hasRole(session, p.roles))
+  // Filter panels by role (ADMIN sees all except admin panel card — admin accesses /admin via hamburger menu)
+  const visiblePanels = PANELS.filter(p => hasRole(session, p.roles) && p.id !== 'admin')
 
   const handleLogout = () => { logout(); router.replace('/login') }
 
