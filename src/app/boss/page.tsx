@@ -50,7 +50,7 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Начальник участка" emoji="🏠" mode="REVIEW" />
 
       {/* KPI */}
-      <div className="grid grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <div className="glass rounded-xl p-4 text-center">
           <div className="text-3xl mb-1">{healthEmoji}</div>
           <div className="text-xs text-white/40">Здоровье</div>
