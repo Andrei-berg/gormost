@@ -7,7 +7,7 @@ interface Props {
 
 export default function KPICards({ total, inProgress, done, critical }: Props) {
   return (
-    <div className="grid grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
       <KPICard label="Всего заявок" value={total} color="text-white" />
       <KPICard label="В работе" value={inProgress} color="text-violet-400" />
       <KPICard label="Выполнено" value={done} color="text-green-400" />

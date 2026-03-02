@@ -12,13 +12,15 @@ interface Props {
   emoji: string
   mode?: 'LIVE' | 'PLANNING' | 'REVIEW'
   showTimer?: string | null
+  lastUpdated?: Date | null  // timestamp of last data load for LIVE panels
 }
 
-export default function Header({ session, title, emoji, mode = 'LIVE', showTimer }: Props) {
+export default function Header({ session, title, emoji, mode = 'LIVE', showTimer, lastUpdated }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const [now, setNow] = useState(new Date())
   const [menuOpen, setMenuOpen] = useState(false)
+  const [secondsAgo, setSecondsAgo] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const shift = getCurrentShift()
   const period = getCurrentPeriod()
@@ -27,6 +29,18 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  // Reset counter when new data arrives
+  useEffect(() => {
+    setSecondsAgo(0)
+  }, [lastUpdated])
+
+  // Count up every second while in LIVE mode
+  useEffect(() => {
+    if (mode !== 'LIVE') return
+    const t = setInterval(() => setSecondsAgo(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [mode])
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -39,6 +53,8 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
   }, [])
 
   const visiblePanels = PANELS.filter(p => hasRole(session, p.roles))
+  const regularPanels = visiblePanels.filter(p => p.id !== 'admin')
+  const systemPanels = visiblePanels.filter(p => p.id === 'admin')
 
   const handleLogout = () => {
     logout()
@@ -59,7 +75,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
               {mode === 'LIVE' && (
                 <span className="flex items-center gap-1 bg-red-500/20 border border-red-500/30 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">
                   <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  LIVE
+                  LIVE{lastUpdated != null ? ` · ${secondsAgo}с` : ''}
                 </span>
               )}
               {mode === 'PLANNING' && (
@@ -89,7 +105,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
 
         {/* Right: Clock + Shift */}
         <div className="flex items-center gap-4">
-          <div className="text-right">
+          <div className="hidden sm:block text-right">
             <div className="text-xs text-white/40">Сейчас</div>
             <div className="text-lg font-mono font-bold text-white">
               {formatDate(now)}, {formatTime(now)}
@@ -121,7 +137,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
             {menuOpen && (
               <div className="absolute right-0 top-12 z-50 w-56 glass-strong rounded-2xl p-2 border border-white/10 shadow-2xl">
                 <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Панели</div>
-                {visiblePanels.map(p => {
+                {regularPanels.map(p => {
                   const isActive = pathname === p.path
                   return (
                     <button
@@ -139,6 +155,29 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
                     </button>
                   )
                 })}
+                {systemPanels.length > 0 && (
+                  <div className="border-t border-white/10 mt-2 pt-2">
+                    <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Система</div>
+                    {systemPanels.map(p => {
+                      const isActive = pathname === p.path
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => { router.push(p.path); setMenuOpen(false) }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
+                            isActive
+                              ? 'bg-blue-600/30 text-white border border-blue-500/30'
+                              : 'text-white/60 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-base">{p.emoji}</span>
+                          <span>{p.title}</span>
+                          {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
                 <div className="border-t border-white/10 mt-2 pt-2">
                   <button
                     onClick={() => { router.push('/'); setMenuOpen(false) }}

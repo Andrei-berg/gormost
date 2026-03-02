@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { updateRequestStatus } from '@/lib/api'
 import RequestCard from './RequestCard'
+import EmptyState from './EmptyState'
 import type { Request, RequestStatus, Category, GObject, Construction, WorkType, Service, AuthSession } from '@/types'
 import { STATUS_CONFIG, STATUS_ORDER } from '@/types'
 
@@ -66,9 +67,7 @@ export default function KanbanBoard({
 
             {/* Cards */}
             <div className="p-3 space-y-3 min-h-[100px]">
-              {cards.length === 0 && (
-                <div className="text-xs text-white/20 text-center py-8">Нет заявок</div>
-              )}
+              {cards.length === 0 && <EmptyState message="Нет заявок" />}
               {cards.map(r => (
                 <div key={r.request_id} draggable onDragStart={e => handleDragStart(e, r.request_id)}>
                   <RequestCard
