@@ -4,6 +4,7 @@ import type {
   User, Service, Category, GObject, Construction, WorkType,
   Request, RequestAssignment, StaffRequest, Remark, ChangelogEntry,
   RequestStatus, Priority, Urgency, StaffRequestStatus,
+  EmployeeStatusType, EmployeeStatus, EnrichedEmployee,
 } from '@/types'
 
 // ============ USERS ============
@@ -378,4 +379,126 @@ export async function fetchRequestStats(): Promise<{
     byPriority[r.priority] = (byPriority[r.priority] || 0) + 1
   }
   return { total: rows.length, byStatus, byService, byPriority }
+}
+
+// ============ HR MODULE ============
+
+// Fetch all active employees with their current status for today.
+// Presence-by-default: employees with no status row for today get currentStatus 'Na_rabote'.
+// CRITICAL: always filter is_active=true so dismissed employees do not appear.
+export async function fetchAllCurrentStatuses(): Promise<EnrichedEmployee[]> {
+  const today = new Date().toISOString().split('T')[0] // 'YYYY-MM-DD'
+
+  const [usersResult, statusesResult] = await Promise.all([
+    supabase.from('users').select('*').eq('is_active', true).order('full_name'),
+    supabase
+      .from('employee_status')
+      .select('*')
+      .lte('date_from', today)
+      .or(`date_to.is.null,date_to.gte.${today}`)
+      .order('date_from', { ascending: false }),
+  ])
+
+  const users = (usersResult.data || []) as User[]
+  const statuses = (statusesResult.data || []) as EmployeeStatus[]
+
+  // Build map: user_id -> most recent status row (already ordered date_from DESC)
+  const latestByUser = new Map<string, EmployeeStatus>()
+  for (const s of statuses) {
+    if (!latestByUser.has(s.user_id)) {
+      latestByUser.set(s.user_id, s)
+    }
+  }
+
+  return users.map(user => {
+    const statusRecord = latestByUser.get(user.user_id) || null
+    return {
+      user,
+      currentStatus: statusRecord ? (statusRecord.status as EmployeeStatusType) : 'Na_rabote',
+      statusRecord,
+    }
+  })
+}
+
+// Fetch full status history for one employee, newest first.
+export async function fetchEmployeeStatusHistory(userId: string): Promise<EmployeeStatus[]> {
+  const { data } = await supabase
+    .from('employee_status')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date_from', { ascending: false })
+  return (data || []) as EmployeeStatus[]
+}
+
+// Set employee status — ALWAYS INSERT, never UPDATE (append-only log).
+// For single-day status (e.g. one-day Otgul): pass dateTo = dateFrom.
+// For open-ended status: pass dateTo = null.
+export async function setEmployeeStatus(
+  userId: string,
+  status: EmployeeStatusType,
+  dateFrom: string,
+  dateTo: string | null,
+  reason: string | null,
+  createdBy: string
+): Promise<EmployeeStatus | null> {
+  const { data, error } = await supabase
+    .from('employee_status')
+    .insert({ user_id: userId, status, date_from: dateFrom, date_to: dateTo, reason, created_by: createdBy })
+    .select()
+    .single()
+  if (!error && data) {
+    await logAction(createdBy, 'SET_EMPLOYEE_STATUS', 'employee_status', data.id, { userId, status, dateFrom })
+  }
+  return data as EmployeeStatus | null
+}
+
+// Fetch all status rows overlapping a date range (for Phase 05 period reports).
+// serviceId filter is a no-op in Phase 02 — Phase 05 adds the join when needed.
+export async function fetchStatusesForPeriod(
+  dateFrom: string,
+  dateTo: string,
+  _serviceId?: string
+): Promise<EmployeeStatus[]> {
+  const { data } = await supabase
+    .from('employee_status')
+    .select('*')
+    .lte('date_from', dateTo)
+    .or(`date_to.is.null,date_to.gte.${dateFrom}`)
+    .order('date_from')
+  return (data || []) as EmployeeStatus[]
+}
+
+// Hire employee: set date_hired and ensure is_active=true.
+export async function hireEmployee(
+  userId: string,
+  dateHired: string,
+  performedBy: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('users')
+    .update({ date_hired: dateHired, is_active: true })
+    .eq('user_id', userId)
+  if (!error) {
+    await logAction(performedBy, 'HIRE_EMPLOYEE', 'user', userId, { date_hired: dateHired })
+  }
+  return !error
+}
+
+// Dismiss employee: set date_fired, soft-delete (is_active=false), insert Uvolen status row.
+// The Uvolen status INSERT is best-effort — fireEmployee returns true based on the users update only.
+export async function fireEmployee(
+  userId: string,
+  dateFired: string,
+  performedBy: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('users')
+    .update({ date_fired: dateFired, is_active: false })
+    .eq('user_id', userId)
+  if (!error) {
+    await logAction(performedBy, 'FIRE_EMPLOYEE', 'user', userId, { date_fired: dateFired })
+    // Best-effort: insert Uvolen status row into event log
+    await setEmployeeStatus(userId, 'Uvolen', dateFired, null, 'Увольнение', performedBy)
+  }
+  return !error
 }

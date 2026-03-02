@@ -23,6 +23,8 @@ export interface User {
   phone: string | null
   pin_code: string | null
   created_at: string
+  date_hired: string | null   // ISO date 'YYYY-MM-DD' or null — set on hire
+  date_fired: string | null   // ISO date 'YYYY-MM-DD' or null — set on dismissal
 }
 
 export interface Service {
@@ -229,3 +231,45 @@ export const PANELS: PanelConfig[] = [
     roleLabel: 'Администратор',
   },
 ]
+
+// ============================================
+// HR MODULE — v2.0
+// ============================================
+
+export type EmployeeStatusType =
+  | 'Na_rabote'
+  | 'Otgul'
+  | 'Bolnichniy'
+  | 'Otpusk'
+  | 'Uvolen'
+
+export interface EmployeeStatus {
+  id: string
+  user_id: string
+  status: EmployeeStatusType
+  date_from: string        // ISO date string 'YYYY-MM-DD'
+  date_to: string | null   // NULL = open-ended; set equal to date_from for single-day entries
+  reason: string | null
+  created_by: string
+  created_at: string
+}
+
+export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
+  label: string
+  color: string
+  bg: string
+}> = {
+  Na_rabote:  { label: 'На работе',  color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  Otgul:      { label: 'Отгул',      color: '#eab308', bg: 'bg-yellow-500/20 border-yellow-500/30' },
+  Bolnichniy: { label: 'Больничный', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  Otpusk:     { label: 'Отпуск',     color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  Uvolen:     { label: 'Уволен',     color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+}
+
+// EnrichedEmployee = User record + their resolved status for today
+// statusRecord is null when no DB row exists for today — presence-by-default applies (Na_rabote)
+export interface EnrichedEmployee {
+  user: User
+  currentStatus: EmployeeStatusType
+  statusRecord: EmployeeStatus | null
+}
