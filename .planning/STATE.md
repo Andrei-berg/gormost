@@ -1,54 +1,48 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T06:07:05.091Z"
+milestone: v2.0
+milestone_name: HR-модуль
+status: defining_requirements
+last_updated: "2026-03-02T00:00:00.000Z"
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # STATE.md — Project Memory
 
-## Current milestone: 1.1 — UI/UX Polish
+## Current milestone: v2.0 — HR-модуль
 
 ## Status
-v1.0 полностью выполнен и задеплоен на Vercel.
-Следующий шаг: начать работу над Milestone 1.1 (полировка UI/UX).
+Defining requirements. Milestone v2.0 started 2026-03-02.
 
-## What has been done
-- v1.0 полностью реализован: 8 панелей, канбан, согласование заявок, транспорт, жалобы, аудит
-- Деплой: https://gormost.vercel.app (логин: 0000, PIN: 1234)
-- CLAUDE.md, PROJECT.md, REQUIREMENTS.md, ROADMAP.md — документация написана
-- `.planning/codebase/` — карта кодовой базы создана (map-codebase)
-- GSD-проект инициализирован
-- Phase 01 Plan 01 complete: Shared EmptyState component, replaced 5 bare empty state strings across kanban/table/head/boss/zamporab panels (REQ-132)
-- Phase 01 Plan 02 complete: Header LIVE elapsed counter, mobile clock hide, Admin sistema hamburger section, home page admin card removed
+## What has been done (accumulated)
+- v1.0 fully implemented: 8 panels, kanban, request approval chain, transport, complaints, audit log
+- v1.1 complete: UI/UX polish — EmptyState, Header LIVE counter, mobile responsive KPI, admin hamburger, lastUpdated wired to all LIVE panels
+- Deploy: https://gormost.vercel.app (логин: 0000, PIN: 1234)
+- CLAUDE.md, PROJECT.md, REQUIREMENTS.md, ROADMAP.md — docs maintained
+- .planning/codebase/ — codebase map created (map-codebase)
 
 ## Current position
-- Phase: 01-uiux-improvements
-- Last completed: 01-02-PLAN.md (2026-03-02)
-- Stopped at: Completed 01-02-PLAN.md
+- Phase: Not started (defining requirements)
+- Plan: —
+- Last activity: 2026-03-02 — Milestone v2.0 started
 
 ## Next actions
-1. Execute 01-03-PLAN.md — wire lastUpdated prop into LIVE panel pages
-2. `npm run build` перед любым коммитом
-3. Работать в feature-ветках
+1. Complete requirement scoping for HR module
+2. Run roadmapper to create phased execution plan
+3. `/gsd:plan-phase [N]` to start execution
 
 ## Key decisions
-- БД: Supabase (PostgreSQL). Миграции — вручную через SQL Editor, агент только создаёт файлы
-- Деплой: Vercel, push в `main` = автодеплой. `main` всегда в рабочем состоянии
-- Стиль: компонентный подход — page.tsx тонкий оркестратор, каждая секция = отдельный файл
-- Нет тестов — `npm run build` минимальная проверка качества
-- Комментарии в коде на английском
-- Новые зависимости — только с одобрения разработчика
-- lastUpdated != null check (covers both null and undefined) in TypeScript strict mode for LIVE counter conditional
+- БД: Supabase (PostgreSQL). Migrations — manual via SQL Editor, agent creates files only
+- Deploy: Vercel, push to `main` = auto-deploy. `main` always deployable
+- Style: component approach — page.tsx thin orchestrator, each section = separate file
+- No tests — `npm run build` is minimum quality check
+- Comments in English
+- New dependencies — only with developer approval
 - Admin panel removed from home page grid; admin users access /admin via hamburger Система section
-- REQ-131 confirmed already working — no changes needed
-- EmptyState: no 'use client' needed (pure presentational); TableView wraps in tr/td for valid HTML; zamporab drops custom dashed-border in favor of consistent EmptyState
 
 ## Tech stack
 - Next.js 16 (App Router), TypeScript strict, Tailwind CSS, Supabase, @dnd-kit
