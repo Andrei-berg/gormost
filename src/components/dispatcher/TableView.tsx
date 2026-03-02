@@ -1,5 +1,6 @@
 import type { Request, Category, GObject, Service } from '@/types'
 import { STATUS_CONFIG } from '@/types'
+import EmptyState from '../EmptyState'
 
 interface Props {
   requests: Request[]
@@ -45,7 +46,7 @@ export default function TableView({ requests, categories, objects, services, onR
             )
           })}
           {requests.length === 0 && (
-            <tr><td colSpan={6} className="px-4 py-12 text-center text-white/20">Нет заявок</td></tr>
+            <tr><td colSpan={6}><EmptyState message="Нет заявок" /></td></tr>
           )}
         </tbody>
       </table>

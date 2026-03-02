@@ -5,6 +5,7 @@ import Header from '@/components/Header'
 import OverviewCharts from '@/components/boss/OverviewCharts'
 import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchChangelog, fetchPeopleStats } from '@/lib/api'
 import type { Request, Service, ChangelogEntry, AuthSession } from '@/types'
+import EmptyState from '@/components/EmptyState'
 
 export default function BossPage() {
   return (
@@ -107,7 +108,7 @@ function Content({ session }: { session: AuthSession }) {
               </button>
             </div>
           ))}
-          {pendingApproval.length === 0 && <div className="text-center text-white/20 py-20">Нет заявок на утверждение</div>}
+          {pendingApproval.length === 0 && <EmptyState message="Нет заявок на утверждение" />}
         </div>
       )}
 

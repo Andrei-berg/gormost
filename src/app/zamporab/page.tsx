@@ -11,6 +11,7 @@ import {
 import type { Request, Category, GObject, Construction, WorkType, Service, StaffRequest, User, AuthSession } from '@/types'
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
+import EmptyState from '@/components/EmptyState'
 
 export default function ZamPorabPage() {
   return (
@@ -174,9 +175,7 @@ function Content({ session }: { session: AuthSession }) {
                     onStatusChange={loadData}
                   />
                 ) : (
-                  <div className="glass rounded-xl p-6 text-center text-white/20 text-sm border border-dashed border-white/10">
-                    Нет заявок — план не составлен
-                  </div>
+                  <EmptyState message="Нет заявок — план не составлен" />
                 )}
               </div>
             )

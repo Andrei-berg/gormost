@@ -10,6 +10,7 @@ import {
 } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, User, AuthSession, RequestAssignment } from '@/types'
 import ServiceStats from '@/components/head/ServiceStats'
+import EmptyState from '@/components/EmptyState'
 
 export default function HeadPage() {
   return (
@@ -160,9 +161,7 @@ function Content({ session }: { session: AuthSession }) {
             </div>
           )
         })}
-        {requests.length === 0 && (
-          <div className="text-center text-white/20 py-20">Нет заявок по вашей службе</div>
-        )}
+        {requests.length === 0 && <EmptyState message="Нет заявок по вашей службе" />}
       </div>
 
       {showModal && (
