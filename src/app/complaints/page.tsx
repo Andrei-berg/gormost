@@ -35,6 +35,7 @@ function Content({ session }: { session: AuthSession }) {
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM')
   const [filter, setFilter] = useState<'all' | 'NEW' | 'IN_PROGRESS' | 'RESOLVED'>('all')
   const [saving, setSaving] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     // Using remarks table as complaints storage
@@ -54,6 +55,7 @@ function Content({ session }: { session: AuthSession }) {
       created_at: r.created_at,
     }))
     setComplaints(mapped)
+    setLastUpdated(new Date())
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
@@ -83,7 +85,7 @@ function Content({ session }: { session: AuthSession }) {
 
   return (
     <div className="min-h-screen p-4 max-w-5xl mx-auto">
-      <Header session={session} title="Жалобы" emoji="📞" mode="LIVE" />
+      <Header session={session} title="Жалобы" emoji="📞" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">

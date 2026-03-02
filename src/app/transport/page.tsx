@@ -27,10 +27,12 @@ function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [tab, setTab] = useState<'vehicles' | 'requests'>('vehicles')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     const [reqs, svcs] = await Promise.all([fetchRequests(), fetchServices()])
     setRequests(reqs); setServices(svcs)
+    setLastUpdated(new Date())
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
@@ -45,7 +47,7 @@ function Content({ session }: { session: AuthSession }) {
 
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
-      <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" />
+      <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">

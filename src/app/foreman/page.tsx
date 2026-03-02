@@ -25,6 +25,7 @@ function Content({ session }: { session: AuthSession }) {
   const [services, setServices] = useState<Service[]>([])
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs] = await Promise.all([
@@ -35,6 +36,7 @@ function Content({ session }: { session: AuthSession }) {
 
     const { data: assignments } = await supabase.from('request_assignments').select('request_id').eq('user_id', session.user_id)
     setMyRequestIds(new Set((assignments || []).map((a: { request_id: string }) => a.request_id)))
+    setLastUpdated(new Date())
   }, [session.user_id])
 
   useEffect(() => { loadData() }, [loadData])
@@ -58,7 +60,7 @@ function Content({ session }: { session: AuthSession }) {
 
   return (
     <div className="min-h-screen p-4 max-w-5xl mx-auto">
-      <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" />
+      <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">

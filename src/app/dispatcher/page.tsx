@@ -32,6 +32,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
   const [filterService, setFilterService] = useState('')
   const [peopleStats, setPeopleStats] = useState<{ totalDeployed: number; byService: Record<string, number>; activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> }>({ totalDeployed: 0, byService: {}, activeAssignments: [] })
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs] = await Promise.all([
@@ -45,6 +46,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
     const ps = await fetchPeopleStats()
     setPeopleStats(ps)
+    setLastUpdated(new Date())
   }, [filterService])
 
   useEffect(() => { loadData() }, [loadData])
@@ -62,7 +64,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
-      <Header session={session} title="Диспетчерская" emoji="🗂️" mode="LIVE" />
+      <Header session={session} title="Диспетчерская" emoji="🗂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       <KPICards {...kpi} />
 
