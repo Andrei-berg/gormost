@@ -5,6 +5,7 @@ import Header from '@/components/Header'
 import { fetchRemarks, createRemark, fetchRequests } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { logAction } from '@/lib/logger'
+import EmptyState from '@/components/EmptyState'
 import type { AuthSession, Remark } from '@/types'
 
 interface Complaint {
@@ -179,9 +180,7 @@ function Content({ session }: { session: AuthSession }) {
             </div>
           </div>
         ))}
-        {filtered.length === 0 && (
-          <div className="text-center text-white/20 py-20">Нет жалоб</div>
-        )}
+        {filtered.length === 0 && <EmptyState message="Нет жалоб" />}
       </div>
     </div>
   )

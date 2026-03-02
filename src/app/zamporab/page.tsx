@@ -254,9 +254,7 @@ function StaffRequestsView({ staffReqs, services, users, session, onRefresh }: {
           </div>
         </div>
       )}
-      {staffReqs.length === 0 && (
-        <div className="text-center text-white/20 py-20">Нет запросов на людей</div>
-      )}
+      {staffReqs.length === 0 && <EmptyState message="Нет запросов на людей" />}
     </div>
   )
 }
