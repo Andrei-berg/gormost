@@ -1,124 +1,85 @@
-# ROADMAP.md — Gormost: План разработки
+# Roadmap: Gormost — HR Module (Milestone v2.0)
 
-> Статус обновляется вручную по мере выполнения.
+## Milestones
 
----
+- Completed: **v1.0 Core** - Phases 1-4 (dispatching, approvals, kanban, all 8 panels)
+- Completed: **v1.1 UI/UX** - Phase 01 (empty states, header improvements, mobile KPI)
+- Active: **v2.0 HR Module** - Phases 02-05
 
-## ✅ Milestone 1.0 — Основа (выполнено)
+## Overview
 
-**Требования:** REQ-001–REQ-051
+The v2.0 milestone adds an HR attendance panel to Gormost. ZAMPORAB currently answers "who from SRV-FIRE is here today?" via WhatsApp. This milestone replaces that with a structured screen: per-employee status tracking backed by an append-only event log, a daily operations view, hire/dismiss management, and monthly attendance reporting with Excel export.
 
-- [x] Авторизация по PIN (таб.номер + 4 цифры) — REQ-001–005
-- [x] 8 панелей: Диспетчер, Зам/Прораб, Мастер, Начальник службы, Босс, Транспорт, Жалобы, Админ — REQ-020–027
-- [x] Канбан-доска с drag-and-drop — REQ-020
-- [x] Цепочка согласования заявок: NEW → PLANNED → IN_PROGRESS → CHECKING → DONE — REQ-013–014
-- [x] Назначение людей на заявки (RequestAssignment) — REQ-015
-- [x] Транспорт: назначение техники на заявки — REQ-017, REQ-025
-- [x] KPI-дашборд для Босса (health-индикатор, графики, статистика) — REQ-024
-- [x] Жалобы: регистрация и отслеживание — REQ-026
-- [x] Changelog: иммутабельный аудит всех действий — REQ-050–051
-- [x] Деплой на Vercel, демо для коллег
+Build order is strict: DB schema must be correct before types, types before API, API before UI. The riskiest decision (event log vs. mutable state) is locked in Phase 02.
 
 ---
 
-## 🔧 Milestone 1.1 — Полировка UI/UX
+## Phases
 
-**Требования:** REQ-130–133
-
-### Phase 1 — UI/UX improvements
-
-**Plans:** 2/3 plans executed
-
-Plans:
-- [ ] 01-01-PLAN.md — EmptyState component: replace bare empty-state strings in 5 locations (REQ-132)
-- [ ] 01-02-PLAN.md — Header enhancements: LIVE elapsed counter, Admin hamburger section, mobile clock hide, home page admin filter (REQ-020, REQ-130, REQ-131, REQ-133)
-- [ ] 01-03-PLAN.md — Wire lastUpdated to 4 LIVE panels, mobile KPI grid collapse, KanbanBoard scroll audit (REQ-020, REQ-133)
+- [ ] **Phase 02: DB Foundation** - HR schema migrations, TypeScript types, and API functions
+- [ ] **Phase 03: Core HR Panel UI** - Daily operations screen for ZAMPORAB morning workflow
+- [ ] **Phase 04: Staff Management** - Hire/dismiss actions and employee detail card
+- [ ] **Phase 05: Reporting & Export** - Attendance grid, period reports, and Excel export
 
 ---
 
-## 🖨️ Milestone 1.2 — Печать нарядов
+## Phase Details
 
-**Требования:** REQ-120–123
-**Блокер:** ждём шаблоны документов от Андрея с работы
+### Phase 02: DB Foundation
+**Goal**: The HR data layer exists and is correct — schema, types, and API functions are ready for UI to consume
+**Depends on**: Nothing (first phase of this milestone)
+**Requirements**: HR-01, HR-02
+**Success Criteria** (what must be TRUE):
+  1. Migration file `001_add_hr_module.sql` creates `employee_status` table with append-only semantics (no UPDATE path in API)
+  2. Migration file `002_add_hr_fields_to_users.sql` adds `date_hired` and `date_fired` columns to `users` without breaking existing rows
+  3. `src/types/index.ts` exports `EmployeeStatusType`, `EmployeeStatus`, `EMPLOYEE_STATUS_CONFIG`, `EnrichedEmployee`, and updated `User` interface — `npm run build` passes
+  4. `src/lib/api.ts` has 6 HR functions: `fetchAllCurrentStatuses`, `fetchEmployeeStatusHistory`, `setEmployeeStatus`, `fetchStatusesForPeriod`, `hireEmployee`, `fireEmployee` — each calls `logAction()`
+  5. Presence-by-default logic is encoded in `fetchAllCurrentStatuses`: employees with no status record today return "Na rabote" without requiring a row
+**Plans**: TBD
 
-### Phase 1 — Print templates
+### Phase 03: Core HR Panel UI
+**Goal**: ZAMPORAB can open `/hr` and immediately see who is present today, change a status with one click, and review status history per employee
+**Depends on**: Phase 02
+**Requirements**: HR-03, HR-04, HR-05, HR-06, HR-07
+**Success Criteria** (what must be TRUE):
+  1. ZAMPORAB opens `/hr` and sees all employees in their service grouped by service name, each with a colored status badge (green/yellow/red/grey)
+  2. ZAMPORAB clicks a status button on any employee card and the status changes immediately — one click, no modal required for the common case
+  3. The today summary panel shows working/absent headcount per service before the employee list
+  4. ZAMPORAB can expand any employee's status history and see a chronological list of past status changes with dates and reasons
+  5. HEAD role can open `/hr` and see their own service employees in read-only mode (no status change buttons visible)
+**Plans**: TBD
 
-- [ ] Получить шаблоны бумажных нарядов (Word/PDF)
-- [ ] Верстка HTML-шаблона наряда (по форме ГБУ) — REQ-120
-- [ ] Кнопка «Печать» на карточке/модалке заявки — REQ-121
-- [ ] Генерация PDF через `window.print()` или библиотеку — REQ-122
-- [ ] Печать списка заявок по смене (сводный наряд) — REQ-123
+### Phase 04: Staff Management
+**Goal**: ADMIN can formally record employee lifecycle events (hire, dismiss) and any user can view a complete employee card
+**Depends on**: Phase 03
+**Requirements**: HR-08, HR-09
+**Success Criteria** (what must be TRUE):
+  1. ADMIN can set a hire date for a new employee and the employee appears as active in the HR list from that date
+  2. ADMIN can dismiss an employee with a dismissal date — the employee's `is_active` becomes false and they appear in a separate "Dismissed" section rather than the active list
+  3. Any HR panel user can click an employee name to open a detail card showing: full name, position, service, phone, hire date, and the last 10 request assignments for that employee
+**Plans**: TBD
 
----
-
-## 👥 Milestone 2.0 — HR-модуль
-
-**Требования:** REQ-100–110
-
-### Phase 1 — DB migrations & API
-
-- [ ] Миграция: новая таблица `employee_status` (user_id, status, date_from, date_to, reason) — REQ-110
-- [ ] Миграция: добавить поля в `users` (date_hired, date_fired) — REQ-110
-- [ ] Новые API-функции в `lib/api.ts` — REQ-100–109
-- [ ] Добавить HR в навигацию (PANELS в `types/index.ts`) — REQ-100
-
-### Phase 2 — HR panel UI
-
-- [ ] Новая панель `/hr` (роли: ADMIN, BOSS, ZAMPORAB) — REQ-100
-- [ ] Список сотрудников по службам с текущим статусом — REQ-100–101
-- [ ] Быстрое переключение статуса (кнопкой в карточке сотрудника) — REQ-102
-- [ ] История изменений статуса по каждому сотруднику — REQ-103
-- [ ] Карточка сотрудника: контакты, должность, история назначений — REQ-108
-- [ ] Приём/увольнение (с датой, soft-delete) — REQ-109
-
-### Phase 3 — HR reports
-
-- [ ] Сводка на сегодня: кто работает, кто отсутствует — REQ-104
-- [ ] Табель присутствия: сетка сотрудник × день — REQ-105
-- [ ] Отчёт по периоду: отпуска/больничные за месяц/квартал — REQ-106
-- [ ] Экспорт отчётов (Excel или печать) — REQ-107
-
----
-
-## ⚡ Milestone 2.1 — Производительность и надёжность
-
-**Требования:** REQ-140
-
-### Phase 1 — Realtime & UX improvements
-
-- [ ] **Realtime** — заменить polling (30с) на Supabase Realtime subscriptions — REQ-140
-- [ ] **Оптимистичные обновления** — статус меняется сразу, без ожидания ответа БД
-- [ ] **Обработка ошибок** — toast-уведомления при сбое сети/запроса
+### Phase 05: Reporting & Export
+**Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
+**Depends on**: Phase 04
+**Requirements**: HR-10, HR-11, HR-12
+**Success Criteria** (what must be TRUE):
+  1. User selects a month and sees an attendance grid: rows are employees grouped by service, columns are days 1-31, each cell shows a status code (R/O/B/P/U) matching T-13 format conventions
+  2. User selects a date range and sees a period report: per-employee and per-service totals for vacation days, sick days, and compensatory days
+  3. User clicks "Export to Excel" and receives a `.xlsx` file with the attendance grid data, formatted for printing
+  4. The attendance grid renders correctly on print preview (`window.print()`) without dark Tailwind styles bleeding through
+**Plans**: TBD
 
 ---
 
-## 📊 Milestone 2.2 — Экспорт и отчётность
+## Progress
 
-**Требования:** REQ-150–151
+**Execution Order:** Phase 02 → Phase 03 → Phase 04 → Phase 05
 
-### Phase 1 — Export features
-
-- [ ] Экспорт заявок в Excel (по дате, по смене, по службе) — REQ-150
-- [ ] Отчёт по смене: сводка для передачи дежурства — REQ-151
-
----
-
-## 🔮 Backlog (без версии)
-
-- [ ] Уведомления внутри системы (новая заявка, изменение статуса)
-- [ ] Роль WORKER — полноценный мобильный интерфейс для рабочих
-- [ ] Комментарии к заявкам (таблица remarks не используется полноценно)
-- [ ] Межслужебные запросы людей (StaffRequest) — доработать UI у Зам/Прораба
-- [ ] Поддержка нескольких объектов (не только Лефортовский тоннель)
-- [ ] Тесты (после стабилизации API)
-
----
-
-## Технический долг
-
-| Задача | Приоритет |
-|--------|-----------|
-| ~~Удалить `gormost.tar` из репозитория~~ | ✅ Выполнено |
-| Настроить git config (имя/email автора коммитов) | Средний |
-| Унифицировать KanbanBoard.tsx (сейчас два файла) | Низкий |
-| Добавить `.env.example` с актуальными переменными | Низкий |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
+| 02. DB Foundation | v2.0 | 0/? | Not started | - |
+| 03. Core HR Panel UI | v2.0 | 0/? | Not started | - |
+| 04. Staff Management | v2.0 | 0/? | Not started | - |
+| 05. Reporting & Export | v2.0 | 0/? | Not started | - |

@@ -1,58 +1,60 @@
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: HR-модуль
-status: defining_requirements
-last_updated: "2026-03-02T00:00:00.000Z"
-progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
----
+# Project State
 
-# STATE.md — Project Memory
+## Project Reference
 
-## Current milestone: v2.0 — HR-модуль
+See: .planning/PROJECT.md (updated 2026-03-02)
 
-## Status
-Defining requirements. Milestone v2.0 started 2026-03-02.
+**Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
+**Current focus:** Phase 02 — DB Foundation
 
-## What has been done (accumulated)
-- v1.0 fully implemented: 8 panels, kanban, request approval chain, transport, complaints, audit log
-- v1.1 complete: UI/UX polish — EmptyState, Header LIVE counter, mobile responsive KPI, admin hamburger, lastUpdated wired to all LIVE panels
-- Deploy: https://gormost.vercel.app (логин: 0000, PIN: 1234)
-- CLAUDE.md, PROJECT.md, REQUIREMENTS.md, ROADMAP.md — docs maintained
-- .planning/codebase/ — codebase map created (map-codebase)
+## Current Position
 
-## Current position
-- Phase: Not started (defining requirements)
-- Plan: —
-- Last activity: 2026-03-02 — Milestone v2.0 started
+Phase: 02 of 05 (DB Foundation)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-02 — Roadmap created for milestone v2.0 HR module
 
-## Next actions
-1. Complete requirement scoping for HR module
-2. Run roadmapper to create phased execution plan
-3. `/gsd:plan-phase [N]` to start execution
+Progress: [##--------] 20% (v1.0 + v1.1 complete, v2.0 starting)
 
-## Key decisions
-- БД: Supabase (PostgreSQL). Migrations — manual via SQL Editor, agent creates files only
-- Deploy: Vercel, push to `main` = auto-deploy. `main` always deployable
-- Style: component approach — page.tsx thin orchestrator, each section = separate file
-- No tests — `npm run build` is minimum quality check
-- Comments in English
-- New dependencies — only with developer approval
-- Admin panel removed from home page grid; admin users access /admin via hamburger Система section
+## Performance Metrics
 
-## Tech stack
-- Next.js 16 (App Router), TypeScript strict, Tailwind CSS, Supabase, @dnd-kit
-- Deployed on Vercel from `main` branch
+**Velocity:**
+- Total plans completed: 3 (Phase 01, milestone v1.1)
+- Average duration: unknown
+- Total execution time: unknown
 
-## Development environment
-- Home: Mac, Claude Code CLI
-- Work: ALT Linux, Claude Code CLI
-- Sync: GitHub (git pull/push)
+**By Phase:**
 
-## Open questions
-- HR-модуль: нужна ли отдельная роль `HR` или достаточно ADMIN/BOSS/ZAMPORAB?
-- Печать нарядов: ждём шаблоны от Андрея с работы
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 01. UI/UX | 3/3 | - | - |
+
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+- v1.0: 8 panels, kanban, approval chain, transport, complaints, audit log — complete
+- v1.1: EmptyState, Header LIVE counter, mobile KPI, admin hamburger — complete
+- [Research]: `employee_status` must be append-only event log — mutable design makes period reports impossible
+- [Research]: Extend `users` (add `date_hired`/`date_fired`) — do NOT create separate `employees` table
+- [Research]: Presence-by-default — no status row today means "Na rabote"
+- [Research]: ZAMPORAB edits own service only; ADMIN edits all services
+- [Research]: HEAD gets read-only access to own service HR panel
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- [Phase 05]: `xlsx` npm dependency requires developer sign-off before install (per CLAUDE.md rules)
+- [Phase 05]: Verify SheetJS CE compatibility with Next.js 16 App Router before Phase 05 (`npm info xlsx`)
+- [Phase 03]: Mobile nav may overflow with 9th panel — test hamburger at 375px width
+
+## Session Continuity
+
+Last session: 2026-03-02
+Stopped at: Roadmap written for v2.0, STATE.md initialized, ready to plan Phase 02
+Resume file: None

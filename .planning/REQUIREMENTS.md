@@ -70,29 +70,27 @@ Deferred to future release.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HR-01 | — | Pending |
-| HR-02 | — | Pending |
-| HR-03 | — | Pending |
-| HR-04 | — | Pending |
-| HR-05 | — | Pending |
-| HR-06 | — | Pending |
-| HR-07 | — | Pending |
-| HR-08 | — | Pending |
-| HR-09 | — | Pending |
-| HR-10 | — | Pending |
-| HR-11 | — | Pending |
-| HR-12 | — | Pending |
+| HR-01 | Phase 02 | Pending |
+| HR-02 | Phase 02 | Pending |
+| HR-03 | Phase 03 | Pending |
+| HR-04 | Phase 03 | Pending |
+| HR-05 | Phase 03 | Pending |
+| HR-06 | Phase 03 | Pending |
+| HR-07 | Phase 03 | Pending |
+| HR-08 | Phase 04 | Pending |
+| HR-09 | Phase 04 | Pending |
+| HR-10 | Phase 05 | Pending |
+| HR-11 | Phase 05 | Pending |
+| HR-12 | Phase 05 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12 ⚠️ (roadmapper will fill)
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after initial definition*
+*Last updated: 2026-03-02 — traceability filled after roadmap creation*
