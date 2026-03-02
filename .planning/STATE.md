@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T12:19:01.933Z"
+last_updated: "2026-03-02T12:41:26Z"
 progress:
-  total_phases: 2
+  total_phases: 5
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 02 of 05 (DB Foundation)
-Plan: 1 of ? in current phase (02-01 complete)
+Plan: 2 of 2 in current phase (02-02 complete — phase done)
 Status: In progress
-Last activity: 2026-03-02 — HR DB migrations created and applied to Supabase
+Last activity: 2026-03-02 — HR TypeScript types and 6 API functions added
 
-Progress: [##--------] 22% (v1.0 + v1.1 complete, v2.0 Phase 02-01 done)
+Progress: [###-------] 30% (v1.0 + v1.1 complete, v2.0 Phase 02 done)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [##--------] 22% (v1.0 + v1.1 complete, v2.0 Phase 02-01 done)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01. UI/UX | 3/3 | - | - |
+| 02. DB Foundation | 2/2 | ~7min | ~3.5min |
 
 *Updated after each plan completion*
 
@@ -57,6 +58,9 @@ Progress: [##--------] 22% (v1.0 + v1.1 complete, v2.0 Phase 02-01 done)
 - [Research]: HEAD gets read-only access to own service HR panel
 - [Phase 02-db-foundation]: employee_status is append-only event log — no updated_at column; all status changes are new INSERTs
 - [Phase 02-db-foundation]: date_hired/date_fired added to existing users table — no separate employees table needed
+- [Phase 02-02]: Presence-by-default encoded in fetchAllCurrentStatuses client-side (Map merge) — no SQL DEFAULT or trigger needed
+- [Phase 02-02]: setEmployeeStatus is INSERT-only — no UPDATE path exists for employee_status (protects Phase 05 period report correctness)
+- [Phase 02-02]: fireEmployee calls setEmployeeStatus best-effort — users.is_active=false is authoritative dismissal; Uvolen status row is supplementary audit log
 
 ### Pending Todos
 
@@ -71,5 +75,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 02-01-PLAN.md — HR DB migrations applied to Supabase, ready for 02-02 (TypeScript types)
+Stopped at: Completed 02-02-PLAN.md — HR TypeScript types and 6 API functions complete; Phase 02 done; ready for Phase 03 HR UI
 Resume file: None
