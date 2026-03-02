@@ -35,6 +35,7 @@ v1.0 полностью выполнен и задеплоен на Vercel.
 - lastUpdated != null check (covers both null and undefined) in TypeScript strict mode for LIVE counter conditional
 - Admin panel removed from home page grid; admin users access /admin via hamburger Система section
 - REQ-131 confirmed already working — no changes needed
+- EmptyState: no 'use client' needed (pure presentational); TableView wraps in tr/td for valid HTML; zamporab drops custom dashed-border in favor of consistent EmptyState
 
 ## Tech stack
 - Next.js 16 (App Router), TypeScript strict, Tailwind CSS, Supabase, @dnd-kit
