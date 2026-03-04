@@ -5,6 +5,9 @@ import type {
   Request, RequestAssignment, StaffRequest, Remark, ChangelogEntry,
   RequestStatus, Priority, Urgency, StaffRequestStatus,
   EmployeeStatusType, EmployeeStatus, EnrichedEmployee,
+  WorkPlan, WorkPlanItem, WorkPlanWithItems, WorkPlanItemWithVehicles,
+  Vehicle, VehicleAssignment, VehicleWithAssignments,
+  WorkPlanStatus, VehicleStatus,
 } from '@/types'
 
 // ============ USERS ============
@@ -500,5 +503,276 @@ export async function fireEmployee(
     // Best-effort: insert Uvolen status row into event log
     await setEmployeeStatus(userId, 'Uvolen', dateFired, null, 'Увольнение', performedBy)
   }
+  return !error
+}
+
+// ============ WORK PLANS ============
+
+export async function fetchWorkPlans(filters?: {
+  serviceId?: string
+  planDate?: string
+  shiftType?: string
+  status?: WorkPlanStatus
+}): Promise<WorkPlan[]> {
+  let q = supabase.from('work_plans').select('*').order('plan_date', { ascending: false })
+  if (filters?.serviceId) q = q.eq('service_id', filters.serviceId)
+  if (filters?.planDate)  q = q.eq('plan_date', filters.planDate)
+  if (filters?.shiftType) q = q.eq('shift_type', filters.shiftType)
+  if (filters?.status)    q = q.eq('status', filters.status)
+  const { data } = await q
+  return (data || []) as WorkPlan[]
+}
+
+// Fetch a single plan with all its items
+export async function fetchWorkPlanWithItems(planId: string): Promise<WorkPlanWithItems | null> {
+  const [planRes, itemsRes] = await Promise.all([
+    supabase.from('work_plans').select('*').eq('id', planId).single(),
+    supabase.from('work_plan_items').select('*').eq('plan_id', planId).order('sort_order'),
+  ])
+  if (!planRes.data) return null
+  return {
+    ...(planRes.data as WorkPlan),
+    items: (itemsRes.data || []) as WorkPlanItem[],
+  }
+}
+
+export async function createWorkPlan(
+  data: Pick<WorkPlan, 'service_id' | 'plan_date' | 'shift_type'>,
+  userId: string
+): Promise<WorkPlan | null> {
+  const { data: result, error } = await supabase
+    .from('work_plans')
+    .insert({ ...data, status: 'DRAFT', created_by: userId })
+    .select().single()
+  if (error) throw new Error(error.message)
+  if (result) await logAction(userId, 'CREATE_WORK_PLAN', 'work_plan', result.id, data as Record<string, unknown>)
+  return result as WorkPlan | null
+}
+
+export async function updateWorkPlan(
+  planId: string,
+  updates: Partial<Pick<WorkPlan, 'chief_notes'>>,
+  userId: string
+): Promise<WorkPlan | null> {
+  const { data, error } = await supabase
+    .from('work_plans')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', planId).select().single()
+  if (error) throw new Error(error.message)
+  if (data) await logAction(userId, 'UPDATE_WORK_PLAN', 'work_plan', planId, updates as Record<string, unknown>)
+  return data as WorkPlan | null
+}
+
+// HEAD submits plan for chief engineer review (works for DRAFT and REJECTED plans)
+export async function submitWorkPlan(planId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'SUBMITTED', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', planId)
+    .in('status', ['DRAFT', 'REJECTED'])
+  if (!error) await logAction(userId, 'SUBMIT_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+// CHIEF_ENGINEER approves plan
+export async function approveWorkPlan(planId: string, userId: string, notes?: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({
+      status: 'APPROVED',
+      approved_by: userId,
+      approved_at: now,
+      chief_notes: notes ?? null,
+      updated_at: now,
+    })
+    .eq('id', planId).eq('status', 'SUBMITTED')
+  if (!error) await logAction(userId, 'APPROVE_WORK_PLAN', 'work_plan', planId, { notes })
+  return !error
+}
+
+// CHIEF_ENGINEER rejects plan (returns it to DRAFT for revision)
+export async function rejectWorkPlan(planId: string, userId: string, notes: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'REJECTED', chief_notes: notes, updated_at: new Date().toISOString() })
+    .eq('id', planId).eq('status', 'SUBMITTED')
+  if (!error) await logAction(userId, 'REJECT_WORK_PLAN', 'work_plan', planId, { notes })
+  return !error
+}
+
+export async function deleteWorkPlan(planId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans').delete().eq('id', planId).eq('status', 'DRAFT')  // guard: only DRAFT
+  if (!error) await logAction(userId, 'DELETE_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+// ============ WORK PLAN ITEMS ============
+
+export async function fetchWorkPlanItems(planId: string): Promise<WorkPlanItem[]> {
+  const { data } = await supabase
+    .from('work_plan_items').select('*').eq('plan_id', planId).order('sort_order')
+  return (data || []) as WorkPlanItem[]
+}
+
+export async function createWorkPlanItem(
+  item: Omit<WorkPlanItem, 'id' | 'created_at' | 'updated_at'>
+): Promise<WorkPlanItem | null> {
+  const { data, error } = await supabase.from('work_plan_items').insert(item).select().single()
+  if (error) throw new Error(error.message)
+  return data as WorkPlanItem | null
+}
+
+export async function updateWorkPlanItem(
+  itemId: string,
+  updates: Partial<Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>
+): Promise<WorkPlanItem | null> {
+  const { data, error } = await supabase
+    .from('work_plan_items')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', itemId).select().single()
+  if (error) throw new Error(error.message)
+  return data as WorkPlanItem | null
+}
+
+export async function deleteWorkPlanItem(itemId: string): Promise<boolean> {
+  const { error } = await supabase.from('work_plan_items').delete().eq('id', itemId)
+  return !error
+}
+
+// Fetch items with their assigned vehicles (for chief engineer / mechanic views)
+export async function fetchItemsWithVehicles(planId: string): Promise<WorkPlanItemWithVehicles[]> {
+  const [itemsRes, assignmentsRes] = await Promise.all([
+    supabase.from('work_plan_items').select('*').eq('plan_id', planId).order('sort_order'),
+    supabase
+      .from('vehicle_assignments')
+      .select('*, vehicle:vehicles(*)')
+      .in(
+        'plan_item_id',
+        // subquery: get item ids for this plan
+        (await supabase.from('work_plan_items').select('id').eq('plan_id', planId)).data?.map((r: { id: string }) => r.id) || []
+      ),
+  ])
+  const items = (itemsRes.data || []) as WorkPlanItem[]
+  const assignments = (assignmentsRes.data || []) as Array<VehicleAssignment & { vehicle: Vehicle }>
+
+  return items.map(item => ({
+    ...item,
+    vehicles: assignments
+      .filter(a => a.plan_item_id === item.id)
+      .map(a => a.vehicle),
+  }))
+}
+
+// ============ VEHICLES ============
+
+export async function fetchVehicles(activeOnly = true): Promise<Vehicle[]> {
+  let q = supabase.from('vehicles').select('*').order('name')
+  if (activeOnly) q = q.eq('is_active', true)
+  const { data } = await q
+  return (data || []) as Vehicle[]
+}
+
+export async function createVehicle(vehicle: Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>): Promise<Vehicle | null> {
+  const { data, error } = await supabase.from('vehicles').insert(vehicle).select().single()
+  if (error) throw new Error(error.message)
+  return data as Vehicle | null
+}
+
+export async function updateVehicle(
+  vehicleId: string,
+  updates: Partial<Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>>
+): Promise<Vehicle | null> {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', vehicleId).select().single()
+  if (error) throw new Error(error.message)
+  return data as Vehicle | null
+}
+
+export async function updateVehicleStatus(
+  vehicleId: string,
+  status: VehicleStatus,
+  breakdownDetails: string | null
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ status, breakdown_details: breakdownDetails, updated_at: new Date().toISOString() })
+    .eq('id', vehicleId)
+  return !error
+}
+
+// Soft delete
+export async function deleteVehicle(vehicleId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('vehicles').update({ is_active: false }).eq('id', vehicleId)
+  return !error
+}
+
+// ============ VEHICLE ASSIGNMENTS ============
+
+// All vehicle assignments for a specific plan item
+export async function fetchVehicleAssignments(planItemId: string): Promise<VehicleAssignment[]> {
+  const { data } = await supabase
+    .from('vehicle_assignments').select('*').eq('plan_item_id', planItemId)
+  return (data || []) as VehicleAssignment[]
+}
+
+// All vehicles + their assignments for a given date (mechanic combo view)
+export async function fetchVehiclesWithDayAssignments(date: string): Promise<VehicleWithAssignments[]> {
+  // Get all plan item ids for approved plans on this date
+  const { data: plans } = await supabase
+    .from('work_plans').select('id').eq('plan_date', date).eq('status', 'APPROVED')
+  const planIds = (plans || []).map((p: { id: string }) => p.id)
+
+  const [vehiclesRes, itemsRes] = await Promise.all([
+    supabase.from('vehicles').select('*').eq('is_active', true).order('name'),
+    planIds.length > 0
+      ? supabase.from('work_plan_items').select('*').in('plan_id', planIds).order('time_start')
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const vehicles = (vehiclesRes.data || []) as Vehicle[]
+  const items = (itemsRes.data || []) as WorkPlanItem[]
+  const itemIds = items.map(i => i.id)
+
+  const { data: assignmentsData } = itemIds.length > 0
+    ? await supabase.from('vehicle_assignments').select('*').in('plan_item_id', itemIds)
+    : { data: [] }
+  const assignments = (assignmentsData || []) as VehicleAssignment[]
+
+  return vehicles.map(vehicle => ({
+    ...vehicle,
+    assignments: assignments
+      .filter(a => a.vehicle_id === vehicle.id)
+      .map(a => ({
+        ...a,
+        plan_item: items.find(i => i.id === a.plan_item_id) as WorkPlanItem,
+      })),
+  }))
+}
+
+export async function assignVehicle(
+  vehicleId: string,
+  planItemId: string,
+  assignedBy: string,
+  notes?: string
+): Promise<VehicleAssignment | null> {
+  const { data, error } = await supabase
+    .from('vehicle_assignments')
+    .insert({ vehicle_id: vehicleId, plan_item_id: planItemId, assigned_by: assignedBy, notes: notes ?? null })
+    .select().single()
+  if (error) throw new Error(error.message)
+  return data as VehicleAssignment | null
+}
+
+export async function unassignVehicle(vehicleId: string, planItemId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('vehicle_assignments')
+    .delete()
+    .eq('vehicle_id', vehicleId)
+    .eq('plan_item_id', planItemId)
   return !error
 }

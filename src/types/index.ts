@@ -3,7 +3,7 @@
 // Matches real Supabase schema
 // ============================================
 
-export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER'
+export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER'
 export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 export type Urgency = 'NORMAL' | 'URGENT' | 'EMERGENCY'
@@ -225,6 +225,12 @@ export const PANELS: PanelConfig[] = [
     roleLabel: 'Обработчик жалоб',
   },
   {
+    id: 'chief', path: '/chief', title: 'Главный инженер',
+    subtitle: 'Согласование планов работ · Контроль служб', emoji: '🔧',
+    roles: ['CHIEF_ENGINEER', 'ADMIN', 'BOSS'], color: 'from-orange-600/40 to-orange-800/40 border-orange-500/30',
+    roleLabel: 'Главный инженер',
+  },
+  {
     id: 'admin', path: '/admin', title: 'Админ-панель',
     subtitle: 'Справочники · Объекты · Пользователи', emoji: '⚙️',
     roles: ['ADMIN'], color: 'from-slate-600/40 to-slate-800/40 border-slate-500/30',
@@ -264,6 +270,101 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
   Bolnichniy: { label: 'Больничный', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
   Otpusk:     { label: 'Отпуск',     color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
   Uvolen:     { label: 'Уволен',     color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+}
+
+// ============================================
+// WORK PLANNING MODULE — v3.0
+// ============================================
+
+export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
+export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS'
+
+export interface WorkPlan {
+  id: string
+  service_id: string
+  plan_date: string           // ISO date 'YYYY-MM-DD'
+  shift_type: ShiftType
+  status: WorkPlanStatus
+  created_by: string
+  submitted_at: string | null
+  approved_by: string | null
+  approved_at: string | null
+  chief_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkPlanItem {
+  id: string
+  plan_id: string
+  location: string
+  work_description: string
+  workers: string[]
+  time_start: string | null   // 'HH:MM'
+  time_end: string | null     // 'HH:MM'
+  sort_order: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Vehicle {
+  id: string
+  name: string                // e.g. 'КамАЗ-5511'
+  plate: string               // license plate
+  vehicle_type: VehicleType
+  status: VehicleStatus
+  breakdown_details: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface VehicleAssignment {
+  id: string
+  vehicle_id: string
+  plan_item_id: string
+  assigned_by: string
+  assigned_at: string
+  notes: string | null
+}
+
+// Enriched types for UI
+
+export interface WorkPlanWithItems extends WorkPlan {
+  items: WorkPlanItem[]
+}
+
+export interface WorkPlanItemWithVehicles extends WorkPlanItem {
+  vehicles: Vehicle[]
+}
+
+export interface VehicleWithAssignments extends Vehicle {
+  assignments: Array<VehicleAssignment & { plan_item: WorkPlanItem }>
+}
+
+// Config constants
+
+export const WORK_PLAN_STATUS_CONFIG: Record<WorkPlanStatus, { label: string; color: string; bg: string }> = {
+  DRAFT:     { label: 'Черновик',     color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+  SUBMITTED: { label: 'На согласовании', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  APPROVED:  { label: 'Согласован',   color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  REJECTED:  { label: 'Отклонён',     color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+}
+
+export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color: string; bg: string }> = {
+  ACTIVE:      { label: 'Активен',      color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  BROKEN:      { label: 'Сломан',       color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  MAINTENANCE: { label: 'ТО / Ремонт',  color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+}
+
+export const VEHICLE_TYPE_CONFIG: Record<VehicleType, { label: string; emoji: string }> = {
+  CAR:     { label: 'Легковой',  emoji: '🚗' },
+  TRUCK:   { label: 'Грузовой',  emoji: '🚛' },
+  SPECIAL: { label: 'Спецтехника', emoji: '🚧' },
+  BUS:     { label: 'Автобус',   emoji: '🚌' },
 }
 
 // EnrichedEmployee = User record + their resolved status for today
