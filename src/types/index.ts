@@ -316,6 +316,8 @@ export interface Vehicle {
   vehicle_type: VehicleType
   status: VehicleStatus
   breakdown_details: string | null
+  maintenance_until: string | null  // ISO date 'YYYY-MM-DD' — expected return from MAINTENANCE
+  status_changed_at: string | null  // ISO timestamp — when current status was set
   notes: string | null
   is_active: boolean
   created_at: string

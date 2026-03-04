@@ -2,18 +2,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import VehicleGrid, { type Vehicle } from '@/components/transport/VehicleGrid'
-import TransportRequests from '@/components/transport/TransportRequests'
-import { fetchRequests, fetchServices, updateRequest } from '@/lib/api'
-import type { Request, Service, AuthSession } from '@/types'
-
-const VEHICLES: Vehicle[] = [
-  { id: 'V-01', name: 'ГАЗель фургон', plate: 'А001МО77', type: 'Грузовой' },
-  { id: 'V-02', name: 'КамАЗ самосвал', plate: 'В002РА77', type: 'Спецтехника' },
-  { id: 'V-03', name: 'УАЗ Патриот', plate: 'С003ЕН77', type: 'Легковой' },
-  { id: 'V-04', name: 'Автовышка', plate: 'К004ТТ77', type: 'Спецтехника' },
-  { id: 'V-05', name: 'Водовоз', plate: 'М005ОО77', type: 'Спецтехника' },
-]
+import FleetBoard from '@/components/transport/FleetBoard'
+import PlanTransport, { type PlanGroup } from '@/components/transport/PlanTransport'
+import {
+  fetchVehiclesWithDayAssignments,
+  fetchWorkPlans,
+  fetchItemsWithVehicles,
+} from '@/lib/api'
+import type { AuthSession, VehicleWithAssignments } from '@/types'
 
 export default function TransportPage() {
   return (
@@ -24,60 +20,117 @@ export default function TransportPage() {
 }
 
 function Content({ session }: { session: AuthSession }) {
-  const [requests, setRequests] = useState<Request[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [tab, setTab] = useState<'vehicles' | 'requests'>('vehicles')
+  const [vehicles, setVehicles] = useState<VehicleWithAssignments[]>([])
+  const [plans, setPlans] = useState<PlanGroup[]>([])
+  const [tab, setTab] = useState<'fleet' | 'plan'>('fleet')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
+  const today = new Date().toISOString().slice(0, 10)
+
   const loadData = useCallback(async () => {
-    const [reqs, svcs] = await Promise.all([fetchRequests(), fetchServices()])
-    setRequests(reqs); setServices(svcs)
+    const [veh, approvedPlans] = await Promise.all([
+      fetchVehiclesWithDayAssignments(today),
+      fetchWorkPlans({ planDate: today, status: 'APPROVED' }),
+    ])
+    const planGroups = await Promise.all(
+      approvedPlans.map(async plan => ({
+        plan,
+        items: await fetchItemsWithVehicles(plan.id),
+      }))
+    )
+    setVehicles(veh)
+    setPlans(planGroups)
     setLastUpdated(new Date())
-  }, [])
+  }, [today])
 
   useEffect(() => { loadData() }, [loadData])
 
-  const needTransport = requests.filter(r => !r.transport_type && r.status !== 'DONE')
-  const withTransport = requests.filter(r => r.transport_type)
+  const canEdit = ['TRANSPORT', 'ADMIN'].includes(session.role_level)
 
-  const handleAssignVehicle = async (reqId: string, vehicle: string) => {
-    await updateRequest(reqId, { transport_type: vehicle }, session.user_id)
-    loadData()
-  }
+  // KPI
+  const broken   = vehicles.filter(v => v.status === 'BROKEN').length
+  const active   = vehicles.filter(v => v.status === 'ACTIVE').length
+  const onMaint  = vehicles.filter(v => v.status === 'MAINTENANCE').length
+  const brokenStale = vehicles.filter(v => {
+    if (v.status !== 'BROKEN') return false
+    const since = v.status_changed_at || v.updated_at
+    return Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000) >= 3
+  }).length
+
+  const allItems    = plans.flatMap(p => p.items)
+  const needsCount  = allItems.filter(i =>
+    i.vehicles.length === 0 || i.vehicles.some(v => v.status === 'BROKEN')
+  ).length
 
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" lastUpdated={lastUpdated} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-white font-mono">{VEHICLES.length}</div>
-          <div className="text-xs text-white/40">Единиц техники</div>
+      {/* KPI */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="glass rounded-xl p-3 text-center">
+          <div className="text-xl font-bold text-green-400 font-mono">{active}</div>
+          <div className="text-[11px] text-white/40">Активных</div>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-amber-400 font-mono">{needTransport.length}</div>
-          <div className="text-xs text-white/40">Ожидают транспорт</div>
+        <div className={`glass rounded-xl p-3 text-center relative ${broken > 0 ? 'border border-red-500/30' : ''}`}>
+          <div className="text-xl font-bold text-red-400 font-mono">{broken}</div>
+          <div className="text-[11px] text-white/40">Сломано</div>
+          {brokenStale > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center text-white font-bold">!</span>
+          )}
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-green-400 font-mono">{withTransport.length}</div>
-          <div className="text-xs text-white/40">Назначено</div>
+        <div className="glass rounded-xl p-3 text-center">
+          <div className="text-xl font-bold text-amber-400 font-mono">{onMaint}</div>
+          <div className="text-[11px] text-white/40">На ТО</div>
+        </div>
+        <div className={`glass rounded-xl p-3 text-center relative ${needsCount > 0 ? 'border border-amber-500/30' : ''}`}>
+          <div className="text-xl font-bold text-amber-400 font-mono">{needsCount}</div>
+          <div className="text-[11px] text-white/40">Нужен транспорт</div>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setTab('vehicles')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'vehicles' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
+        <button
+          onClick={() => setTab('fleet')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'fleet' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}
+        >
           Парк машин
         </button>
-        <button onClick={() => setTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-medium relative ${tab === 'requests' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Заявки на транспорт
-          {needTransport.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">{needTransport.length}</span>}
+        <button
+          onClick={() => setTab('plan')}
+          className={`relative px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plan' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}
+        >
+          План работ
+          {needsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {needsCount}
+            </span>
+          )}
         </button>
-        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <button
+          onClick={loadData}
+          className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
+        >
+          ↻
+        </button>
       </div>
 
-      {tab === 'vehicles' && <VehicleGrid vehicles={VEHICLES} requests={requests} />}
-      {tab === 'requests' && <TransportRequests requests={needTransport} services={services} vehicles={VEHICLES} onAssign={handleAssignVehicle} />}
+      {tab === 'fleet' && (
+        <FleetBoard
+          vehicles={vehicles}
+          canEdit={canEdit}
+          onRefresh={loadData}
+        />
+      )}
+      {tab === 'plan' && (
+        <PlanTransport
+          plans={plans}
+          activeVehicles={vehicles.filter(v => v.status === 'ACTIVE')}
+          userId={session.user_id}
+          onRefresh={loadData}
+        />
+      )}
     </div>
   )
 }

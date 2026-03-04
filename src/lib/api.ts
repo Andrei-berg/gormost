@@ -695,11 +695,19 @@ export async function updateVehicle(
 export async function updateVehicleStatus(
   vehicleId: string,
   status: VehicleStatus,
-  breakdownDetails: string | null
+  breakdownDetails: string | null,
+  maintenanceUntil: string | null
 ): Promise<boolean> {
+  const now = new Date().toISOString()
   const { error } = await supabase
     .from('vehicles')
-    .update({ status, breakdown_details: breakdownDetails, updated_at: new Date().toISOString() })
+    .update({
+      status,
+      breakdown_details: breakdownDetails,
+      maintenance_until: status === 'MAINTENANCE' ? maintenanceUntil : null,
+      status_changed_at: now,
+      updated_at: now,
+    })
     .eq('id', vehicleId)
   return !error
 }
