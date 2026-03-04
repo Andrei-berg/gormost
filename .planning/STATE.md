@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T09:52:15.368Z"
+last_updated: "2026-03-04T10:10:34.714Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 03 of 05 (Core HR Panel UI)
-Plan: 1 of 3 in current phase (03-01 complete — HR skeleton built)
+Plan: 2 of 3 in current phase (03-02 complete — EmployeeCard interactive, StatusHistory accordion)
 Status: In progress
-Last activity: 2026-03-04 — HR panel skeleton: PANELS entry, SummaryPanel, ServiceSection stub, /hr route live
+Last activity: 2026-03-04 — EmployeeCard interactive: 4 status buttons, optimistic update, reason input, StatusHistory lazy accordion, ServiceSection stub replaced
 
-Progress: [####------] 40% (v1.0 + v1.1 + Phase 02 + Phase 03 Plan 01 done)
+Progress: [#####-----] 47% (v1.0 + v1.1 + Phase 02 + Phase 03 Plans 01-02 done)
 
 ## Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [####------] 40% (v1.0 + v1.1 + Phase 02 + Phase 03 Plan 01 done)
 |-------|-------|-------|----------|
 | 01. UI/UX | 3/3 | - | - |
 | 02. DB Foundation | 2/2 | ~7min | ~3.5min |
-| 03. HR Panel UI | 1/3 | 11min | 11min |
+| 03. HR Panel UI | 2/3 | 19min | ~9.5min |
 
 *Updated after each plan completion*
 
@@ -64,6 +64,8 @@ Progress: [####------] 40% (v1.0 + v1.1 + Phase 02 + Phase 03 Plan 01 done)
 - [Phase 02-02]: fireEmployee calls setEmployeeStatus best-effort — users.is_active=false is authoritative dismissal; Uvolen status row is supplementary audit log
 - [Phase 03]: EmployeeCard stubbed inline in ServiceSection — Plan 02 extracts it as a standalone file
 - [Phase 03]: HEAD role: canEdit=false + service_id filter in page.tsx — fully read-only view of own service
+- [Phase 03-core-hr-panel-ui]: Reason add-on fires second setEmployeeStatus INSERT — not UPDATE — preserving append-only log
+- [Phase 03-core-hr-panel-ui]: Uvolen excluded from CLICKABLE_STATUSES — dismissal flow is Phase 04 scope
 
 ### Pending Todos
 
@@ -78,5 +80,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 03-01-PLAN.md — HR panel skeleton: PANELS entry, SummaryPanel tiles, ServiceSection stub, /hr orchestrator page; ready for Plan 02 interactive EmployeeCard
+Stopped at: Completed 03-02-PLAN.md — EmployeeCard interactive: status buttons, optimistic update, reason input, StatusHistory lazy accordion; /hr route fully interactive for ZAMPORAB; ready for Plan 03 (monthly report)
 Resume file: None
