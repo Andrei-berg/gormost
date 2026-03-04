@@ -17,7 +17,7 @@ Build order is strict: DB schema must be correct before types, types before API,
 ## Phases
 
 - [x] **Phase 02: DB Foundation** - HR schema migrations, TypeScript types, and API functions
-- [ ] **Phase 03: Core HR Panel UI** - Daily operations screen for ZAMPORAB morning workflow
+- [x] **Phase 03: Core HR Panel UI** - Daily operations screen for ZAMPORAB morning workflow (completed 2026-03-04)
 - [ ] **Phase 04: Staff Management** - Hire/dismiss actions and employee detail card
 - [ ] **Phase 05: Reporting & Export** - Attendance grid, period reports, and Excel export
 
@@ -88,6 +88,6 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
-| 03. Core HR Panel UI | 1/2 | In Progress|  | - |
+| 03. Core HR Panel UI | 1/2 | Complete    | 2026-03-04 | - |
 | 04. Staff Management | v2.0 | 0/? | Not started | - |
 | 05. Reporting & Export | v2.0 | 0/? | Not started | - |
