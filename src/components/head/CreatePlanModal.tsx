@@ -52,15 +52,26 @@ export default function CreatePlanModal({ session, existingPlans, onClose, onSav
   const options = getPlanOptions(existingPlans)
   const [selected, setSelected] = useState(options[0] ? `${options[0].date}_${options[0].shift}` : '')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async () => {
-    if (!selected || !session.service_id) return
+    if (!selected) return
+    if (!session.service_id) {
+      setError('У вашего аккаунта не указана служба. Назначьте службу в Админ-панели.')
+      return
+    }
+    setError(null)
     const [date, shift] = selected.split('_') as [string, ShiftType]
     setSaving(true)
-    await createWorkPlan({ service_id: session.service_id, plan_date: date, shift_type: shift }, session.user_id)
-    setSaving(false)
-    onSaved()
-    onClose()
+    try {
+      await createWorkPlan({ service_id: session.service_id, plan_date: date, shift_type: shift }, session.user_id)
+      onSaved()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка при создании плана')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -95,6 +106,11 @@ export default function CreatePlanModal({ session, existingPlans, onClose, onSav
                 )
               })}
             </div>
+            {error && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                {error}
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={handleCreate}
