@@ -236,6 +236,13 @@ export const PANELS: PanelConfig[] = [
     roles: ['ADMIN'], color: 'from-slate-600/40 to-slate-800/40 border-slate-500/30',
     roleLabel: 'Администратор',
   },
+  {
+    id: 'hr', path: '/hr', title: 'Кадры',
+    subtitle: 'Статус сотрудников · Присутствие · История', emoji: '👥',
+    roles: ['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS'],
+    color: 'from-teal-600/40 to-teal-800/40 border-teal-500/30',
+    roleLabel: 'Кадровый учёт',
+  },
 ]
 
 // ============================================
