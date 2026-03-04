@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T12:47:15.767Z"
+last_updated: "2026-03-04T09:52:15.368Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,22 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** Phase 02 — DB Foundation
+**Current focus:** Phase 03 — Core HR Panel UI
 
 ## Current Position
 
-Phase: 02 of 05 (DB Foundation)
-Plan: 2 of 2 in current phase (02-02 complete — phase done)
+Phase: 03 of 05 (Core HR Panel UI)
+Plan: 1 of 3 in current phase (03-01 complete — HR skeleton built)
 Status: In progress
-Last activity: 2026-03-02 — HR TypeScript types and 6 API functions added
+Last activity: 2026-03-04 — HR panel skeleton: PANELS entry, SummaryPanel, ServiceSection stub, /hr route live
 
-Progress: [###-------] 30% (v1.0 + v1.1 complete, v2.0 Phase 02 done)
+Progress: [####------] 40% (v1.0 + v1.1 + Phase 02 + Phase 03 Plan 01 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (Phase 01, milestone v1.1)
-- Average duration: unknown
+- Total plans completed: 4 (Phase 01, milestone v1.1, Phase 02, Phase 03 P01)
+- Average duration: ~9min
 - Total execution time: unknown
 
 **By Phase:**
@@ -42,6 +42,7 @@ Progress: [###-------] 30% (v1.0 + v1.1 complete, v2.0 Phase 02 done)
 |-------|-------|-------|----------|
 | 01. UI/UX | 3/3 | - | - |
 | 02. DB Foundation | 2/2 | ~7min | ~3.5min |
+| 03. HR Panel UI | 1/3 | 11min | 11min |
 
 *Updated after each plan completion*
 
@@ -61,6 +62,8 @@ Progress: [###-------] 30% (v1.0 + v1.1 complete, v2.0 Phase 02 done)
 - [Phase 02-02]: Presence-by-default encoded in fetchAllCurrentStatuses client-side (Map merge) — no SQL DEFAULT or trigger needed
 - [Phase 02-02]: setEmployeeStatus is INSERT-only — no UPDATE path exists for employee_status (protects Phase 05 period report correctness)
 - [Phase 02-02]: fireEmployee calls setEmployeeStatus best-effort — users.is_active=false is authoritative dismissal; Uvolen status row is supplementary audit log
+- [Phase 03]: EmployeeCard stubbed inline in ServiceSection — Plan 02 extracts it as a standalone file
+- [Phase 03]: HEAD role: canEdit=false + service_id filter in page.tsx — fully read-only view of own service
 
 ### Pending Todos
 
@@ -74,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Completed 02-02-PLAN.md — HR TypeScript types and 6 API functions complete; Phase 02 done; ready for Phase 03 HR UI
+Last session: 2026-03-04
+Stopped at: Completed 03-01-PLAN.md — HR panel skeleton: PANELS entry, SummaryPanel tiles, ServiceSection stub, /hr orchestrator page; ready for Plan 02 interactive EmployeeCard
 Resume file: None
