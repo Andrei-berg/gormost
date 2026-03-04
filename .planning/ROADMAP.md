@@ -51,7 +51,11 @@ Plans:
   3. The today summary panel shows working/absent headcount per service before the employee list
   4. ZAMPORAB can expand any employee's status history and see a chronological list of past status changes with dates and reasons
   5. HEAD role can open `/hr` and see their own service employees in read-only mode (no status change buttons visible)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — PANELS entry, page.tsx orchestrator, SummaryPanel, ServiceSection skeleton
+- [ ] 03-02-PLAN.md — EmployeeCard (status buttons + optimistic update + reason input) and StatusHistory accordion
 
 ### Phase 04: Staff Management
 **Goal**: ADMIN can formally record employee lifecycle events (hire, dismiss) and any user can view a complete employee card
@@ -84,6 +88,6 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
-| 03. Core HR Panel UI | v2.0 | 0/? | Not started | - |
+| 03. Core HR Panel UI | v2.0 | 0/2 | Not started | - |
 | 04. Staff Management | v2.0 | 0/? | Not started | - |
 | 05. Reporting & Export | v2.0 | 0/? | Not started | - |
