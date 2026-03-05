@@ -58,14 +58,27 @@ Plans:
 - [ ] 03-02-PLAN.md — EmployeeCard (status buttons + optimistic update + reason input) and StatusHistory accordion
 
 ### Phase 04: Staff Management
-**Goal**: ADMIN can formally record employee lifecycle events (hire, dismiss) and any user can view a complete employee card
+**Goal**: The HR database layer is complete with full employee profiles, and ADMIN can manage the full employee lifecycle (hire, dismiss, transfer) with a rich employee detail card visible to all HR users
 **Depends on**: Phase 03
-**Requirements**: HR-08, HR-09
+**Requirements**: HR-08, HR-09, HR-13, HR-14, HR-15, HR-16, HR-17, HR-18
 **Success Criteria** (what must be TRUE):
-  1. ADMIN can set a hire date for a new employee and the employee appears as active in the HR list from that date
-  2. ADMIN can dismiss an employee with a dismissal date — the employee's `is_active` becomes false and they appear in a separate "Dismissed" section rather than the active list
-  3. Any HR panel user can click an employee name to open a detail card showing: full name, position, service, phone, hire date, and the last 10 request assignments for that employee
-**Plans**: TBD
+  1. DB: migration creates `professions`, `employee_positions`, `schedules`, `employee_assignments` tables; `users` table gets 13 new HR fields (split FIO, category, probation, disability, svo_type, participates_in_stroyevaya, etc.)
+  2. Seed data: `professions` table has all ~45 canonical profession/grade entries from штатное расписание; `schedules` table has 6 schedule types (сутки/3, 5/2, 3/3, 6/6, 15/15, 1/3) with day/night metadata
+  3. Employee detail card (opened by clicking employee name in /hr) shows: full FIO (split), profession+grade, category (ИТР/рабочий), schedule type, shift number, phone, email, hire date, probation end if active, disability flag+notes if set
+  4. ADMIN can create a new employee with full profile (FIO split, profession, category, schedule assignment, phone, probation dates) — employee appears in HR list immediately
+  5. ADMIN can dismiss an employee with dismissal date — `is_active=false`, dismissed employees appear in a separate collapsed section with dismissal date
+  6. ADMIN can record a position transfer: current `employee_positions` record closes, new one opens — full history visible in employee detail card
+  7. Status panel in EmployeeCard gains 6 new status buttons: Командировка, Учебный отпуск, Декрет, Мобилизован, СВО, Вернулся с СВО
+  8. `resolveShiftForDate(assignment, date)` function in lib/shifts.ts correctly determines is_working + DAY/NIGHT for all 6 schedule types using shift_reference_date
+  9. 270 employees from roster-merged.json imported via seed migration with correct profession, schedule, shift, and assignment data
+**Plans**: 5 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Schema migration 005 (ALTER users + CREATE 4 tables + fix employee_status CHECK) + human checkpoint
+- [ ] 04-02-PLAN.md — Seed migrations 006 (professions + schedules) + 007 (270 employees) + human checkpoint
+- [ ] 04-03-PLAN.md — TypeScript types extension + resolveShiftForDate in shifts.ts + 6 new API functions
+- [ ] 04-04-PLAN.md — EmployeeDetailCard + HireModal + DismissModal + TransferModal + /hr page wiring
+- [ ] 04-05-PLAN.md — EmployeeCard extended 10-status two-row button layout (HR-16)
 
 ### Phase 05: Reporting & Export
 **Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
@@ -89,5 +102,5 @@ Plans:
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
 | 03. Core HR Panel UI | 1/2 | Complete    | 2026-03-04 | - |
-| 04. Staff Management | v2.0 | 0/? | Not started | - |
+| 04. Staff Management | v2.0 | 0/5 | Planned | - |
 | 05. Reporting & Export | v2.0 | 0/? | Not started | - |
