@@ -3,7 +3,12 @@ import type { EnrichedEmployee, EmployeeStatusType, Service } from '@/types'
 import { SERVICE_META } from '@/types'
 
 // Statuses that mean the employee is NOT physically at work
-const ABSENT_STATUSES: EmployeeStatusType[] = ['Otgul', 'Bolnichniy', 'Otpusk', 'Uvolen']
+// Includes all 10 non-working statuses (Na_rabote is the only working status)
+const ABSENT_STATUSES: EmployeeStatusType[] = [
+  'Otgul', 'Bolnichniy', 'Otpusk', 'Uvolen',
+  'Komandirovka', 'Uchebniy_otpusk', 'Dekret',
+  'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+]
 
 interface Props {
   employees: EnrichedEmployee[]
