@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 04 of 05 (Staff Management)
-Plan: 1 of 5 in current phase (04-01 complete — migration 005 DDL written; awaiting human to apply in Supabase)
-Status: Awaiting checkpoint (human-verify: apply migration 005 to Supabase)
-Last activity: 2026-03-06 — Migration 005 schema DDL: 4 new tables, 13 users columns, extended status constraint
+Plan: 1 of 5 in current phase (04-01 complete — migration 005 applied to Supabase; ready for Plan 02 seed data)
+Status: In progress
+Last activity: 2026-03-06 — Migration 005 applied: professions, employee_positions, schedules, employee_assignments live in Supabase
 
 Progress: [######----] 53% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plan 01 done)
 
@@ -85,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 04-01-PLAN.md — migration 005 schema DDL committed (8ed5c0b); checkpoint:human-verify blocking — human must apply migration to Supabase before Plan 02 can proceed
+Stopped at: Completed 04-01-PLAN.md — migration 005 schema applied to Supabase (8ed5c0b + 1ef3da8 fix); ready for Plan 02 seed data
 Resume file: None

@@ -58,7 +58,7 @@ completed: 2026-03-06
 - **Duration:** ~5 min
 - **Started:** 2026-03-06T07:07:26Z
 - **Completed:** 2026-03-06T07:12:00Z
-- **Tasks:** 1 of 2 (checkpoint:human-verify is pending human action)
+- **Tasks:** 2 of 2 (migration applied to Supabase, checkpoint cleared)
 - **Files modified:** 1
 
 ## Accomplishments
@@ -73,8 +73,11 @@ completed: 2026-03-06
 Each task was committed atomically:
 
 1. **Task 1: Write migration 005** - `8ed5c0b` (feat)
+2. **Task 2: checkpoint:human-verify** - migration applied to Supabase, tables confirmed
 
-**Plan metadata:** pending (after checkpoint cleared)
+**Auto-fix commit:** `1ef3da8` — replaced inline UNIQUE constraint with expression index (PostgreSQL syntax fix)
+
+**Plan metadata:** `13045bc` (docs: complete plan)
 
 ## Files Created/Modified
 - `supabase/migrations/005_add_staff_management_schema.sql` - Complete Phase 04 schema DDL: 4 new tables, 13 users columns, updated status constraint
@@ -87,7 +90,19 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Replaced inline UNIQUE constraint with expression index for professions.grade**
+- **Found during:** Checkpoint (migration execution)
+- **Issue:** PostgreSQL does not allow `COALESCE()` expressions inside a `UNIQUE(...)` table constraint. The original `UNIQUE (name, COALESCE(grade, ''))` syntax is invalid DDL.
+- **Fix:** Removed inline UNIQUE from `CREATE TABLE professions` and added `CREATE UNIQUE INDEX IF NOT EXISTS professions_name_grade_uniq ON professions (name, COALESCE(grade, ''))` as a separate statement.
+- **Files modified:** `supabase/migrations/005_add_staff_management_schema.sql`
+- **Commit:** `1ef3da8`
+
+---
+
+**Total deviations:** 1 auto-fixed (1 bug — invalid SQL syntax)
+**Impact on plan:** Fix required for migration to apply; semantics preserved exactly as intended.
 
 ## Issues Encountered
 
@@ -95,23 +110,13 @@ None.
 
 ## User Setup Required
 
-**Human action required before subsequent Phase 04 plans can proceed.**
-
-Apply migration 005 to Supabase:
-
-1. Open Supabase SQL Editor: https://supabase.com/dashboard/project/wwwtsvboqffzbnliuiun/sql/new
-2. Copy full contents of `supabase/migrations/005_add_staff_management_schema.sql` into the editor
-3. Run the migration
-4. Verify in Table Editor: 4 new tables — `professions`, `employee_positions`, `schedules`, `employee_assignments`
-5. Verify: `users` table shows new columns including `last_name`, `first_name`, `category`, `is_disabled`, `svo_type`, `participates_in_stroyevaya`
-
-Type "migration applied" to unblock the next continuation agent.
+None — migration applied. Supabase tables confirmed live.
 
 ## Next Phase Readiness
-- Migration 005 written and committed, ready to apply
-- Once applied: Plan 02 (seed data — schedules + professions INSERT statements) can proceed
-- Once applied: Plan 03 (TypeScript types — extend EmployeeStatusType + add HR types) can proceed
-- Plans 02-05 all depend on these tables existing in Supabase
+- Migration 005 applied to Supabase: professions, employee_positions, schedules, employee_assignments all exist
+- Plan 02 (seed data — schedules + professions INSERT statements) can proceed immediately
+- Plan 03 (TypeScript types — extend EmployeeStatusType + add HR types) can proceed
+- No blockers for Plans 02-05
 
 ---
 *Phase: 04-staff-management*
