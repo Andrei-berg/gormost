@@ -102,5 +102,5 @@ Plans:
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
 | 03. Core HR Panel UI | 1/2 | Complete    | 2026-03-04 | - |
-| 04. Staff Management | 5/5 | Complete   | 2026-03-06 | - |
+| 04. Staff Management | 5/5 | Complete    | 2026-03-06 | - |
 | 05. Reporting & Export | v2.0 | 0/? | Not started | - |
