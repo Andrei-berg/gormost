@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: in_progress
-last_updated: "2026-03-06T17:29:00.000Z"
+status: unknown
+last_updated: "2026-03-06T17:34:25.741Z"
 progress:
-  total_phases: 5
-  completed_phases: 3
+  total_phases: 4
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** Phase 04 — Staff Management (Plans 01-04 complete; Plan 05 remaining)
+**Current focus:** Phase 04 — Staff Management complete. Phase 05 (period reports/export) is next.
 
 ## Current Position
 
-Phase: 04 of 05 (Staff Management)
-Plan: 5 of 5 in current phase (04-01 through 04-04 complete; 04-05 remaining — period reports/export)
+Phase: 04 of 05 (Staff Management) — COMPLETE
+Plan: 5/5 complete (04-01 through 04-05 all done)
 Status: In progress
-Last activity: 2026-03-06 — 04-04 complete: EmployeeDetailCard, HireModal, DismissModal, TransferModal + /hr page fully wired with modal chain
+Last activity: 2026-03-06 — 04-05 complete: EmployeeCard extended to 10 status buttons in two rows
 
-Progress: [#########-] 87% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plans 01-04 done)
+Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 plans done)
 
 ## Performance Metrics
 
@@ -43,9 +43,10 @@ Progress: [#########-] 87% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plans 0
 | 01. UI/UX | 3/3 | - | - |
 | 02. DB Foundation | 2/2 | ~7min | ~3.5min |
 | 03. HR Panel UI | 2/3 | 19min | ~9.5min |
-| 04. Staff Management | 4/5 | ~20min | ~5min |
+| 04. Staff Management | 5/5 | ~21min | ~4.2min |
 
 *Updated after each plan completion*
+| Phase 04-staff-management P05 | 1 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Progress: [#########-] 87% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plans 0
 - [Phase 04-04]: EmployeeDetailCard is self-contained — fetches its own EmployeeDetail on mount via useEffect(userId), no data passed from parent beyond userId
 - [Phase 04-04]: DismissedSection is inline in page.tsx — simple collapsible list with name + date_fired, no separate component needed
 - [Phase 04-04]: Employee name styled as button element for proper accessibility (keyboard navigation, screen readers)
+- [Phase 04-05]: CLICKABLE_STATUSES split into DAILY_STATUSES (4) and EXTENDED_STATUSES (6) for two-row button layout; Uvolen excluded from both
 
 ### Pending Todos
 
@@ -88,5 +90,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 04-04-PLAN.md — EmployeeDetailCard, HireModal, DismissModal, TransferModal created and /hr page fully wired with modal chain (cce4ac3, 1d1b088)
+Stopped at: Completed 04-05-PLAN.md — EmployeeCard extended to 10 status buttons in two rows (4db3448); Phase 04 complete
 Resume file: None
