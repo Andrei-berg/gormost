@@ -91,7 +91,11 @@ Plans:
   2. `HireModal.tsx` has a required service dropdown — newly hired employees are visible in /hr immediately
   3. Migration `008_fix_seeded_employee_services.sql` sets correct `service_id` on all 270 seeded employees — they appear in /hr list
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Fix SummaryPanel ABSENT_STATUSES (INT-01) + HireModal service dropdown (INT-02a)
+- [ ] 05-02-PLAN.md — Migration 008: set service_id on 270 seeded employees (INT-02b) + human checkpoint
 
 ### Phase 06: Reporting & Export
 **Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
@@ -116,5 +120,5 @@ Plans:
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
 | 03. Core HR Panel UI | v2.0 | Complete    | 2026-03-04 | - |
 | 04. Staff Management | v2.0 | 5/5 | Complete    | 2026-03-06 |
-| 05. Integration Bug Fixes | v2.0 | 0/? | Not started | - |
+| 05. Integration Bug Fixes | v2.0 | 0/2 | Not started | - |
 | 06. Reporting & Export | v2.0 | 0/? | Not started | - |
