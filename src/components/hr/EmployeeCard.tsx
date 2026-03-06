@@ -13,9 +13,10 @@ interface Props {
   canEdit: boolean
   currentUserId: string
   onRefresh: () => void
+  onNameClick: (userId: string) => void
 }
 
-export default function EmployeeCard({ employee, canEdit, currentUserId, onRefresh }: Props) {
+export default function EmployeeCard({ employee, canEdit, currentUserId, onRefresh, onNameClick }: Props) {
   const [localStatus, setLocalStatus] = useState<EmployeeStatusType>(employee.currentStatus)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,7 +82,12 @@ export default function EmployeeCard({ employee, canEdit, currentUserId, onRefre
       {/* Header: name + position + current status badge */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-white/90 truncate">{employee.user.full_name}</div>
+          <button
+            onClick={() => onNameClick(employee.user.user_id)}
+            className="text-sm font-medium text-white hover:text-teal-300 transition-colors text-left truncate block w-full"
+          >
+            {employee.user.full_name}
+          </button>
           {employee.user.position && (
             <div className="text-xs text-white/40 mt-0.5 truncate">{employee.user.position}</div>
           )}

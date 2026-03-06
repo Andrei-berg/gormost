@@ -10,6 +10,7 @@ interface Props {
   canEdit: boolean
   currentUserId: string
   onRefresh: () => void
+  onNameClick: (userId: string) => void
 }
 
 export default function ServiceSection({
@@ -19,6 +20,7 @@ export default function ServiceSection({
   canEdit,
   currentUserId,
   onRefresh,
+  onNameClick,
 }: Props) {
   const meta = SERVICE_META[serviceId] ?? { emoji: '📋', color: '#ffffff', bg: 'bg-white/10' }
 
@@ -37,6 +39,7 @@ export default function ServiceSection({
             canEdit={canEdit}
             currentUserId={currentUserId}
             onRefresh={onRefresh}
+            onNameClick={onNameClick}
           />
         ))}
       </div>

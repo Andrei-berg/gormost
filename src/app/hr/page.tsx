@@ -4,8 +4,12 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import SummaryPanel from '@/components/hr/SummaryPanel'
 import ServiceSection from '@/components/hr/ServiceSection'
-import { fetchAllCurrentStatuses, fetchServices } from '@/lib/api'
-import type { AuthSession, EnrichedEmployee, Service } from '@/types'
+import EmployeeDetailCard from '@/components/hr/EmployeeDetailCard'
+import HireModal from '@/components/hr/HireModal'
+import DismissModal from '@/components/hr/DismissModal'
+import TransferModal from '@/components/hr/TransferModal'
+import { fetchAllCurrentStatuses, fetchServices, fetchUsers } from '@/lib/api'
+import type { AuthSession, EnrichedEmployee, Service, User } from '@/types'
 
 export default function HRPage() {
   return (
@@ -17,33 +21,41 @@ export default function HRPage() {
 
 function Content({ session }: { session: AuthSession }) {
   const [employees, setEmployees] = useState<EnrichedEmployee[]>([])
+  const [dismissedUsers, setDismissedUsers] = useState<User[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [showDismissed, setShowDismissed] = useState(false)
+
+  // Modal state
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [showHireModal, setShowHireModal] = useState(false)
+  const [dismissTarget, setDismissTarget] = useState<{ userId: string; name: string } | null>(null)
+  const [transferTarget, setTransferTarget] = useState<{ userId: string; name: string } | null>(null)
 
   const loadData = useCallback(async () => {
-    const [emps, svcs] = await Promise.all([
+    const [emps, svcs, allUsers] = await Promise.all([
       fetchAllCurrentStatuses(),
       fetchServices(),
+      fetchUsers(false), // all users including inactive
     ])
-    // Filter out employees with no service_id (ADMIN users, etc.)
     setEmployees(emps.filter(e => e.user.service_id !== null))
     setServices(svcs)
+    setDismissedUsers(allUsers.filter(u => !u.is_active))
     setLastUpdated(new Date())
     setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
 
-  // HEAD sees only their own service; ZAMPORAB/ADMIN/BOSS see all
   const isHead = session.role_level === 'HEAD'
-  const canEdit = !isHead  // ADMIN, BOSS, ZAMPORAB can edit; HEAD is read-only
+  const canEdit = !isHead
+  const canAdmin = session.role_level === 'ADMIN'
 
   const visibleEmployees = isHead
     ? employees.filter(e => e.user.service_id === session.service_id)
     : employees
 
-  // Group by service_id — use services array order (not SERVICE_META key order)
   const grouped = services
     .map(svc => ({
       serviceId: svc.service_id,
@@ -51,6 +63,10 @@ function Content({ session }: { session: AuthSession }) {
       employees: visibleEmployees.filter(e => e.user.service_id === svc.service_id),
     }))
     .filter(g => g.employees.length > 0)
+
+  // Find employee by userId across all loaded enriched employees
+  const findEmployee = (uid: string): EnrichedEmployee | undefined =>
+    employees.find(e => e.user.user_id === uid)
 
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
@@ -60,6 +76,19 @@ function Content({ session }: { session: AuthSession }) {
       ) : (
         <>
           <SummaryPanel employees={visibleEmployees} services={services} />
+
+          {/* Hire button — ADMIN only */}
+          {canAdmin && (
+            <div className="mb-4 flex justify-end">
+              <button
+                onClick={() => setShowHireModal(true)}
+                className="px-4 py-2 rounded-lg bg-teal-500/20 border border-teal-500/30 text-teal-400 hover:bg-teal-500/30 text-sm font-medium transition-colors"
+              >
+                + Нанять сотрудника
+              </button>
+            </div>
+          )}
+
           {grouped.map(g => (
             <ServiceSection
               key={g.serviceId}
@@ -69,12 +98,95 @@ function Content({ session }: { session: AuthSession }) {
               canEdit={canEdit}
               currentUserId={session.user_id}
               onRefresh={loadData}
+              onNameClick={(uid) => setSelectedUserId(uid)}
             />
           ))}
+
           {grouped.length === 0 && (
             <div className="text-center text-white/30 py-12">Нет сотрудников для отображения</div>
           )}
+
+          {/* Dismissed employees section */}
+          {dismissedUsers.length > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowDismissed(!showDismissed)}
+                className="flex items-center gap-2 text-sm text-white/30 hover:text-white/60 transition-colors mb-3"
+              >
+                <span className="text-xs">{showDismissed ? '▲' : '▼'}</span>
+                <span className="uppercase tracking-wider font-bold">Уволенные</span>
+                <span className="text-white/20">({dismissedUsers.length})</span>
+              </button>
+              {showDismissed && (
+                <div className="space-y-2">
+                  {dismissedUsers.map(u => (
+                    <div
+                      key={u.user_id}
+                      className="flex items-center justify-between px-4 py-2.5 bg-white/3 border border-white/5 rounded-lg"
+                    >
+                      <div>
+                        <span className="text-sm text-white/40">{u.full_name}</span>
+                        {u.tab_number && (
+                          <span className="text-xs text-white/20 ml-2">Таб. {u.tab_number}</span>
+                        )}
+                      </div>
+                      {u.date_fired && (
+                        <span className="text-xs text-white/20">
+                          {new Date(u.date_fired).toLocaleDateString('ru-RU')}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </>
+      )}
+
+      {/* Modals */}
+      {selectedUserId && (
+        <EmployeeDetailCard
+          userId={selectedUserId}
+          currentUserId={session.user_id}
+          canAdmin={canAdmin}
+          onClose={() => setSelectedUserId(null)}
+          onDismiss={(uid) => {
+            const emp = findEmployee(uid)
+            setDismissTarget({ userId: uid, name: emp?.user.full_name ?? uid })
+            setSelectedUserId(null)
+          }}
+          onTransfer={(uid) => {
+            const emp = findEmployee(uid)
+            setTransferTarget({ userId: uid, name: emp?.user.full_name ?? uid })
+            setSelectedUserId(null)
+          }}
+        />
+      )}
+      {showHireModal && (
+        <HireModal
+          currentUserId={session.user_id}
+          onClose={() => setShowHireModal(false)}
+          onSuccess={() => { setShowHireModal(false); loadData() }}
+        />
+      )}
+      {dismissTarget && (
+        <DismissModal
+          userId={dismissTarget.userId}
+          employeeName={dismissTarget.name}
+          currentUserId={session.user_id}
+          onClose={() => setDismissTarget(null)}
+          onSuccess={() => { setDismissTarget(null); loadData() }}
+        />
+      )}
+      {transferTarget && (
+        <TransferModal
+          userId={transferTarget.userId}
+          employeeName={transferTarget.name}
+          currentUserId={session.user_id}
+          onClose={() => setTransferTarget(null)}
+          onSuccess={() => { setTransferTarget(null); loadData() }}
+        />
       )}
     </div>
   )
