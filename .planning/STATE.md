@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-04T10:15:44.390Z"
+status: in_progress
+last_updated: "2026-03-06T07:12:00.000Z"
 progress:
-  total_phases: 3
+  total_phases: 5
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** Phase 03 — Core HR Panel UI
+**Current focus:** Phase 04 — Staff Management (DB Layer)
 
 ## Current Position
 
-Phase: 03 of 05 (Core HR Panel UI)
-Plan: 2 of 3 in current phase (03-02 complete — EmployeeCard interactive, StatusHistory accordion)
-Status: In progress
-Last activity: 2026-03-04 — EmployeeCard interactive: 4 status buttons, optimistic update, reason input, StatusHistory lazy accordion, ServiceSection stub replaced
+Phase: 04 of 05 (Staff Management)
+Plan: 1 of 5 in current phase (04-01 complete — migration 005 DDL written; awaiting human to apply in Supabase)
+Status: Awaiting checkpoint (human-verify: apply migration 005 to Supabase)
+Last activity: 2026-03-06 — Migration 005 schema DDL: 4 new tables, 13 users columns, extended status constraint
 
-Progress: [#####-----] 47% (v1.0 + v1.1 + Phase 02 + Phase 03 Plans 01-02 done)
+Progress: [######----] 53% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plan 01 done)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [#####-----] 47% (v1.0 + v1.1 + Phase 02 + Phase 03 Plans 01-02 done)
 | 01. UI/UX | 3/3 | - | - |
 | 02. DB Foundation | 2/2 | ~7min | ~3.5min |
 | 03. HR Panel UI | 2/3 | 19min | ~9.5min |
+| 04. Staff Management | 1/5 | ~5min | ~5min |
 
 *Updated after each plan completion*
 
@@ -66,6 +67,10 @@ Progress: [#####-----] 47% (v1.0 + v1.1 + Phase 02 + Phase 03 Plans 01-02 done)
 - [Phase 03]: HEAD role: canEdit=false + service_id filter in page.tsx — fully read-only view of own service
 - [Phase 03-core-hr-panel-ui]: Reason add-on fires second setEmployeeStatus INSERT — not UPDATE — preserving append-only log
 - [Phase 03-core-hr-panel-ui]: Uvolen excluded from CLICKABLE_STATUSES — dismissal flow is Phase 04 scope
+- [Phase 04-01]: user_id FK columns are TEXT (not UUID) — critical match with existing users.user_id column type
+- [Phase 04-01]: Partial unique index (WHERE ended_at IS NULL) implements SCD Type 2 "one active record" constraint
+- [Phase 04-01]: UNIQUE(name, COALESCE(grade, '')) on professions handles NULL grade for ITR roles (PostgreSQL pattern)
+- [Phase 04-01]: employee_status CHECK constraint replaced via DROP+ADD (only idempotent pattern in PostgreSQL)
 
 ### Pending Todos
 
@@ -79,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: Completed 03-02-PLAN.md — EmployeeCard interactive: status buttons, optimistic update, reason input, StatusHistory lazy accordion; /hr route fully interactive for ZAMPORAB; ready for Plan 03 (monthly report)
+Last session: 2026-03-06
+Stopped at: Completed 04-01-PLAN.md — migration 005 schema DDL committed (8ed5c0b); checkpoint:human-verify blocking — human must apply migration to Supabase before Plan 02 can proceed
 Resume file: None

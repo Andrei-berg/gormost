@@ -29,6 +29,12 @@ Requirements for HR module release. Each maps to roadmap phases.
 
 - [ ] **HR-08**: ADMIN может оформить приём сотрудника (с датой приёма) и увольнение (с датой увольнения, soft-delete: `is_active=false` + `date_fired`)
 - [ ] **HR-09**: Пользователь может открыть карточку сотрудника с контактами, должностью и историей назначений на заявки
+- [x] **HR-13**: Расширенный профиль сотрудника: разделённое ФИО (фамилия / имя / отчество), категория (ИТР / рабочий), телефон, email, испытательный срок (дата начала + конца), флаг инвалидности + группа + ограничения по работе, флаг многодетности, тип СВО (мобилизован / контракт / через_регион), флаг `participates_in_stroyevaya` (false для парковщиков)
+- [x] **HR-14**: Справочник `professions` (профессия + разряд + категория) и таблица `employee_positions` с историей должностей (SCD Type 2: старая запись закрывается, новая открывается при переводе)
+- [x] **HR-15**: Справочник `schedules` (6 типов: сутки/3, 5/2, 3/3, 6/6, 15/15, 1/3) и таблица `employee_assignments` (привязка сотрудника к графику + номер смены + группа ротации + опорная дата + флаг водителя)
+- [x] **HR-16**: Расширенный список статусов сотрудника: Командировка, Учебный отпуск, Декрет, Мобилизован, СВО, Трудоустроен с СВО — в дополнение к существующим
+- [ ] **HR-17**: Функция `resolveShiftForDate(assignment, date)` в `lib/shifts.ts` вычисляет `{ isWorking, shiftType: DAY|NIGHT }` для всех 6 типов графиков по опорной дате
+- [ ] **HR-18**: Миграция данных: 270 сотрудников из `roster-merged.json` импортированы в БД с корректными профессиями, графиками, назначениями смен (опорная дата: смена 3 работала 2026-03-05)
 
 ### Reporting
 
@@ -81,13 +87,19 @@ Deferred to future release.
 | HR-07 | Phase 03 | Complete |
 | HR-08 | Phase 04 | Pending |
 | HR-09 | Phase 04 | Pending |
+| HR-13 | Phase 04 | Complete |
+| HR-14 | Phase 04 | Complete |
+| HR-15 | Phase 04 | Complete |
+| HR-16 | Phase 04 | Complete |
+| HR-17 | Phase 04 | Pending |
+| HR-18 | Phase 04 | Pending |
 | HR-10 | Phase 05 | Pending |
 | HR-11 | Phase 05 | Pending |
 | HR-12 | Phase 05 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 12 total
-- Mapped to phases: 12
+- v2.0 requirements: 18 total
+- Mapped to phases: 18
 - Unmapped: 0
 
 ---
