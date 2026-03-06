@@ -111,3 +111,81 @@ export function formatTime(date: Date): string {
     second: '2-digit'
   }).format(date)
 }
+
+// ============================================
+// Phase 04: Employee schedule resolution
+// ============================================
+
+export interface ShiftResolution {
+  isWorking: boolean
+  shiftType: 'DAY' | 'NIGHT' | null  // null when isWorking=false
+}
+
+/**
+ * Determine if an employee is working on a given date and whether it is DAY or NIGHT.
+ * Uses the employee's schedule type and shift_reference_date anchor.
+ * Follows the same date normalization pattern as getShiftForDate (setHours(0,0,0,0)).
+ */
+export function resolveShiftForDate(
+  assignment: {
+    schedule_code: string
+    shift_reference_date: string | null
+    rotation_group: string | null
+    is_driver: boolean
+  },
+  date: Date
+): ShiftResolution {
+  const target = new Date(date)
+  target.setHours(0, 0, 0, 0)
+
+  const { schedule_code, shift_reference_date, rotation_group } = assignment
+
+  if (schedule_code === '5/2') {
+    const dow = target.getDay()  // 0=Sun, 6=Sat
+    const isWorking = dow !== 0 && dow !== 6
+    return { isWorking, shiftType: isWorking ? 'DAY' : null }
+  }
+
+  // All other schedules require shift_reference_date
+  if (!shift_reference_date) {
+    return { isWorking: false, shiftType: null }
+  }
+
+  const ref = new Date(shift_reference_date)
+  ref.setHours(0, 0, 0, 0)
+  const daysElapsed = Math.floor((target.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (schedule_code === 'сутки/3' || schedule_code === '1/3') {
+    const isWorking = daysElapsed % 4 === 0
+    return { isWorking, shiftType: isWorking ? 'NIGHT' : null }
+  }
+
+  if (schedule_code === '3/3') {
+    const isWorking = daysElapsed % 6 < 3
+    return { isWorking, shiftType: isWorking ? 'DAY' : null }
+  }
+
+  if (schedule_code === '6/6') {
+    const periodDay = daysElapsed % 12
+    const isWorking = periodDay < 6
+    // Drivers: alternating day/night (placeholder — is_driver deferred, treat as DAY)
+    return { isWorking, shiftType: isWorking ? 'DAY' : null }
+  }
+
+  if (schedule_code === '15/15') {
+    const dayOfMonth = target.getDate()
+    let isWorking: boolean
+    if (rotation_group === '2') {
+      isWorking = dayOfMonth >= 16
+    } else if (rotation_group === '2_1') {
+      isWorking = daysElapsed % 30 < 15
+    } else {
+      // group '1' and bare '15/15'
+      isWorking = dayOfMonth >= 1 && dayOfMonth <= 15
+    }
+    return { isWorking, shiftType: isWorking ? 'DAY' : null }
+  }
+
+  // Unknown schedule code — conservative fallback
+  return { isWorking: false, shiftType: null }
+}
