@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-06T17:40:05.248Z"
+last_updated: "2026-03-06T19:26:47.765Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 05 of 06 (Integration Bug Fixes) — IN PROGRESS
-Plan: 1/2 complete (05-01 done)
-Status: In progress
-Last activity: 2026-03-06 — 05-01 complete: Fixed SummaryPanel ABSENT_STATUSES (INT-01) and HireModal service dropdown (INT-02a)
+Phase: 05 of 06 (Integration Bug Fixes) — COMPLETE
+Plan: 2/2 complete (05-01 and 05-02 done)
+Status: Phase 05 complete, Phase 06 next
+Last activity: 2026-03-06 — 05-02 complete: Migration 008 ran — 270 seeded employees now visible in /hr (INT-02b closed)
 
-Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 plans done)
+Progress: [##########] 98% (v1.0 + v1.1 + Phases 02-05 all done; Phase 06 remaining)
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 p
 
 *Updated after each plan completion*
 | Phase 04-staff-management P05 | 1 | 1 tasks | 1 files |
+| Phase 05-integration-bug-fixes P02 | 30 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 p
 - [Phase 04-05]: CLICKABLE_STATUSES split into DAILY_STATUSES (4) and EXTENDED_STATUSES (6) for two-row button layout; Uvolen excluded from both
 - [Phase 05-01]: ABSENT_STATUSES covers all 10 non-working statuses; Na_rabote is the only working status
 - [Phase 05-01]: HireModal service dropdown has no default — user must explicitly choose to prevent silent null assignments
+- [Phase 05-02]: Seeded employees assigned to SRV-STR as placeholder — correct service assignments unknown from roster data; admin must reassign via /hr
+- [Phase 05-02]: Dismissed employees (is_active=false) intentionally left with service_id=NULL — DismissedSection does not filter by service_id
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 05-01-PLAN.md — Fixed INT-01 (SummaryPanel absent statuses) and INT-02a (HireModal service dropdown) (4c8a074)
+Stopped at: Completed 05-02-PLAN.md — Migration 008 ran, INT-02b closed: 270 seeded employees visible in /hr (cd24e70)
 Resume file: None

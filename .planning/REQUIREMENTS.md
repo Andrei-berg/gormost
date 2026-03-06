@@ -34,7 +34,7 @@ Requirements for HR module release. Each maps to roadmap phases.
 - [x] **HR-15**: Справочник `schedules` (6 типов: сутки/3, 5/2, 3/3, 6/6, 15/15, 1/3) и таблица `employee_assignments` (привязка сотрудника к графику + номер смены + группа ротации + опорная дата + флаг водителя)
 - [x] **HR-16**: Расширенный список статусов сотрудника: Командировка, Учебный отпуск, Декрет, Мобилизован, СВО, Трудоустроен с СВО — в дополнение к существующим
 - [ ] **HR-17**: Функция `resolveShiftForDate(assignment, date)` в `lib/shifts.ts` вычисляет `{ isWorking, shiftType: DAY|NIGHT }` для всех 6 типов графиков по опорной дате
-- [ ] **HR-18**: Миграция данных: 270 сотрудников из `roster-merged.json` импортированы в БД с корректными профессиями, графиками, назначениями смен (опорная дата: смена 3 работала 2026-03-05)
+- [x] **HR-18**: Миграция данных: 270 сотрудников из `roster-merged.json` импортированы в БД с корректными профессиями, графиками, назначениями смен (опорная дата: смена 3 работала 2026-03-05)
 
 ### Reporting
 
@@ -92,7 +92,7 @@ Deferred to future release.
 | HR-15 | Phase 04 | Complete |
 | HR-16 | Phase 05 | Complete |
 | HR-17 | Phase 04 | Pending |
-| HR-18 | Phase 05 | Pending |
+| HR-18 | Phase 05 | Complete |
 | HR-10 | Phase 06 | Pending |
 | HR-11 | Phase 06 | Pending |
 | HR-12 | Phase 06 | Pending |
