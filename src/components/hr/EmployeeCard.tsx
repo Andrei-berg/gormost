@@ -5,8 +5,13 @@ import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { EnrichedEmployee, EmployeeStatusType } from '@/types'
 import StatusHistory from './StatusHistory'
 
-// The 4 clickable statuses — 'Uvolen' is NOT a button (Phase 04 scope)
-const CLICKABLE_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
+// Row 1: daily/operational statuses (unchanged from Phase 03)
+const DAILY_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
+
+// Row 2: extended statuses (Phase 04) — Uvolen NOT included (it's a lifecycle event)
+const EXTENDED_STATUSES: EmployeeStatusType[] = [
+  'Komandirovka', 'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO'
+]
 
 interface Props {
   employee: EnrichedEmployee
@@ -102,26 +107,51 @@ export default function EmployeeCard({ employee, canEdit, currentUserId, onRefre
 
       {/* Status buttons — only for canEdit users */}
       {canEdit && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {CLICKABLE_STATUSES.map(status => {
-            const scfg = EMPLOYEE_STATUS_CONFIG[status]
-            const isActive = localStatus === status
-            return (
-              <button
-                key={status}
-                onClick={() => handleStatusClick(status)}
-                disabled={saving}
-                className={`text-xs px-2 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
-                  isActive
-                    ? `${scfg.bg} font-medium cursor-default`
-                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 cursor-pointer'
-                }`}
-                style={isActive ? { color: scfg.color } : undefined}
-              >
-                {scfg.label}
-              </button>
-            )
-          })}
+        <div className="space-y-1.5 mb-2">
+          {/* Row 1 — daily statuses */}
+          <div className="flex flex-wrap gap-1.5">
+            {DAILY_STATUSES.map(status => {
+              const scfg = EMPLOYEE_STATUS_CONFIG[status]
+              const isActive = localStatus === status
+              return (
+                <button
+                  key={status}
+                  onClick={() => handleStatusClick(status)}
+                  disabled={saving}
+                  className={`text-xs px-2 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
+                    isActive
+                      ? `${scfg.bg} font-medium cursor-default`
+                      : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 cursor-pointer'
+                  }`}
+                  style={isActive ? { color: scfg.color } : undefined}
+                >
+                  {scfg.label}
+                </button>
+              )
+            })}
+          </div>
+          {/* Row 2 — extended statuses (Phase 04) */}
+          <div className="flex flex-wrap gap-1.5">
+            {EXTENDED_STATUSES.map(status => {
+              const scfg = EMPLOYEE_STATUS_CONFIG[status]
+              const isActive = localStatus === status
+              return (
+                <button
+                  key={status}
+                  onClick={() => handleStatusClick(status)}
+                  disabled={saving}
+                  className={`text-xs px-2 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
+                    isActive
+                      ? `${scfg.bg} font-medium cursor-default`
+                      : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 cursor-pointer'
+                  }`}
+                  style={isActive ? { color: scfg.color } : undefined}
+                >
+                  {scfg.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
