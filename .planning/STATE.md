@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 04 of 05 (Staff Management) — COMPLETE
-Plan: 5/5 complete (04-01 through 04-05 all done)
+Phase: 05 of 06 (Integration Bug Fixes) — IN PROGRESS
+Plan: 1/2 complete (05-01 done)
 Status: In progress
-Last activity: 2026-03-06 — 04-05 complete: EmployeeCard extended to 10 status buttons in two rows
+Last activity: 2026-03-06 — 05-01 complete: Fixed SummaryPanel ABSENT_STATUSES (INT-01) and HireModal service dropdown (INT-02a)
 
 Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 plans done)
 
@@ -76,6 +76,8 @@ Progress: [##########] 95% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 all 5 p
 - [Phase 04-04]: DismissedSection is inline in page.tsx — simple collapsible list with name + date_fired, no separate component needed
 - [Phase 04-04]: Employee name styled as button element for proper accessibility (keyboard navigation, screen readers)
 - [Phase 04-05]: CLICKABLE_STATUSES split into DAILY_STATUSES (4) and EXTENDED_STATUSES (6) for two-row button layout; Uvolen excluded from both
+- [Phase 05-01]: ABSENT_STATUSES covers all 10 non-working statuses; Na_rabote is the only working status
+- [Phase 05-01]: HireModal service dropdown has no default — user must explicitly choose to prevent silent null assignments
 
 ### Pending Todos
 
@@ -90,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 04-05-PLAN.md — EmployeeCard extended to 10 status buttons in two rows (4db3448); Phase 04 complete
+Stopped at: Completed 05-01-PLAN.md — Fixed INT-01 (SummaryPanel absent statuses) and INT-02a (HireModal service dropdown) (4c8a074)
 Resume file: None
