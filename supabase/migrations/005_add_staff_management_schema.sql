@@ -50,9 +50,12 @@ CREATE TABLE IF NOT EXISTS professions (
   grade       TEXT DEFAULT NULL,
   category    TEXT NOT NULL CHECK (category IN ('ИТР', 'рабочий')),
   is_active   BOOLEAN DEFAULT true,
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (name, COALESCE(grade, ''))
+  created_at  TIMESTAMPTZ DEFAULT now()
 );
+
+-- Unique index using expression to handle NULL grades (COALESCE not allowed in UNIQUE constraint)
+CREATE UNIQUE INDEX IF NOT EXISTS professions_name_grade_uniq
+  ON professions (name, COALESCE(grade, ''));
 
 -- =============================================================================
 -- Section 4: Create employee_positions table (SCD Type 2 — position history)
