@@ -25,6 +25,20 @@ export interface User {
   created_at: string
   date_hired: string | null   // ISO date 'YYYY-MM-DD' or null — set on hire
   date_fired: string | null   // ISO date 'YYYY-MM-DD' or null — set on dismissal
+  // Phase 04 HR fields — all nullable for backward compat with existing rows
+  last_name: string | null
+  first_name: string | null
+  middle_name: string | null
+  email: string | null
+  category: 'ИТР' | 'рабочий' | null
+  probation_start: string | null
+  probation_end: string | null
+  is_disabled: boolean
+  disability_group: 1 | 2 | 3 | null
+  disability_notes: string | null
+  has_many_children: boolean
+  svo_type: 'мобилизован' | 'контракт' | 'через_регион' | null
+  participates_in_stroyevaya: boolean
 }
 
 export interface Service {
@@ -255,6 +269,12 @@ export type EmployeeStatusType =
   | 'Bolnichniy'
   | 'Otpusk'
   | 'Uvolen'
+  | 'Komandirovka'
+  | 'Uchebniy_otpusk'
+  | 'Dekret'
+  | 'Mobilizovan'
+  | 'SVO'
+  | 'Troydoustroyen_s_SVO'
 
 export interface EmployeeStatus {
   id: string
@@ -272,11 +292,17 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
   color: string
   bg: string
 }> = {
-  Na_rabote:  { label: 'На работе',  color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
-  Otgul:      { label: 'Отгул',      color: '#eab308', bg: 'bg-yellow-500/20 border-yellow-500/30' },
-  Bolnichniy: { label: 'Больничный', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
-  Otpusk:     { label: 'Отпуск',     color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
-  Uvolen:     { label: 'Уволен',     color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+  Na_rabote:            { label: 'На работе',      color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  Otgul:                { label: 'Отгул',          color: '#eab308', bg: 'bg-yellow-500/20 border-yellow-500/30' },
+  Bolnichniy:           { label: 'Больничный',     color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  Otpusk:               { label: 'Отпуск',         color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  Uvolen:               { label: 'Уволен',         color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+  Komandirovka:         { label: 'Командировка',   color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
+  Uchebniy_otpusk:      { label: 'Учебный отпуск', color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  Dekret:               { label: 'Декрет',         color: '#ec4899', bg: 'bg-pink-500/20 border-pink-500/30' },
+  Mobilizovan:          { label: 'Мобилизован',    color: '#dc2626', bg: 'bg-red-700/20 border-red-700/30' },
+  SVO:                  { label: 'СВО',            color: '#991b1b', bg: 'bg-red-900/20 border-red-900/30' },
+  Troydoustroyen_s_SVO: { label: 'Вернулся с СВО', color: '#16a34a', bg: 'bg-green-700/20 border-green-700/30' },
 }
 
 // ============================================
@@ -382,4 +408,70 @@ export interface EnrichedEmployee {
   user: User
   currentStatus: EmployeeStatusType
   statusRecord: EmployeeStatus | null
+}
+
+// --- Phase 04: Staff Management types ---
+
+export interface Profession {
+  id: string
+  name: string
+  grade: string | null
+  category: 'ИТР' | 'рабочий'
+  is_active: boolean
+  created_at: string
+}
+
+export interface Schedule {
+  id: string
+  code: string
+  name: string
+  work_days: number
+  rest_days: number
+  default_day_night: 'night' | 'day' | 'alternating'
+  is_shift_based: boolean
+  created_at: string
+}
+
+export interface EmployeePosition {
+  id: string
+  user_id: string
+  profession_id: string
+  started_at: string
+  ended_at: string | null
+  change_reason: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface EmployeeAssignment {
+  id: string
+  user_id: string
+  schedule_id: string
+  shift_num: number | null
+  rotation_group: string | null
+  foreman_name: string | null
+  shift_reference_date: string | null
+  is_driver: boolean
+  started_at: string
+  ended_at: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface EmployeePositionWithProfession extends EmployeePosition {
+  profession: Profession
+}
+
+export interface EmployeeAssignmentWithSchedule extends EmployeeAssignment {
+  schedule: Schedule
+}
+
+export interface EmployeeDetail {
+  user: User
+  currentStatus: EmployeeStatusType
+  currentPosition: EmployeePositionWithProfession | null
+  positionHistory: EmployeePositionWithProfession[]
+  currentAssignment: EmployeeAssignmentWithSchedule | null
+  recentRequests: RequestAssignment[]
 }
