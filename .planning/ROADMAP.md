@@ -19,7 +19,8 @@ Build order is strict: DB schema must be correct before types, types before API,
 - [x] **Phase 02: DB Foundation** - HR schema migrations, TypeScript types, and API functions
 - [x] **Phase 03: Core HR Panel UI** - Daily operations screen for ZAMPORAB morning workflow (completed 2026-03-04)
 - [x] **Phase 04: Staff Management** - Hire/dismiss actions and employee detail card (completed 2026-03-06)
-- [ ] **Phase 05: Reporting & Export** - Attendance grid, period reports, and Excel export
+- [ ] **Phase 05: Integration Bug Fixes** - Fix SummaryPanel headcount miscounts and service_id gap on hired/seeded employees
+- [ ] **Phase 06: Reporting & Export** - Attendance grid, period reports, and Excel export
 
 ---
 
@@ -80,9 +81,21 @@ Plans:
 - [ ] 04-04-PLAN.md — EmployeeDetailCard + HireModal + DismissModal + TransferModal + /hr page wiring
 - [ ] 04-05-PLAN.md — EmployeeCard extended 10-status two-row button layout (HR-16)
 
-### Phase 05: Reporting & Export
-**Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
+### Phase 05: Integration Bug Fixes
+**Goal**: Fix 2 critical cross-phase integration bugs found in audit — SummaryPanel shows wrong headcounts, and all hired/seeded employees are invisible in /hr
 **Depends on**: Phase 04
+**Requirements**: HR-05, HR-08, HR-16, HR-18
+**Gap Closure**: Closes gaps from v2.0 audit (INT-01, INT-02)
+**Success Criteria** (what must be TRUE):
+  1. `SummaryPanel.tsx` ABSENT_STATUSES includes all 10 non-working statuses — employees on Командировка/Декрет/СВО/etc. are counted as absent, not present
+  2. `HireModal.tsx` has a required service dropdown — newly hired employees are visible in /hr immediately
+  3. Migration `008_fix_seeded_employee_services.sql` sets correct `service_id` on all 270 seeded employees — they appear in /hr list
+
+**Plans**: TBD
+
+### Phase 06: Reporting & Export
+**Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
+**Depends on**: Phase 05
 **Requirements**: HR-10, HR-11, HR-12
 **Success Criteria** (what must be TRUE):
   1. User selects a month and sees an attendance grid: rows are employees grouped by service, columns are days 1-31, each cell shows a status code (R/O/B/P/U) matching T-13 format conventions
@@ -101,6 +114,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
-| 03. Core HR Panel UI | 1/2 | Complete    | 2026-03-04 | - |
-| 04. Staff Management | 5/5 | Complete    | 2026-03-06 | - |
-| 05. Reporting & Export | v2.0 | 0/? | Not started | - |
+| 03. Core HR Panel UI | v2.0 | Complete    | 2026-03-04 | - |
+| 04. Staff Management | v2.0 | 5/5 | Complete    | 2026-03-06 |
+| 05. Integration Bug Fixes | v2.0 | 0/? | Not started | - |
+| 06. Reporting & Export | v2.0 | 0/? | Not started | - |
