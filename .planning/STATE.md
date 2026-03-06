@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-06T07:12:00.000Z"
+last_updated: "2026-03-06T17:29:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,22 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** Phase 04 — Staff Management (DB Layer)
+**Current focus:** Phase 04 — Staff Management (Plans 01-04 complete; Plan 05 remaining)
 
 ## Current Position
 
 Phase: 04 of 05 (Staff Management)
-Plan: 1 of 5 in current phase (04-01 complete — migration 005 applied to Supabase; ready for Plan 02 seed data)
+Plan: 5 of 5 in current phase (04-01 through 04-04 complete; 04-05 remaining — period reports/export)
 Status: In progress
-Last activity: 2026-03-06 — Migration 005 applied: professions, employee_positions, schedules, employee_assignments live in Supabase
+Last activity: 2026-03-06 — 04-04 complete: EmployeeDetailCard, HireModal, DismissModal, TransferModal + /hr page fully wired with modal chain
 
-Progress: [######----] 53% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plan 01 done)
+Progress: [#########-] 87% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plans 01-04 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (Phase 01, milestone v1.1, Phase 02, Phase 03 P01)
-- Average duration: ~9min
+- Total plans completed: 11 (Phase 01, milestone v1.1, Phase 02, Phase 03, Phase 04 Plans 01-04)
+- Average duration: ~6min
 - Total execution time: unknown
 
 **By Phase:**
@@ -43,7 +43,7 @@ Progress: [######----] 53% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plan 01
 | 01. UI/UX | 3/3 | - | - |
 | 02. DB Foundation | 2/2 | ~7min | ~3.5min |
 | 03. HR Panel UI | 2/3 | 19min | ~9.5min |
-| 04. Staff Management | 1/5 | ~5min | ~5min |
+| 04. Staff Management | 4/5 | ~20min | ~5min |
 
 *Updated after each plan completion*
 
@@ -71,6 +71,9 @@ Progress: [######----] 53% (v1.0 + v1.1 + Phase 02 + Phase 03 + Phase 04 Plan 01
 - [Phase 04-01]: Partial unique index (WHERE ended_at IS NULL) implements SCD Type 2 "one active record" constraint
 - [Phase 04-01]: UNIQUE(name, COALESCE(grade, '')) on professions handles NULL grade for ITR roles (PostgreSQL pattern)
 - [Phase 04-01]: employee_status CHECK constraint replaced via DROP+ADD (only idempotent pattern in PostgreSQL)
+- [Phase 04-04]: EmployeeDetailCard is self-contained — fetches its own EmployeeDetail on mount via useEffect(userId), no data passed from parent beyond userId
+- [Phase 04-04]: DismissedSection is inline in page.tsx — simple collapsible list with name + date_fired, no separate component needed
+- [Phase 04-04]: Employee name styled as button element for proper accessibility (keyboard navigation, screen readers)
 
 ### Pending Todos
 
@@ -85,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 04-01-PLAN.md — migration 005 schema applied to Supabase (8ed5c0b + 1ef3da8 fix); ready for Plan 02 seed data
+Stopped at: Completed 04-04-PLAN.md — EmployeeDetailCard, HireModal, DismissModal, TransferModal created and /hr page fully wired with modal chain (cce4ac3, 1d1b088)
 Resume file: None
