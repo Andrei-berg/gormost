@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchProfessions, fetchSchedules, createEmployee } from '@/lib/api'
-import type { Profession, Schedule } from '@/types'
+import { fetchProfessions, fetchSchedules, fetchServices, createEmployee } from '@/lib/api'
+import type { Profession, Schedule, Service } from '@/types'
 
 interface Props {
   currentUserId: string
@@ -12,6 +12,8 @@ interface Props {
 export default function HireModal({ currentUserId, onClose, onSuccess }: Props) {
   const [professions, setProfessions] = useState<Profession[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [serviceId, setServiceId] = useState('')
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,11 +33,13 @@ export default function HireModal({ currentUserId, onClose, onSuccess }: Props) 
   const [probationEnd, setProbationEnd] = useState('')
 
   useEffect(() => {
-    Promise.all([fetchProfessions(), fetchSchedules()]).then(([profs, scheds]) => {
+    Promise.all([fetchProfessions(), fetchSchedules(), fetchServices()]).then(([profs, scheds, svcs]) => {
       setProfessions(profs)
       setSchedules(scheds)
+      setServices(svcs)
       if (profs.length > 0) setProfessionId(profs[0].id)
       if (scheds.length > 0) setScheduleId(scheds[0].id)
+      // No default for serviceId — user must choose explicitly (shows placeholder)
       setLoadingOptions(false)
     })
   }, [])
@@ -44,7 +48,7 @@ export default function HireModal({ currentUserId, onClose, onSuccess }: Props) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!lastName.trim() || !firstName.trim() || !tabNumber.trim() || !professionId || !scheduleId) {
+    if (!lastName.trim() || !firstName.trim() || !tabNumber.trim() || !professionId || !scheduleId || !serviceId) {
       setError('Заполните все обязательные поля')
       return
     }
@@ -66,7 +70,7 @@ export default function HireModal({ currentUserId, onClose, onSuccess }: Props) 
         date_hired: dateHired,
         probation_start: probationStart || null,
         probation_end: probationEnd || null,
-        service_id: null,
+        service_id: serviceId,
       },
       currentUserId
     )
@@ -132,6 +136,22 @@ export default function HireModal({ currentUserId, onClose, onSuccess }: Props) 
                   <option key={p.id} value={p.id}>
                     {p.name}{p.grade ? ` ${p.grade}` : ''}
                   </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Service — required */}
+            <div>
+              <label className={labelClass}>Служба *</label>
+              <select
+                className={inputClass}
+                value={serviceId}
+                onChange={e => setServiceId(e.target.value)}
+                required
+              >
+                <option value="">— Выберите службу —</option>
+                {services.map(s => (
+                  <option key={s.service_id} value={s.service_id}>{s.service_name}</option>
                 ))}
               </select>
             </div>
