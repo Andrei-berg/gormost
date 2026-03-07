@@ -82,6 +82,10 @@ Progress: [##########] 98% (v1.0 + v1.1 + Phases 02-05 all done; Phase 06 remain
 - [Phase 05-02]: Seeded employees assigned to SRV-STR as placeholder — correct service assignments unknown from roster data; admin must reassign via /hr
 - [Phase 05-02]: Dismissed employees (is_active=false) intentionally left with service_id=NULL — DismissedSection does not filter by service_id
 
+### Roadmap Evolution
+
+- Phase 07 added: HR table view — compact list with search, filters and inline status editing
+
 ### Pending Todos
 
 None yet.
