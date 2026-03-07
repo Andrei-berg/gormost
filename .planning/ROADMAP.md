@@ -108,6 +108,16 @@ Plans:
   4. The attendance grid renders correctly on print preview (`window.print()`) without dark Tailwind styles bleeding through
 **Plans**: TBD
 
+### Phase 07: HR table view — compact list with search, filters and inline status editing
+**Goal**: ZAMPORAB and ADMIN can toggle the /hr panel to a compact table view, search employees by name, filter by service, and change employee status inline without leaving the table
+**Depends on**: Phase 05 (standalone UX feature — no new DB or API needed)
+**Requirements**: HR-UX-01
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — HRTableView component with StatusPopup inline editing
+- [ ] 07-02-PLAN.md — HRToolbar + page.tsx wiring (view toggle, search, service filter)
+
 ---
 
 ## Progress
@@ -122,3 +132,4 @@ Plans:
 | 04. Staff Management | v2.0 | 5/5 | Complete    | 2026-03-06 |
 | 05. Integration Bug Fixes | v2.0 | 0/2 | Not started | - |
 | 06. Reporting & Export | v2.0 | 0/? | Not started | - |
+| 07. HR Table View | v2.0 | 0/2 | Not started | - |
