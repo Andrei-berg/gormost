@@ -10,6 +10,8 @@ import DismissModal from '@/components/hr/DismissModal'
 import TransferModal from '@/components/hr/TransferModal'
 import { fetchAllCurrentStatuses, fetchServices, fetchUsers } from '@/lib/api'
 import type { AuthSession, EnrichedEmployee, Service, User } from '@/types'
+import HRToolbar from '@/components/hr/HRToolbar'
+import HRTableView from '@/components/hr/HRTableView'
 
 export default function HRPage() {
   return (
@@ -26,6 +28,11 @@ function Content({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDismissed, setShowDismissed] = useState(false)
+
+  // View, search, and filter state
+  const [view, setView] = useState<'cards' | 'table'>('cards')
+  const [search, setSearch] = useState('')
+  const [filterService, setFilterService] = useState('')
 
   // Modal state
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -56,11 +63,20 @@ function Content({ session }: { session: AuthSession }) {
     ? employees.filter(e => e.user.service_id === session.service_id)
     : employees
 
+  // Apply search + service filter simultaneously (AND logic)
+  const filteredEmployees = visibleEmployees.filter(e => {
+    const matchesSearch = search.trim() === ''
+      || e.user.full_name.toLowerCase().includes(search.trim().toLowerCase())
+    const matchesService = filterService === ''
+      || e.user.service_id === filterService
+    return matchesSearch && matchesService
+  })
+
   const grouped = services
     .map(svc => ({
       serviceId: svc.service_id,
       serviceName: svc.service_name,
-      employees: visibleEmployees.filter(e => e.user.service_id === svc.service_id),
+      employees: filteredEmployees.filter(e => e.user.service_id === svc.service_id),
     }))
     .filter(g => g.employees.length > 0)
 
@@ -77,6 +93,16 @@ function Content({ session }: { session: AuthSession }) {
         <>
           <SummaryPanel employees={visibleEmployees} services={services} />
 
+          <HRToolbar
+            view={view}
+            onViewChange={setView}
+            search={search}
+            onSearchChange={setSearch}
+            filterService={filterService}
+            onFilterChange={setFilterService}
+            services={services}
+          />
+
           {/* Hire button — ADMIN only */}
           {canAdmin && (
             <div className="mb-4 flex justify-end">
@@ -89,21 +115,33 @@ function Content({ session }: { session: AuthSession }) {
             </div>
           )}
 
-          {grouped.map(g => (
-            <ServiceSection
-              key={g.serviceId}
-              serviceId={g.serviceId}
-              serviceName={g.serviceName}
-              employees={g.employees}
+          {view === 'table' ? (
+            <HRTableView
+              employees={filteredEmployees}
               canEdit={canEdit}
               currentUserId={session.user_id}
-              onRefresh={loadData}
               onNameClick={(uid) => setSelectedUserId(uid)}
+              onRefresh={loadData}
+              services={services}
             />
-          ))}
-
-          {grouped.length === 0 && (
-            <div className="text-center text-white/30 py-12">Нет сотрудников для отображения</div>
+          ) : (
+            <>
+              {grouped.map(g => (
+                <ServiceSection
+                  key={g.serviceId}
+                  serviceId={g.serviceId}
+                  serviceName={g.serviceName}
+                  employees={g.employees}
+                  canEdit={canEdit}
+                  currentUserId={session.user_id}
+                  onRefresh={loadData}
+                  onNameClick={(uid) => setSelectedUserId(uid)}
+                />
+              ))}
+              {grouped.length === 0 && (
+                <div className="text-center text-white/30 py-12">Нет сотрудников для отображения</div>
+              )}
+            </>
           )}
 
           {/* Dismissed employees section */}
