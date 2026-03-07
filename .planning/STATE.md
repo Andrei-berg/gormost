@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 07 of 07 (HR Table View) — In Progress
-Plan: 1/2 complete (07-01 done — HRTableView component built)
-Status: Phase 07 in progress, 07-02 (page wiring) next
-Last activity: 2026-03-07 — 07-01 complete: HRTableView with StatusPopup built (0cb6cd6)
+Phase: 07 of 07 (HR Table View) — Complete
+Plan: 2/2 complete (07-01: HRTableView component; 07-02: toolbar + page wiring)
+Status: Phase 07 complete — all plans done
+Last activity: 2026-03-07 — 07-02 complete: HRToolbar + view wiring (9843af7)
 
-Progress: [##########] 99% (v1.0 + v1.1 + Phases 02-05 all done; Phase 07 Plan 01 done)
+Progress: [##########] 100% (v1.0 + v1.1 + Phases 02-05 all done; Phase 07 all done)
 
 ## Performance Metrics
 
@@ -84,6 +84,9 @@ Progress: [##########] 99% (v1.0 + v1.1 + Phases 02-05 all done; Phase 07 Plan 0
 - [Phase 05-02]: Dismissed employees (is_active=false) intentionally left with service_id=NULL — DismissedSection does not filter by service_id
 - [Phase 07-01]: StatusPopup view-swap: replaces status list with reason input in same popup container — keeps compact footprint in table rows
 - [Phase 07-01]: HRTableView receives services prop to resolve service_id → emoji + name display
+- [Phase 07-02]: HRToolbar placed between SummaryPanel and hire button — SummaryPanel uses visibleEmployees (not filteredEmployees) so totals are unaffected by search/filter
+- [Phase 07-02]: filteredEmployees feeds both grouped (card view) and HRTableView (table view) — single source of truth
+- [Phase 07-02]: Default view is 'cards' — preserves existing ServiceSection behavior for users who never use the toolbar
 
 ### Roadmap Evolution
 
@@ -102,5 +105,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 07-01-PLAN.md — HRTableView with StatusPopup built (0cb6cd6)
+Stopped at: Completed 07-02-PLAN.md — HRToolbar and view wiring complete (9843af7)
 Resume file: None
