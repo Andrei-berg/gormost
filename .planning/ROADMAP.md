@@ -132,4 +132,4 @@ Plans:
 | 04. Staff Management | v2.0 | 5/5 | Complete    | 2026-03-06 |
 | 05. Integration Bug Fixes | v2.0 | 0/2 | Not started | - |
 | 06. Reporting & Export | v2.0 | 0/? | Not started | - |
-| 07. HR Table View | v2.0 | 0/2 | Not started | - |
+| 07. HR Table View | 1/2 | In Progress|  | - |

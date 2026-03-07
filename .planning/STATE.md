@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-06T19:26:47.765Z"
+last_updated: "2026-03-07T03:12:42.888Z"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 16
+  completed_plans: 15
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 05 of 06 (Integration Bug Fixes) — COMPLETE
-Plan: 2/2 complete (05-01 and 05-02 done)
-Status: Phase 05 complete, Phase 06 next
-Last activity: 2026-03-06 — 05-02 complete: Migration 008 ran — 270 seeded employees now visible in /hr (INT-02b closed)
+Phase: 07 of 07 (HR Table View) — In Progress
+Plan: 1/2 complete (07-01 done — HRTableView component built)
+Status: Phase 07 in progress, 07-02 (page wiring) next
+Last activity: 2026-03-07 — 07-01 complete: HRTableView with StatusPopup built (0cb6cd6)
 
-Progress: [##########] 98% (v1.0 + v1.1 + Phases 02-05 all done; Phase 06 remaining)
+Progress: [##########] 99% (v1.0 + v1.1 + Phases 02-05 all done; Phase 07 Plan 01 done)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [##########] 98% (v1.0 + v1.1 + Phases 02-05 all done; Phase 06 remain
 *Updated after each plan completion*
 | Phase 04-staff-management P05 | 1 | 1 tasks | 1 files |
 | Phase 05-integration-bug-fixes P02 | 30 | 3 tasks | 1 files |
+| Phase 07 P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Progress: [##########] 98% (v1.0 + v1.1 + Phases 02-05 all done; Phase 06 remain
 - [Phase 05-01]: HireModal service dropdown has no default — user must explicitly choose to prevent silent null assignments
 - [Phase 05-02]: Seeded employees assigned to SRV-STR as placeholder — correct service assignments unknown from roster data; admin must reassign via /hr
 - [Phase 05-02]: Dismissed employees (is_active=false) intentionally left with service_id=NULL — DismissedSection does not filter by service_id
+- [Phase 07-01]: StatusPopup view-swap: replaces status list with reason input in same popup container — keeps compact footprint in table rows
+- [Phase 07-01]: HRTableView receives services prop to resolve service_id → emoji + name display
 
 ### Roadmap Evolution
 
@@ -98,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06
-Stopped at: Completed 05-02-PLAN.md — Migration 008 ran, INT-02b closed: 270 seeded employees visible in /hr (cd24e70)
+Last session: 2026-03-07
+Stopped at: Completed 07-01-PLAN.md — HRTableView with StatusPopup built (0cb6cd6)
 Resume file: None
