@@ -58,9 +58,9 @@ export default function TaskList({ requests, myRequestIds, categories, objects, 
                   </button>
                 )}
                 {r.status === 'IN_PROGRESS' && isMine && (
-                  <button onClick={() => onAction(r.request_id, 'CHECKING')} disabled={isLoading}
-                    className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold disabled:opacity-50">
-                    {isLoading ? '...' : '⏹ Завершить'}
+                  <button onClick={() => onAction(r.request_id, 'DONE')} disabled={isLoading}
+                    className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-bold disabled:opacity-50">
+                    {isLoading ? '...' : '✓ Выполнено'}
                   </button>
                 )}
               </div>

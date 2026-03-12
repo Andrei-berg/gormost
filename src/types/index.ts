@@ -309,7 +309,7 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 // WORK PLANNING MODULE — v3.0
 // ============================================
 
-export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'IN_PROGRESS' | 'DONE'
 export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
 export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS'
 
@@ -324,6 +324,10 @@ export interface WorkPlan {
   approved_by: string | null
   approved_at: string | null
   chief_notes: string | null
+  zamporab_approved_by: string | null
+  zamporab_approved_at: string | null
+  fact_start: string | null
+  fact_finish: string | null
   created_at: string
   updated_at: string
 }
@@ -383,10 +387,13 @@ export interface VehicleWithAssignments extends Vehicle {
 // Config constants
 
 export const WORK_PLAN_STATUS_CONFIG: Record<WorkPlanStatus, { label: string; color: string; bg: string }> = {
-  DRAFT:     { label: 'Черновик',     color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
-  SUBMITTED: { label: 'На согласовании', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
-  APPROVED:  { label: 'Согласован',   color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
-  REJECTED:  { label: 'Отклонён',     color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  DRAFT:      { label: 'Черновик',        color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+  SUBMITTED:  { label: 'На согласовании', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  APPROVED:   { label: 'Согласован',      color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  REJECTED:   { label: 'Отклонён',        color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  PLANNED:    { label: 'Запланирован',    color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  IN_PROGRESS:{ label: 'В работе',        color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
+  DONE:       { label: 'Выполнен',        color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
 }
 
 export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color: string; bg: string }> = {

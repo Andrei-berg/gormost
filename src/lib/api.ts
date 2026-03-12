@@ -521,12 +521,14 @@ export async function fetchWorkPlans(filters?: {
   planDate?: string
   shiftType?: string
   status?: WorkPlanStatus
+  statuses?: WorkPlanStatus[]
 }): Promise<WorkPlan[]> {
   let q = supabase.from('work_plans').select('*').order('plan_date', { ascending: false })
   if (filters?.serviceId) q = q.eq('service_id', filters.serviceId)
   if (filters?.planDate)  q = q.eq('plan_date', filters.planDate)
   if (filters?.shiftType) q = q.eq('shift_type', filters.shiftType)
   if (filters?.status)    q = q.eq('status', filters.status)
+  if (filters?.statuses && filters.statuses.length > 0) q = q.in('status', filters.statuses)
   const { data } = await q
   return (data || []) as WorkPlan[]
 }
@@ -596,6 +598,39 @@ export async function approveWorkPlan(planId: string, userId: string, notes?: st
     })
     .eq('id', planId).eq('status', 'SUBMITTED')
   if (!error) await logAction(userId, 'APPROVE_WORK_PLAN', 'work_plan', planId, { notes })
+  return !error
+}
+
+// ZAMPORAB confirms chief-approved plan → PLANNED
+export async function confirmWorkPlanZamporab(planId: string, userId: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'PLANNED', zamporab_approved_by: userId, zamporab_approved_at: now, updated_at: now })
+    .eq('id', planId).eq('status', 'APPROVED')
+  if (!error) await logAction(userId, 'CONFIRM_WORK_PLAN_ZAMPORAB', 'work_plan', planId, null)
+  return !error
+}
+
+// FOREMAN/MASTER starts work → IN_PROGRESS
+export async function startWorkPlan(planId: string, userId: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'IN_PROGRESS', fact_start: now, updated_at: now })
+    .eq('id', planId).eq('status', 'PLANNED')
+  if (!error) await logAction(userId, 'START_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+// FOREMAN/MASTER completes work → DONE
+export async function completeWorkPlan(planId: string, userId: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'DONE', fact_finish: now, updated_at: now })
+    .eq('id', planId).eq('status', 'IN_PROGRESS')
+  if (!error) await logAction(userId, 'COMPLETE_WORK_PLAN', 'work_plan', planId, null)
   return !error
 }
 

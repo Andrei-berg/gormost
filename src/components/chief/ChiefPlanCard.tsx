@@ -75,6 +75,12 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {plan.status === 'APPROVED' && (
+            <span className="text-[10px] text-white/40">✓ Гл. инженер согл. · ⏳ Зам/Прораб ожидает</span>
+          )}
+          {plan.status === 'PLANNED' && (
+            <span className="text-[10px] text-white/40">✓ Гл. инженер · ✓ Зам/Прораб</span>
+          )}
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`}
             style={{ color: statusCfg.color }}
