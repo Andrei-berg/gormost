@@ -13,16 +13,17 @@ import {
 } from '@/lib/api'
 import type { User, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 
-const ROLES: { value: RoleLevel; label: string }[] = [
-  { value: 'ADMIN', label: 'Администратор' },
-  { value: 'BOSS', label: 'Начальник участка' },
-  { value: 'ZAMPORAB', label: 'Зам.прораба' },
-  { value: 'HEAD', label: 'Начальник службы' },
-  { value: 'DISPATCHER', label: 'Диспетчер' },
-  { value: 'FOREMAN', label: 'Мастер/Бригадир' },
-  { value: 'TRANSPORT', label: 'Главный механик' },
-  { value: 'COMPLAINTS', label: 'Обработчик жалоб' },
-  { value: 'WORKER', label: 'Рабочий' },
+const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
+  { value: 'ADMIN',           label: 'Администратор',      defaultPosition: 'Администратор' },
+  { value: 'BOSS',            label: 'Начальник участка',  defaultPosition: 'Начальник участка' },
+  { value: 'CHIEF_ENGINEER',  label: 'Главный инженер',    defaultPosition: 'Главный инженер' },
+  { value: 'ZAMPORAB',        label: 'Зам. прораба',       defaultPosition: 'Заместитель прораба' },
+  { value: 'HEAD',            label: 'Нач. службы',        defaultPosition: 'Начальник службы' },
+  { value: 'DISPATCHER',      label: 'Диспетчер',          defaultPosition: 'Начальник смены' },
+  { value: 'FOREMAN',         label: 'Мастер/Бригадир',    defaultPosition: 'Мастер участка' },
+  { value: 'TRANSPORT',       label: 'Гл. механик',        defaultPosition: 'Главный механик' },
+  { value: 'COMPLAINTS',      label: 'Диспетчер жалоб',    defaultPosition: 'Диспетчер жалоб' },
+  { value: 'WORKER',          label: 'Рабочий',            defaultPosition: '' },
 ]
 
 type Tab = 'users' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'changelog'
@@ -84,6 +85,7 @@ function UsersTab({ session }: { session: AuthSession }) {
   const [form, setForm] = useState({ tab_number: '', full_name: '', position: '', role_level: 'WORKER' as RoleLevel, service_id: '', phone: '', pin_code: '' })
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [u, s] = await Promise.all([fetchUsers(false), fetchServices()])
@@ -104,18 +106,24 @@ function UsersTab({ session }: { session: AuthSession }) {
 
   const handleSave = async () => {
     if (!form.tab_number || !form.full_name) return
+    setSaveError(null)
+    let result: User | null = null
     if (editing) {
-      await updateUser(editing.user_id, {
+      result = await updateUser(editing.user_id, {
         tab_number: form.tab_number, full_name: form.full_name, position: form.position || null,
         role_level: form.role_level, service_id: form.service_id || null, phone: form.phone || null,
         pin_code: form.pin_code || null,
       })
     } else {
-      await createUser({
+      result = await createUser({
         user_id: `USR-${Date.now()}`, tab_number: form.tab_number, full_name: form.full_name,
         position: form.position || null, role_level: form.role_level, service_id: form.service_id || null,
         is_active: true, phone: form.phone || null, pin_code: form.pin_code || null,
       })
+    }
+    if (!result) {
+      setSaveError('Ошибка сохранения — открой консоль браузера (F12) для деталей')
+      return
     }
     setShowForm(false); setEditing(null); resetForm(); load()
   }
@@ -175,14 +183,27 @@ function UsersTab({ session }: { session: AuthSession }) {
               <input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} className={inp} placeholder="Иванов И.И." />
             </div>
             <div>
-              <label className="block text-xs text-white/50 mb-1">Должность</label>
-              <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} className={inp} placeholder="Мастер" />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Роль</label>
-              <select value={form.role_level} onChange={e => setForm({ ...form, role_level: e.target.value as RoleLevel })} className={inp}>
+              <label className="block text-xs text-white/50 mb-1">
+                Роль <span className="text-white/25">(определяет доступные панели)</span>
+              </label>
+              <select
+                value={form.role_level}
+                onChange={e => {
+                  const role = e.target.value as RoleLevel
+                  const def = ROLES.find(r => r.value === role)?.defaultPosition ?? ''
+                  // auto-fill position only if it's empty or was previously auto-filled
+                  setForm(f => ({ ...f, role_level: role, position: f.position || def }))
+                }}
+                className={inp}
+              >
                 {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs text-white/50 mb-1">
+                Должность <span className="text-white/25">(отображается в шапке)</span>
+              </label>
+              <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} className={inp} placeholder="Нач. строительной службы" />
             </div>
             <div>
               <label className="block text-xs text-white/50 mb-1">Служба</label>
@@ -201,11 +222,16 @@ function UsersTab({ session }: { session: AuthSession }) {
                 className={inp} placeholder="1234" maxLength={4} inputMode="numeric" />
             </div>
           </div>
+          {saveError && (
+            <div className="mt-3 px-3 py-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+              {saveError}
+            </div>
+          )}
           <div className="flex gap-2 mt-4">
             <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
               {editing ? 'Сохранить' : 'Создать'}
             </button>
-            <button onClick={() => { setShowForm(false); setEditing(null) }} className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-sm">Отмена</button>
+            <button onClick={() => { setShowForm(false); setEditing(null); setSaveError(null) }} className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-sm">Отмена</button>
           </div>
         </div>
       )}

@@ -33,12 +33,14 @@ export async function fetchUserById(userId: string): Promise<User | null> {
 }
 
 export async function createUser(user: Partial<User>): Promise<User | null> {
-  const { data } = await supabase.from('users').insert(user).select().single()
+  const { data, error } = await supabase.from('users').insert(user).select().single()
+  if (error) console.error('createUser error:', error)
   return data as User | null
 }
 
 export async function updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
-  const { data } = await supabase.from('users').update(updates).eq('user_id', userId).select().single()
+  const { data, error } = await supabase.from('users').update(updates).eq('user_id', userId).select().single()
+  if (error) console.error('updateUser error:', error)
   return data as User | null
 }
 
