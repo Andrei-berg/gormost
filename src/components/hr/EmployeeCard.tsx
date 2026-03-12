@@ -55,7 +55,8 @@ export default function EmployeeCard({ employee, canEdit, currentUserId, onRefre
     if (!result) {
       setLocalStatus(prevStatus)  // rollback on failure
       setShowReason(false)
-      setError('Не удалось сохранить статус')
+      setError('Ошибка сохранения — проверь консоль (F12)')
+      console.error('setEmployeeStatus failed for user', employee.user.user_id)
     } else {
       onRefresh()
     }

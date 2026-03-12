@@ -57,6 +57,7 @@ export default function HRToolbar({
         value={filterService}
         onChange={e => onFilterChange(e.target.value)}
         className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+        style={{ colorScheme: 'dark' }}
       >
         <option value="">Все службы</option>
         {services.map(s => {

@@ -53,3 +53,11 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+/* Force dark color-scheme for all native form controls so
+   select options, date pickers, etc. render dark bg + light text */
+select,
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}

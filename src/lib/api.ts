@@ -451,7 +451,11 @@ export async function setEmployeeStatus(
     .insert({ user_id: userId, status, date_from: dateFrom, date_to: dateTo, reason, created_by: createdBy })
     .select()
     .single()
-  if (!error && data) {
+  if (error) {
+    console.error('setEmployeeStatus Supabase error:', error)
+    return null
+  }
+  if (data) {
     await logAction(createdBy, 'SET_EMPLOYEE_STATUS', 'employee_status', data.id, { userId, status, dateFrom })
   }
   return data as EmployeeStatus | null

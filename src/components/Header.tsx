@@ -146,7 +146,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
                         isActive
                           ? 'bg-blue-600/30 text-white border border-blue-500/30'
-                          : 'text-white/60 hover:bg-white/5 hover:text-white'
+                          : 'text-white/90 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       <span className="text-base">{p.emoji}</span>
@@ -167,7 +167,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
                           className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
                             isActive
                               ? 'bg-blue-600/30 text-white border border-blue-500/30'
-                              : 'text-white/60 hover:bg-white/5 hover:text-white'
+                              : 'text-white/90 hover:bg-white/10 hover:text-white'
                           }`}
                         >
                           <span className="text-base">{p.emoji}</span>
