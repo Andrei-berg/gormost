@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, logout, hasRole } from '@/lib/auth'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime, getShiftBadge } from '@/lib/shifts'
+import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
 import type { AuthSession, PanelConfig } from '@/types'
 import { PANELS } from '@/types'
 
@@ -48,21 +48,11 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             {/* Clock */}
             <div className="text-right">
-              <div className="text-xs text-white/40">Сейчас</div>
               <div className="text-xl font-mono font-bold text-white">
                 {formatDate(now)}, {formatTime(now)}
               </div>
-              <div className="flex items-center gap-2 justify-end mt-1">
-                <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                  🔒 {getShiftBadge(shift, now)}
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  period === 'day'
-                    ? 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-400'
-                    : 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-400'
-                }`}>
-                  {period === 'day' ? '☀️ ДЕНЬ' : '🌙 НОЧЬ'}
-                </span>
+              <div className="text-xs text-blue-300 mt-0.5">
+                {shift.shiftName} &nbsp;·&nbsp; Начальник дежурной смены {shift.chiefName}
               </div>
             </div>
           </div>

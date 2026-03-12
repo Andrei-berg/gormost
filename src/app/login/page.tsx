@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginWithPin, getSession } from '@/lib/auth'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime, getShiftBadge } from '@/lib/shifts'
+import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -63,20 +63,11 @@ export default function LoginPage() {
 
         {/* Clock + Shift */}
         <div className="glass-strong rounded-2xl p-4 mb-6 text-center">
-          <div className="text-2xl font-mono font-bold text-white mb-2">
+          <div className="text-2xl font-mono font-bold text-white mb-1">
             {formatDate(now)}, {formatTime(now)}
           </div>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full text-sm font-bold">
-              🔒 {getShiftBadge(shift, now)}
-            </span>
-            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-              period === 'day'
-                ? 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-400'
-                : 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-400'
-            }`}>
-              {period === 'day' ? '☀️ ДЕНЬ' : '🌙 НОЧЬ'}
-            </span>
+          <div className="text-sm text-blue-300">
+            {shift.shiftName} &nbsp;·&nbsp; Начальник дежурной смены {shift.chiefName}
           </div>
         </div>
 

@@ -3,9 +3,9 @@
 
 export interface ShiftInfo {
   shiftNumber: 1 | 2 | 3 | 4
-  shiftName: string      // "Смена N — Фамилия И.О."
-  shiftStartDate: Date   // working day date at 07:30
-  chiefName: string
+  shiftName: string        // "Смена №N"
+  shiftStartDate: Date     // working day date at 07:30
+  chiefName: string        // full name: "Фамилия Имя Отчество"
   chiefTabNumber: string
   isWorking: boolean
   period: 'day' | 'night' | 'both'
@@ -15,11 +15,12 @@ export interface ShiftInfo {
 const SHIFT_HOUR = 7
 const SHIFT_MINUTE = 30
 
+// ⚠️ Укажите полные ФИО начальников дежурной смены
 const SHIFT_CHIEFS = [
-  { no: 1, name: 'Чекин А.В.', tab: '0000-00001' },
-  { no: 2, name: 'Максимов И.Н.', tab: '0000-00002' },
-  { no: 3, name: 'Кожин В.М.', tab: '0000-00003' },
-  { no: 4, name: 'Станишевский А.В.', tab: '0000-00004' }
+  { no: 1, fullName: 'Чекин А.В.',           tab: '0000-00001' },
+  { no: 2, fullName: 'Максимов И.Н.',         tab: '0000-00002' },
+  { no: 3, fullName: 'Кожин В.М.',            tab: '0000-00003' },
+  { no: 4, fullName: 'Станишевский А.В.',     tab: '0000-00004' },
 ]
 
 // Базовая дата: 2 января 2025 = смена 4
@@ -51,9 +52,9 @@ export function getShiftForDate(date: Date): ShiftInfo {
 
   return {
     shiftNumber,
-    shiftName: `Смена ${shiftNumber} — ${chief.name}`,
+    shiftName: `Смена №${shiftNumber}`,
     shiftStartDate,
-    chiefName: chief.name,
+    chiefName: chief.fullName,
     chiefTabNumber: chief.tab,
     isWorking: true,
     period: 'both'
@@ -75,22 +76,6 @@ export function getCurrentShift(): ShiftInfo {
   return getShiftForDate(now)
 }
 
-/**
- * Сформировать читаемую строку для бейджа текущей смены.
- * Если смена заступила сегодня — "с 07:30 — Смена N — Фамилия"
- * Если до пересменки (дежурит вчерашняя) — "с вчера 07:30 — Смена N — Фамилия"
- */
-export function getShiftBadge(shift: ShiftInfo, now: Date = new Date()): string {
-  const today = new Date(now)
-  today.setHours(0, 0, 0, 0)
-
-  const startDay = new Date(shift.shiftStartDate)
-  startDay.setHours(0, 0, 0, 0)
-
-  const isYesterday = startDay.getTime() < today.getTime()
-  const prefix = isYesterday ? 'с вчера 07:30' : 'с 07:30'
-  return `${prefix} — ${shift.shiftName}`
-}
 
 /**
  * Определить период дня (день/ночь)
