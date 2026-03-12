@@ -107,23 +107,26 @@ function UsersTab({ session }: { session: AuthSession }) {
   const handleSave = async () => {
     if (!form.tab_number || !form.full_name) return
     setSaveError(null)
-    let result: User | null = null
     if (editing) {
-      result = await updateUser(editing.user_id, {
+      const { data: updated, errorMsg } = await updateUser(editing.user_id, {
         tab_number: form.tab_number, full_name: form.full_name, position: form.position || null,
         role_level: form.role_level, service_id: form.service_id || null, phone: form.phone || null,
         pin_code: form.pin_code || null,
       })
+      if (!updated) {
+        setSaveError(errorMsg ?? 'Ошибка сохранения')
+        return
+      }
     } else {
-      result = await createUser({
+      const result = await createUser({
         user_id: `USR-${Date.now()}`, tab_number: form.tab_number, full_name: form.full_name,
         position: form.position || null, role_level: form.role_level, service_id: form.service_id || null,
         is_active: true, phone: form.phone || null, pin_code: form.pin_code || null,
       })
-    }
-    if (!result) {
-      setSaveError('Ошибка сохранения — открой консоль браузера (F12) для деталей')
-      return
+      if (!result) {
+        setSaveError('Ошибка создания пользователя — открой консоль (F12)')
+        return
+      }
     }
     setShowForm(false); setEditing(null); resetForm(); load()
   }

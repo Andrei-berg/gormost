@@ -38,10 +38,10 @@ export async function createUser(user: Partial<User>): Promise<User | null> {
   return data as User | null
 }
 
-export async function updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
+export async function updateUser(userId: string, updates: Partial<User>): Promise<{ data: User | null; errorMsg: string | null }> {
   const { data, error } = await supabase.from('users').update(updates).eq('user_id', userId).select().single()
-  if (error) console.error('updateUser error:', error)
-  return data as User | null
+  if (error) console.error('updateUser error:', error.code, error.message, error.details, error.hint)
+  return { data: data as User | null, errorMsg: error ? `${error.code}: ${error.message}` : null }
 }
 
 export async function deleteUser(userId: string): Promise<boolean> {
