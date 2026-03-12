@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
+import { getCurrentShift, getCurrentPeriod, formatDate, formatTime, getShiftBadge } from '@/lib/shifts'
 import { logout, hasRole } from '@/lib/auth'
 import type { AuthSession } from '@/types'
 import { PANELS } from '@/types'
@@ -112,7 +112,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
             </div>
             <div className="flex items-center gap-2 justify-end mt-1">
               <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                🔒 {formatDate(shift.shiftStartDate)}, 08:00 — {shift.shiftName}
+                🔒 {getShiftBadge(shift, now)}
               </span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                 period === 'day'

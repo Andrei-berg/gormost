@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginWithPin, getSession } from '@/lib/auth'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
+import { getCurrentShift, getCurrentPeriod, formatDate, formatTime, getShiftBadge } from '@/lib/shifts'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -68,7 +68,7 @@ export default function LoginPage() {
           </div>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full text-sm font-bold">
-              🔒 {formatDate(shift.shiftStartDate)}, 08:00 — {shift.shiftName}
+              🔒 {getShiftBadge(shift, now)}
             </span>
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
               period === 'day'

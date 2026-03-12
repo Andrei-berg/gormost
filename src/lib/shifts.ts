@@ -3,13 +3,17 @@
 
 export interface ShiftInfo {
   shiftNumber: 1 | 2 | 3 | 4
-  shiftName: string      // "Смена N — НДС Фамилия И.О."
-  shiftStartDate: Date   // working day date at 08:00
+  shiftName: string      // "Смена N — Фамилия И.О."
+  shiftStartDate: Date   // working day date at 07:30
   chiefName: string
   chiefTabNumber: string
   isWorking: boolean
   period: 'day' | 'night' | 'both'
 }
+
+// Смена заступает в 07:30
+const SHIFT_HOUR = 7
+const SHIFT_MINUTE = 30
 
 const SHIFT_CHIEFS = [
   { no: 1, name: 'Чекин А.В.', tab: '0000-00001' },
@@ -25,7 +29,7 @@ const BASE_SHIFT = 4
 /**
  * Получить информацию о дежурной смене на конкретную дату.
  * Каждый календарный день дежурит ровно одна смена (сутки/трое, 4 смены).
- * Смена заступает в 08:00 и сдаёт дежурство следующим утром в 08:00.
+ * Смена заступает в 07:30 и сдаёт дежурство следующим утром в 07:30.
  */
 export function getShiftForDate(date: Date): ShiftInfo {
   const targetDate = new Date(date)
@@ -37,18 +41,17 @@ export function getShiftForDate(date: Date): ShiftInfo {
   const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24))
 
   // Каждый день принадлежит одной из 4 смен (0→BASE_SHIFT, 1→+1, 2→+2, 3→+3)
-  const cyclePosition = ((daysDiff % 4) + 4) % 4 // +4 для корректной работы с отрицательными значениями
+  const cyclePosition = ((daysDiff % 4) + 4) % 4
   const shiftNumber = (((BASE_SHIFT - 1 + cyclePosition) % 4) + 1) as 1 | 2 | 3 | 4
 
   const chief = SHIFT_CHIEFS.find(c => c.no === shiftNumber)!
 
-  // Смена заступает в 08:00 этого дня
   const shiftStartDate = new Date(targetDate)
-  shiftStartDate.setHours(8, 0, 0, 0)
+  shiftStartDate.setHours(SHIFT_HOUR, SHIFT_MINUTE, 0, 0)
 
   return {
     shiftNumber,
-    shiftName: `Смена ${shiftNumber} — НДС ${chief.name}`,
+    shiftName: `Смена ${shiftNumber} — ${chief.name}`,
     shiftStartDate,
     chiefName: chief.name,
     chiefTabNumber: chief.tab,
@@ -59,16 +62,34 @@ export function getShiftForDate(date: Date): ShiftInfo {
 
 /**
  * Получить текущую дежурную смену.
- * До 08:00 утра дежурит смена, заступившая вчера в 08:00.
+ * До 07:30 дежурит смена, заступившая вчера в 07:30.
  */
 export function getCurrentShift(): ShiftInfo {
   const now = new Date()
-  if (now.getHours() < 8) {
+  const beforeHandover = now.getHours() < SHIFT_HOUR || (now.getHours() === SHIFT_HOUR && now.getMinutes() < SHIFT_MINUTE)
+  if (beforeHandover) {
     const yesterday = new Date(now)
     yesterday.setDate(yesterday.getDate() - 1)
     return getShiftForDate(yesterday)
   }
   return getShiftForDate(now)
+}
+
+/**
+ * Сформировать читаемую строку для бейджа текущей смены.
+ * Если смена заступила сегодня — "с 07:30 — Смена N — Фамилия"
+ * Если до пересменки (дежурит вчерашняя) — "с вчера 07:30 — Смена N — Фамилия"
+ */
+export function getShiftBadge(shift: ShiftInfo, now: Date = new Date()): string {
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
+
+  const startDay = new Date(shift.shiftStartDate)
+  startDay.setHours(0, 0, 0, 0)
+
+  const isYesterday = startDay.getTime() < today.getTime()
+  const prefix = isYesterday ? 'с вчера 07:30' : 'с 07:30'
+  return `${prefix} — ${shift.shiftName}`
 }
 
 /**
