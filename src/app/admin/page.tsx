@@ -110,7 +110,7 @@ function UsersTab({ session }: { session: AuthSession }) {
     if (editing) {
       const { data: updated, errorMsg } = await updateUser(editing.user_id, {
         tab_number: form.tab_number, full_name: form.full_name, position: form.position || null,
-        role_level: form.role_level, service_id: form.service_id || null, phone: form.phone || null,
+        role_level: form.role_level, service_id: form.service_id || null,
         pin_code: form.pin_code || null,
       })
       if (!updated) {
@@ -121,7 +121,7 @@ function UsersTab({ session }: { session: AuthSession }) {
       const result = await createUser({
         user_id: `USR-${Date.now()}`, tab_number: form.tab_number, full_name: form.full_name,
         position: form.position || null, role_level: form.role_level, service_id: form.service_id || null,
-        is_active: true, phone: form.phone || null, pin_code: form.pin_code || null,
+        is_active: true, pin_code: form.pin_code || null,
       })
       if (!result) {
         setSaveError('Ошибка создания пользователя — открой консоль (F12)')
@@ -214,10 +214,6 @@ function UsersTab({ session }: { session: AuthSession }) {
                 <option value="">— Не привязан —</option>
                 {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Телефон</label>
-              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={inp} placeholder="+7..." />
             </div>
             <div>
               <label className="block text-xs text-white/50 mb-1">PIN-код (4 цифры)</label>
