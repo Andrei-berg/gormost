@@ -3,7 +3,8 @@
 
 export interface ShiftInfo {
   shiftNumber: 1 | 2 | 3 | 4
-  shiftName: string
+  shiftName: string      // "Смена N — НДС Фамилия И.О."
+  shiftStartDate: Date   // working day date at 08:00
   chiefName: string
   chiefTabNumber: string
   isWorking: boolean
@@ -22,56 +23,52 @@ const BASE_DATE = new Date('2025-01-02')
 const BASE_SHIFT = 4
 
 /**
- * Получить информацию о смене на конкретную дату
+ * Получить информацию о дежурной смене на конкретную дату.
+ * Каждый календарный день дежурит ровно одна смена (сутки/трое, 4 смены).
+ * Смена заступает в 08:00 и сдаёт дежурство следующим утром в 08:00.
  */
 export function getShiftForDate(date: Date): ShiftInfo {
-  // Обнуляем время для точного расчёта дней
   const targetDate = new Date(date)
   targetDate.setHours(0, 0, 0, 0)
-  
+
   const baseDate = new Date(BASE_DATE)
   baseDate.setHours(0, 0, 0, 0)
-  
-  // Разница в днях
+
   const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24))
-  
-  // Определяем позицию в 4-дневном цикле (сутки/трое)
-  const cyclePosition = daysDiff % 4
-  
-  // Рабочий день (0-й день цикла)
-  const isWorking = cyclePosition === 0
-  
-  // Номер смены (сдвиг от базовой)
-  let shiftNumber: 1 | 2 | 3 | 4
-  if (isWorking) {
-    const shiftsCycled = Math.floor(daysDiff / 4)
-    shiftNumber = ((BASE_SHIFT - 1 + shiftsCycled) % 4 + 1) as 1 | 2 | 3 | 4
-  } else {
-    // В дни отдыха показываем следующую рабочую смену
-    const daysUntilWork = 4 - cyclePosition
-    const nextWorkDate = new Date(targetDate)
-    nextWorkDate.setDate(targetDate.getDate() + daysUntilWork)
-    return getShiftForDate(nextWorkDate)
-  }
-  
+
+  // Каждый день принадлежит одной из 4 смен (0→BASE_SHIFT, 1→+1, 2→+2, 3→+3)
+  const cyclePosition = ((daysDiff % 4) + 4) % 4 // +4 для корректной работы с отрицательными значениями
+  const shiftNumber = (((BASE_SHIFT - 1 + cyclePosition) % 4) + 1) as 1 | 2 | 3 | 4
+
   const chief = SHIFT_CHIEFS.find(c => c.no === shiftNumber)!
-  
-  // SHIFT-DA-1-3 работает КРУГЛОСУТОЧНО (день + ночь)
+
+  // Смена заступает в 08:00 этого дня
+  const shiftStartDate = new Date(targetDate)
+  shiftStartDate.setHours(8, 0, 0, 0)
+
   return {
     shiftNumber,
-    shiftName: `SHIFT-DA-${shiftNumber}-3`,
+    shiftName: `Смена ${shiftNumber} — НДС ${chief.name}`,
+    shiftStartDate,
     chiefName: chief.name,
     chiefTabNumber: chief.tab,
-    isWorking,
-    period: 'both' // сутки
+    isWorking: true,
+    period: 'both'
   }
 }
 
 /**
- * Получить текущую смену
+ * Получить текущую дежурную смену.
+ * До 08:00 утра дежурит смена, заступившая вчера в 08:00.
  */
 export function getCurrentShift(): ShiftInfo {
-  return getShiftForDate(new Date())
+  const now = new Date()
+  if (now.getHours() < 8) {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    return getShiftForDate(yesterday)
+  }
+  return getShiftForDate(now)
 }
 
 /**

@@ -76,16 +76,104 @@ function Content({ session }: { session: AuthSession }) {
   )
 }
 
+// ==================== INLINE CELL COMPONENTS ====================
+
+/** Кликабельная ячейка с текстовым вводом. Enter/blur = сохранить, Esc = отмена */
+function InlineText({ value, placeholder, onSave, mono, pin }: {
+  value: string
+  placeholder?: string
+  onSave: (v: string | null) => Promise<void>
+  mono?: boolean
+  pin?: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(value)
+
+  const save = async () => {
+    setEditing(false)
+    if (val === value) return
+    await onSave(val || null)
+  }
+
+  if (!editing) {
+    return (
+      <span
+        onClick={() => { setVal(value); setEditing(true) }}
+        title="Нажмите для редактирования"
+        className={`cursor-pointer block rounded px-1 -mx-1 transition-colors hover:bg-white/8 hover:text-white ${mono ? 'font-mono' : ''} ${!value ? 'text-white/20' : ''}`}
+      >
+        {pin
+          ? (value ? <span className="text-green-400 text-xs">✓ ••••</span> : <span className="text-red-400 text-xs">✗ нет PIN</span>)
+          : (value || placeholder || '—')
+        }
+      </span>
+    )
+  }
+
+  return (
+    <input
+      autoFocus
+      value={val}
+      onChange={e => setVal(pin ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
+      onBlur={save}
+      onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(value); setEditing(false) } }}
+      inputMode={pin ? 'numeric' : undefined}
+      maxLength={pin ? 4 : undefined}
+      className={`w-full min-w-[70px] bg-white/10 border border-blue-500/50 rounded px-1.5 py-0.5 text-white text-sm focus:outline-none ${mono ? 'font-mono' : ''}`}
+    />
+  )
+}
+
+/** Кликабельная ячейка с выпадающим списком. Выбор = сохранить сразу */
+function InlineSelect({ value, options, emptyLabel, displayValue, onSave }: {
+  value: string
+  options: { value: string; label: string }[]
+  emptyLabel?: string
+  displayValue?: string
+  onSave: (v: string | null) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Нажмите для редактирования"
+        className="cursor-pointer block rounded px-1 -mx-1 transition-colors hover:bg-white/8 hover:text-white"
+      >
+        {displayValue || value || <span className="text-white/20">—</span>}
+        <span className="text-white/30 ml-1 text-xs">▾</span>
+      </span>
+    )
+  }
+
+  return (
+    <select
+      autoFocus
+      defaultValue={value}
+      onChange={async e => {
+        setEditing(false)
+        await onSave(e.target.value || null)
+      }}
+      onBlur={() => setEditing(false)}
+      className="bg-gray-900 border border-blue-500/50 rounded px-1.5 py-0.5 text-white text-sm focus:outline-none max-w-[180px]"
+    >
+      {emptyLabel && <option value="">{emptyLabel}</option>}
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  )
+}
+
 // ==================== USERS ====================
 function UsersTab({ session }: { session: AuthSession }) {
   const [users, setUsers] = useState<User[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<User | null>(null)
-  const [form, setForm] = useState({ tab_number: '', full_name: '', position: '', role_level: 'WORKER' as RoleLevel, service_id: '', phone: '', pin_code: '' })
+  const [form, setForm] = useState({ tab_number: '', full_name: '', position: '', role_level: 'WORKER' as RoleLevel, service_id: '', pin_code: '' })
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [rowError, setRowError] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     const [u, s] = await Promise.all([fetchUsers(false), fetchServices()])
@@ -93,42 +181,30 @@ function UsersTab({ session }: { session: AuthSession }) {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const resetForm = () => setForm({ tab_number: '', full_name: '', position: '', role_level: 'WORKER', service_id: '', phone: '', pin_code: '' })
+  const resetForm = () => setForm({ tab_number: '', full_name: '', position: '', role_level: 'WORKER', service_id: '', pin_code: '' })
 
-  const handleEdit = (u: User) => {
-    setEditing(u)
-    setForm({
-      tab_number: u.tab_number || '', full_name: u.full_name || '', position: u.position || '',
-      role_level: u.role_level, service_id: u.service_id || '', phone: u.phone || '', pin_code: u.pin_code || ''
-    })
-    setShowForm(true)
+  // Save a single field for an existing user inline
+  const handleInlineSave = async (userId: string, patch: Partial<User>) => {
+    setRowError(prev => ({ ...prev, [userId]: '' }))
+    const { data: updated, errorMsg } = await updateUser(userId, patch)
+    if (!updated) {
+      setRowError(prev => ({ ...prev, [userId]: errorMsg ?? 'Ошибка' }))
+      return
+    }
+    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, ...patch } : u))
   }
 
-  const handleSave = async () => {
+  // Create new user
+  const handleCreate = async () => {
     if (!form.tab_number || !form.full_name) return
     setSaveError(null)
-    if (editing) {
-      const { data: updated, errorMsg } = await updateUser(editing.user_id, {
-        tab_number: form.tab_number, full_name: form.full_name, position: form.position || null,
-        role_level: form.role_level, service_id: form.service_id || null,
-        pin_code: form.pin_code || null,
-      })
-      if (!updated) {
-        setSaveError(errorMsg ?? 'Ошибка сохранения')
-        return
-      }
-    } else {
-      const result = await createUser({
-        user_id: `USR-${Date.now()}`, tab_number: form.tab_number, full_name: form.full_name,
-        position: form.position || null, role_level: form.role_level, service_id: form.service_id || null,
-        is_active: true, pin_code: form.pin_code || null,
-      })
-      if (!result) {
-        setSaveError('Ошибка создания пользователя — открой консоль (F12)')
-        return
-      }
-    }
-    setShowForm(false); setEditing(null); resetForm(); load()
+    const result = await createUser({
+      user_id: `USR-${Date.now()}`, tab_number: form.tab_number, full_name: form.full_name,
+      position: form.position || null, role_level: form.role_level, service_id: form.service_id || null,
+      is_active: true, pin_code: form.pin_code || null,
+    })
+    if (!result) { setSaveError('Ошибка создания — открой консоль (F12)'); return }
+    setShowForm(false); resetForm(); load()
   }
 
   const handleDelete = async (u: User) => {
@@ -149,7 +225,7 @@ function UsersTab({ session }: { session: AuthSession }) {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-white">Пользователи ({filteredUsers.length} / {users.length})</h2>
-        <button onClick={() => { resetForm(); setEditing(null); setShowForm(!showForm) }}
+        <button onClick={() => { resetForm(); setShowForm(!showForm) }}
           className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
           {showForm ? 'Закрыть' : '+ Добавить'}
         </button>
@@ -173,9 +249,10 @@ function UsersTab({ session }: { session: AuthSession }) {
         </select>
       </div>
 
+      {/* Add new user form */}
       {showForm && (
         <div className="glass rounded-2xl p-5 mb-4 animate-slide-down">
-          <h3 className="text-sm font-bold text-white/70 mb-3">{editing ? 'Редактирование' : 'Новый пользователь'}</h3>
+          <h3 className="text-sm font-bold text-white/70 mb-3">Новый пользователь</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-white/50 mb-1">Табельный номер *</label>
@@ -186,15 +263,12 @@ function UsersTab({ session }: { session: AuthSession }) {
               <input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} className={inp} placeholder="Иванов И.И." />
             </div>
             <div>
-              <label className="block text-xs text-white/50 mb-1">
-                Роль <span className="text-white/25">(определяет доступные панели)</span>
-              </label>
+              <label className="block text-xs text-white/50 mb-1">Роль</label>
               <select
                 value={form.role_level}
                 onChange={e => {
                   const role = e.target.value as RoleLevel
                   const def = ROLES.find(r => r.value === role)?.defaultPosition ?? ''
-                  // auto-fill position only if it's empty or was previously auto-filled
                   setForm(f => ({ ...f, role_level: role, position: f.position || def }))
                 }}
                 className={inp}
@@ -203,9 +277,7 @@ function UsersTab({ session }: { session: AuthSession }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-white/50 mb-1">
-                Должность <span className="text-white/25">(отображается в шапке)</span>
-              </label>
+              <label className="block text-xs text-white/50 mb-1">Должность</label>
               <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} className={inp} placeholder="Нач. строительной службы" />
             </div>
             <div>
@@ -227,15 +299,17 @@ function UsersTab({ session }: { session: AuthSession }) {
             </div>
           )}
           <div className="flex gap-2 mt-4">
-            <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
-              {editing ? 'Сохранить' : 'Создать'}
-            </button>
-            <button onClick={() => { setShowForm(false); setEditing(null); setSaveError(null) }} className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-sm">Отмена</button>
+            <button onClick={handleCreate} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">Создать</button>
+            <button onClick={() => { setShowForm(false); setSaveError(null) }} className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-sm">Отмена</button>
           </div>
         </div>
       )}
 
+      {/* Inline-editable table */}
       <div className="glass rounded-2xl overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/10 text-xs text-white/30 italic">
+          Нажмите на любую ячейку — роль, должность, служба, PIN — чтобы изменить прямо в таблице
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10">
@@ -251,22 +325,74 @@ function UsersTab({ session }: { session: AuthSession }) {
           </thead>
           <tbody>
             {filteredUsers.map(u => (
-              <tr key={u.user_id} className="border-b border-white/5 hover:bg-white/5">
-                <td className="px-3 py-2 font-mono text-white/50">{u.tab_number}</td>
-                <td className="px-3 py-2 text-white/90">{u.full_name}</td>
-                <td className="px-3 py-2 text-white/50">{u.position || '—'}</td>
-                <td className="px-3 py-2"><span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full">{u.role_level}</span></td>
-                <td className="px-3 py-2 text-white/50">{services.find(s => s.service_id === u.service_id)?.service_name || '—'}</td>
-                <td className="px-3 py-2">{u.pin_code ? <span className="text-green-400 text-xs">✓ Задан</span> : <span className="text-red-400 text-xs">✗ Нет</span>}</td>
-                <td className="px-3 py-2">{u.is_active ? <span className="text-green-400 text-xs">Активен</span> : <span className="text-red-400 text-xs">Неактивен</span>}</td>
+              <tr key={u.user_id} className="border-b border-white/5 hover:bg-white/3 group">
+                <td className="px-3 py-2 text-white/50">
+                  <InlineText
+                    value={u.tab_number || ''}
+                    mono
+                    onSave={v => handleInlineSave(u.user_id, { tab_number: v ?? '' })}
+                  />
+                </td>
+                <td className="px-3 py-2 text-white/90">
+                  <InlineText
+                    value={u.full_name}
+                    onSave={v => handleInlineSave(u.user_id, { full_name: v ?? u.full_name })}
+                  />
+                </td>
+                <td className="px-3 py-2 text-white/60">
+                  <InlineText
+                    value={u.position || ''}
+                    placeholder="—"
+                    onSave={v => handleInlineSave(u.user_id, { position: v })}
+                  />
+                </td>
                 <td className="px-3 py-2">
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(u)} className="px-2 py-1 rounded bg-white/5 text-white/50 hover:bg-white/10 text-xs">✏️</button>
-                    <button onClick={() => handleDelete(u)} className="px-2 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs">🗑️</button>
-                  </div>
+                  <InlineSelect
+                    value={u.role_level}
+                    options={ROLES.map(r => ({ value: r.value, label: r.label }))}
+                    displayValue={ROLES.find(r => r.value === u.role_level)?.label ?? u.role_level}
+                    onSave={v => handleInlineSave(u.user_id, { role_level: (v ?? 'WORKER') as RoleLevel })}
+                  />
+                </td>
+                <td className="px-3 py-2 text-white/60">
+                  <InlineSelect
+                    value={u.service_id || ''}
+                    options={services.map(s => ({ value: s.service_id, label: s.service_name }))}
+                    emptyLabel="— Не привязан —"
+                    displayValue={services.find(s => s.service_id === u.service_id)?.service_name}
+                    onSave={v => handleInlineSave(u.user_id, { service_id: v })}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <InlineText
+                    value={u.pin_code || ''}
+                    pin
+                    onSave={v => handleInlineSave(u.user_id, { pin_code: v })}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    onClick={() => handleInlineSave(u.user_id, { is_active: !u.is_active })}
+                    title="Нажмите чтобы переключить статус"
+                    className="cursor-pointer"
+                  >
+                    {u.is_active
+                      ? <span className="text-green-400 text-xs hover:text-green-300">✓ Активен</span>
+                      : <span className="text-red-400 text-xs hover:text-red-300">✗ Неактивен</span>
+                    }
+                  </button>
+                </td>
+                <td className="px-3 py-2">
+                  {rowError[u.user_id]
+                    ? <span className="text-red-400 text-xs">{rowError[u.user_id]}</span>
+                    : <button onClick={() => handleDelete(u)} className="opacity-0 group-hover:opacity-100 px-2 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs transition-opacity">🗑️</button>
+                  }
                 </td>
               </tr>
             ))}
+            {filteredUsers.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-12 text-center text-white/20">Нет пользователей</td></tr>
+            )}
           </tbody>
         </table>
       </div>

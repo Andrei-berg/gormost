@@ -66,9 +66,9 @@ export default function LoginPage() {
           <div className="text-2xl font-mono font-bold text-white mb-2">
             {formatDate(now)}, {formatTime(now)}
           </div>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full text-sm font-bold">
-              🔒 {shift.shiftName}
+              🔒 {formatDate(shift.shiftStartDate)}, 08:00 — {shift.shiftName}
             </span>
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
               period === 'day'
@@ -78,7 +78,6 @@ export default function LoginPage() {
               {period === 'day' ? '☀️ ДЕНЬ' : '🌙 НОЧЬ'}
             </span>
           </div>
-          <div className="text-xs text-white/40 mt-2">Начальник: {shift.chiefName}</div>
         </div>
 
         {/* Login form */}
