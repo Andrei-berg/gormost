@@ -88,7 +88,7 @@ function Content({ session }: { session: AuthSession }) {
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      {tab === 'overview' && <OverviewCharts stats={stats} services={services} />}
+      {tab === 'overview' && <OverviewCharts stats={stats} services={services} requests={requests} />}
 
       {tab === 'approve' && (
         <div className="space-y-3">
