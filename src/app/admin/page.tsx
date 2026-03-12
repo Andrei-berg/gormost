@@ -82,6 +82,8 @@ function UsersTab({ session }: { session: AuthSession }) {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState({ tab_number: '', full_name: '', position: '', role_level: 'WORKER' as RoleLevel, service_id: '', phone: '', pin_code: '' })
+  const [search, setSearch] = useState('')
+  const [filterRole, setFilterRole] = useState('')
 
   const load = useCallback(async () => {
     const [u, s] = await Promise.all([fetchUsers(false), fetchServices()])
@@ -125,14 +127,39 @@ function UsersTab({ session }: { session: AuthSession }) {
 
   const inp = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50'
 
+  const filteredUsers = users.filter(u => {
+    const q = search.toLowerCase()
+    const matchSearch = !q || u.full_name.toLowerCase().includes(q) || (u.tab_number || '').includes(q)
+    const matchRole = !filterRole || u.role_level === filterRole
+    return matchSearch && matchRole
+  })
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white">Пользователи ({users.length})</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-white">Пользователи ({filteredUsers.length} / {users.length})</h2>
         <button onClick={() => { resetForm(); setEditing(null); setShowForm(!showForm) }}
           className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
           {showForm ? 'Закрыть' : '+ Добавить'}
         </button>
+      </div>
+
+      {/* Search + filter */}
+      <div className="flex gap-2 mb-4">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск по ФИО или таб.№..."
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+        />
+        <select
+          value={filterRole}
+          onChange={e => setFilterRole(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+        >
+          <option value="">Все роли</option>
+          {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
       </div>
 
       {showForm && (
@@ -198,7 +225,7 @@ function UsersTab({ session }: { session: AuthSession }) {
             </tr>
           </thead>
           <tbody>
-            {users.map(u => (
+            {filteredUsers.map(u => (
               <tr key={u.user_id} className="border-b border-white/5 hover:bg-white/5">
                 <td className="px-3 py-2 font-mono text-white/50">{u.tab_number}</td>
                 <td className="px-3 py-2 text-white/90">{u.full_name}</td>
