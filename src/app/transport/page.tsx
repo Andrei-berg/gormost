@@ -114,7 +114,7 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {/* Driver stats — TRANSPORT/ADMIN only */}
-      {canEdit && (
+      {/* {canEdit && (
         <div className="mb-4">
           <DriverStats
             drivers={driverUsers}
@@ -122,7 +122,7 @@ function Content({ session }: { session: AuthSession }) {
             date={today}
           />
         </div>
-      )}
+      )} */}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
