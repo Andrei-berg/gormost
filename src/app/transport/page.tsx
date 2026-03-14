@@ -6,6 +6,7 @@ import FleetBoard from '@/components/transport/FleetBoard'
 import PlanTransport, { type PlanGroup } from '@/components/transport/PlanTransport'
 import BreakdownJournal from '@/components/transport/BreakdownJournal'
 import DriverStats from '@/components/transport/DriverStats'
+import DriverList from '@/components/transport/DriverList'
 import {
   fetchVehiclesWithDayAssignments,
   fetchWorkPlans,
@@ -32,7 +33,7 @@ function Content({ session }: { session: AuthSession }) {
   const [plans, setPlans]             = useState<PlanGroup[]>([])
   const [breakdowns, setBreakdowns]   = useState<VehicleBreakdownWithVehicle[]>([])
   const [driverUsers, setDriverUsers] = useState<UserWithAssignment[]>([])
-  const [tab, setTab]                 = useState<'fleet' | 'plan' | 'defects'>('fleet')
+  const [tab, setTab]                 = useState<'fleet' | 'plan' | 'defects' | 'drivers'>('fleet')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const today   = new Date().toISOString().slice(0, 10)
@@ -155,6 +156,17 @@ function Content({ session }: { session: AuthSession }) {
           )}
         </button>
         <button
+          onClick={() => setTab('drivers')}
+          className={`relative px-4 py-2 rounded-lg text-sm font-medium ${tab === 'drivers' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}
+        >
+          Водители
+          {driverUsers.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {driverUsers.length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={handleRefresh}
           className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
         >
@@ -176,6 +188,13 @@ function Content({ session }: { session: AuthSession }) {
           activeVehicles={vehicles.filter(v => v.status === 'ACTIVE')}
           userId={session.user_id}
           onRefresh={loadData}
+        />
+      )}
+      {tab === 'drivers' && (
+        <DriverList
+          drivers={driverUsers}
+          vehicles={vehicles}
+          date={today}
         />
       )}
       {tab === 'defects' && (
