@@ -311,7 +311,9 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 
 export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'BOSS_CONFIRMED' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE'
 export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
-export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS'
+export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS' | 'TRACTOR' | 'AERIAL' | 'WASHER' | 'LOADER'
+export type VehicleBreakdownSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
+export type VehicleBreakdownStatus = 'OPEN' | 'IN_REPAIR' | 'RESOLVED'
 
 export interface WorkPlan {
   id: string
@@ -390,6 +392,17 @@ export interface Vehicle {
   status_changed_at: string | null  // ISO timestamp — when current status was set
   notes: string | null
   is_active: boolean
+  // extended characteristics (migration 013)
+  fleet_number: string | null       // гаражный номер
+  make: string | null               // марка (КАМАЗ, Газель…)
+  model: string | null              // модель
+  year: number | null               // год выпуска
+  payload_kg: number | null         // грузоподъёмность кг
+  seats: number | null              // количество мест
+  max_height_m: number | null       // высота подъёма (люлька)
+  has_water_tank: boolean           // наличие цистерны (моечная)
+  garage_location: string | null    // бокс / место стоянки
+  assigned_driver_id: string | null // закреплённый водитель
   created_at: string
   updated_at: string
 }
@@ -400,7 +413,28 @@ export interface VehicleAssignment {
   plan_item_id: string
   assigned_by: string
   assigned_at: string
+  driver_user_id: string | null  // кто едет на этом ТС на этот объект
   notes: string | null
+}
+
+// Breakdown / defect journal entry
+export interface VehicleBreakdown {
+  id: string
+  vehicle_id: string
+  reported_by: string
+  reported_at: string
+  description: string
+  severity: VehicleBreakdownSeverity
+  status: VehicleBreakdownStatus
+  resolved_at: string | null
+  resolution_notes: string | null
+  mechanic_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface VehicleBreakdownWithVehicle extends VehicleBreakdown {
+  vehicle: Pick<Vehicle, 'id' | 'name' | 'plate' | 'vehicle_type'>
 }
 
 // Enriched types for UI
@@ -438,10 +472,26 @@ export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color
 }
 
 export const VEHICLE_TYPE_CONFIG: Record<VehicleType, { label: string; emoji: string }> = {
-  CAR:     { label: 'Легковой',  emoji: '🚗' },
-  TRUCK:   { label: 'Грузовой',  emoji: '🚛' },
-  SPECIAL: { label: 'Спецтехника', emoji: '🚧' },
-  BUS:     { label: 'Автобус',   emoji: '🚌' },
+  CAR:     { label: 'Легковой',       emoji: '🚗' },
+  TRUCK:   { label: 'Грузовой',       emoji: '🚛' },
+  BUS:     { label: 'Вахтовка/Автобус', emoji: '🚌' },
+  SPECIAL: { label: 'Спецтехника',    emoji: '🚧' },
+  TRACTOR: { label: 'Трактор',        emoji: '🚜' },
+  AERIAL:  { label: 'Автовышка/Люлька', emoji: '🏗️' },
+  WASHER:  { label: 'Моечная машина', emoji: '🚿' },
+  LOADER:  { label: 'Погрузчик',      emoji: '🏋️' },
+}
+
+export const VEHICLE_BREAKDOWN_SEVERITY_CONFIG: Record<VehicleBreakdownSeverity, { label: string; color: string; bg: string }> = {
+  MINOR:    { label: 'Незначительная', color: '#eab308', bg: 'bg-yellow-500/20 border-yellow-500/30' },
+  MAJOR:    { label: 'Серьёзная',      color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  CRITICAL: { label: 'Критическая',   color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+}
+
+export const VEHICLE_BREAKDOWN_STATUS_CONFIG: Record<VehicleBreakdownStatus, { label: string; color: string; bg: string }> = {
+  OPEN:       { label: 'Открыта',    color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  IN_REPAIR:  { label: 'В ремонте',  color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  RESOLVED:   { label: 'Устранена',  color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
 }
 
 // EnrichedEmployee = User record + their resolved status for today

@@ -7,6 +7,7 @@ import type {
   EmployeeStatusType, EmployeeStatus, EnrichedEmployee,
   WorkPlan, WorkPlanItem, WorkPlanWithItems, WorkPlanItemWithVehicles,
   Vehicle, VehicleAssignment, VehicleWithAssignments,
+  VehicleBreakdown, VehicleBreakdownWithVehicle, VehicleBreakdownSeverity, VehicleBreakdownStatus,
   WorkPlanStatus, VehicleStatus,
   Profession, Schedule,
   EmployeePositionWithProfession, EmployeeAssignmentWithSchedule, EmployeeDetail,
@@ -827,6 +828,83 @@ export async function unassignVehicle(vehicleId: string, planItemId: string): Pr
     .eq('vehicle_id', vehicleId)
     .eq('plan_item_id', planItemId)
   return !error
+}
+
+// ============ VEHICLE BREAKDOWNS ============
+
+export async function fetchVehicleBreakdowns(vehicleId?: string): Promise<VehicleBreakdownWithVehicle[]> {
+  let q = supabase
+    .from('vehicle_breakdowns')
+    .select('*, vehicle:vehicles(id, name, plate, vehicle_type)')
+    .order('reported_at', { ascending: false })
+  if (vehicleId) q = q.eq('vehicle_id', vehicleId)
+  const { data } = await q
+  return (data || []) as VehicleBreakdownWithVehicle[]
+}
+
+export async function fetchOpenBreakdowns(): Promise<VehicleBreakdownWithVehicle[]> {
+  const { data } = await supabase
+    .from('vehicle_breakdowns')
+    .select('*, vehicle:vehicles(id, name, plate, vehicle_type)')
+    .in('status', ['OPEN', 'IN_REPAIR'])
+    .order('reported_at', { ascending: false })
+  return (data || []) as VehicleBreakdownWithVehicle[]
+}
+
+export async function createBreakdown(breakdown: {
+  vehicle_id: string
+  reported_by: string
+  description: string
+  severity: VehicleBreakdownSeverity
+  mechanic_notes?: string | null
+}): Promise<VehicleBreakdown | null> {
+  const { data, error } = await supabase
+    .from('vehicle_breakdowns')
+    .insert({ ...breakdown, status: 'OPEN' })
+    .select().single()
+  if (error) throw new Error(error.message)
+  return data as VehicleBreakdown | null
+}
+
+export async function updateBreakdownStatus(
+  breakdownId: string,
+  status: VehicleBreakdownStatus,
+  resolutionNotes?: string | null,
+  mechanicNotes?: string | null
+): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('vehicle_breakdowns')
+    .update({
+      status,
+      resolved_at: status === 'RESOLVED' ? now : null,
+      resolution_notes: resolutionNotes ?? null,
+      mechanic_notes: mechanicNotes ?? null,
+      updated_at: now,
+    })
+    .eq('id', breakdownId)
+  return !error
+}
+
+// Fetch drivers on shift — users with is_driver=true and active employee_assignment
+export async function fetchDriverUsers(): Promise<User[]> {
+  const { data } = await supabase
+    .from('users')
+    .select(`
+      *,
+      employee_assignments!inner(is_driver, ended_at)
+    `)
+    .eq('employee_assignments.is_driver', true)
+    .is('employee_assignments.ended_at', null)
+    .eq('is_active', true)
+    .order('full_name')
+  // flatten: return unique users
+  const seen = new Set<string>()
+  return ((data || []) as User[]).filter(u => {
+    if (seen.has(u.user_id)) return false
+    seen.add(u.user_id)
+    return true
+  })
 }
 
 // ============ HR — PHASE 04 ============
