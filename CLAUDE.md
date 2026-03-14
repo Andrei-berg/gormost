@@ -1,7 +1,7 @@
 # CLAUDE.md — Project Instructions for AI Agent
 
 ## Project Overview
-Gormost — web application for tunnel operations management at GBU "Gormostˮ.
+Gormost — web application for tunnel operations management at GBU "Gormost".
 Built for dispatching, shift planning, task management, transport coordination, KPI dashboards, and complaint handling.
 
 - **Repo:** https://github.com/Andrei-berg/gormost
@@ -63,7 +63,6 @@ Rules for all pages:
 
 ### Git Workflow
 - `main` branch must always be deployable (colleagues see the demo)
-- Create a feature branch for any changes: `git checkout -b feature/description`
 - Run `npm run build` before committing — if build fails, fix before commit
 - Write clear commit messages in English
 
@@ -88,28 +87,88 @@ Rules for all pages:
 | Deputy/Foreman | `src/app/zamporab/page.tsx` | ZAMPORAB, ADMIN, BOSS |
 | Master/Brigadier | `src/app/foreman/page.tsx` | FOREMAN, ADMIN, BOSS, ZAMPORAB |
 | Service Chief | `src/app/head/page.tsx` | HEAD, ADMIN, BOSS |
+| Chief Engineer | `src/app/chief/page.tsx` | CHIEF_ENGINEER, ADMIN, BOSS |
 | Boss Dashboard | `src/app/boss/page.tsx` | BOSS, ADMIN |
 | Transport | `src/app/transport/page.tsx` | TRANSPORT, ADMIN, BOSS, ZAMPORAB |
 | Complaints | `src/app/complaints/page.tsx` | COMPLAINTS, ADMIN, BOSS, DISPATCHER |
 | Admin Panel | `src/app/admin/page.tsx` | ADMIN |
 
-## Request Approval Flow
+## Work Plan Approval Flow
 ```
-NEW → (HEAD approves) → approved_by_head = userId
-    → (ZAMPORAB approves) → approved_by_zamporab = true, status = PLANNED
-    → Dispatcher sees request (filter: status != NEW)
-    → Goes to work: IN_PROGRESS → CHECKING → DONE
+Service Chief (until 16:00)
+  └─ creates work plan: items + required workers/foremen/vehicles
+       ↓ status: DRAFT → SUBMITTED
+Chief Engineer
+  └─ reviews and approves
+       ↓ status: APPROVED
+Deputy (Zamporab)
+  └─ can edit items, then confirms
+       ↓ status: PLANNED
+Boss (meeting at 16:30)
+  └─ confirms all plans at the daily meeting
+       ↓ status: BOSS_CONFIRMED
+Site Foreman (after meeting, evening)
+  └─ assigns workers by name to each work item (brigade formation)
+       ↓ status: ASSIGNED
+  └─ starts work plan
+       ↓ status: IN_PROGRESS → DONE
 ```
 
+**Work plan statuses:**
+`DRAFT → SUBMITTED → APPROVED → REJECTED → PLANNED → BOSS_CONFIRMED → ASSIGNED → IN_PROGRESS → DONE`
+
+## Shift System (4 rotating crews)
+- Rotation: 24h on, 72h off (сутки через трое), 4 crews
+- **Anchor: 2025-01-02 = Shift 4** (hardcoded in `shifts.ts` BASE_DATE/BASE_SHIFT)
+- Verified: 14 March 2026 = Shift 4, 15 March 2026 = Shift 1
+
+**Schedule types** (stored in `schedules` table, assigned via `employee_assignments`):
+| Code | Logic | Shift constraint |
+|------|-------|-----------------|
+| 1/3, сутки/3 | works when their crew is on duty | YES — shift_num required |
+| 5/2 | weekdays only | YES — shift_num + weekday |
+| 3/3 | 3 on / 3 off rolling cycle | NO — shift_reference_date anchor |
+| 6/6 | 6 on / 6 off rolling cycle | NO — shift_reference_date anchor |
+| 15/15 | 1st–15th or 16th–end of month | NO — rotation_group '1' or '2' |
+
+**Key function:** `isWorkerOnDuty(assignment, date)` in `shifts.ts`
+
+## Brigade Formation
+A "brigade" (бригада) = a work group for one specific work plan item.
+A "shift" (смена) = all workers on duty today (one of 4 rotating crews).
+
+After boss confirms plans, the site foreman:
+1. Opens `/foreman` → "Бригады" tab
+2. Sees all BOSS_CONFIRMED plans for their service
+3. Assigns workers by name to each item with roles: WORKER / BRIGADIER / MASTER / DRIVER
+4. Marks plan ASSIGNED when all workers named
+5. Starts work in the morning → IN_PROGRESS
+
 ## Key Files
-- `src/lib/api.ts` — all Supabase queries (fetch/create/update/approve)
+- `src/lib/api.ts` — all Supabase queries (fetch/create/update/approve/assign)
 - `src/lib/auth.ts` — loginWithPin, getSession, logout, hasRole
-- `src/lib/shifts.ts` — shift calculation (auto-detect shift number)
+- `src/lib/shifts.ts` — shift calculation + `isWorkerOnDuty()` for all schedule types
 - `src/types/index.ts` — all TypeScript types + STATUS_CONFIG, PANELS, SERVICE_META
 - `src/components/Header.tsx` — navigation header (hamburger menu)
 - `src/components/KanbanBoard.tsx` — kanban board (shared across panels)
 - `src/components/RequestModal.tsx` — request create/edit modal
 - `src/components/AuthGuard.tsx` — role-based page protection
+- `src/components/ShiftRoster.tsx` — who is on duty today/any date (shared widget)
+- `src/components/admin/ShiftTab.tsx` — manage employee shift assignments
+- `src/components/boss/WorkPlansMeeting.tsx` — 16:30 meeting plan confirmation
+- `src/components/foreman/BrigadeAssigner.tsx` — assign workers to brigades
+- `src/components/zamporab/ZamporabPlanCard.tsx` — edit plan before confirming
+
+## New DB Tables (migration 012)
+- `work_assignments` — employee assignments to work plan items (brigade)
+  - `plan_item_id`, `user_id`, `role` (WORKER/BRIGADIER/MASTER/DRIVER), `assigned_by`
+- `work_plan_items` new columns: `required_workers`, `required_foremen`, `required_vehicles`, `is_redirected`, `redirect_reason`
+
+## Existing DB Tables (key ones)
+- `employee_assignments` — employee schedule assignment (shift_num 1–4, schedule_id, shift_reference_date, rotation_group)
+- `schedules` — 6 schedule types (сутки/3, 1/3, 5/2, 3/3, 6/6, 15/15)
+- `work_plans` — work plans per service per shift
+- `work_plan_items` — individual work items within a plan
 
 ## Services (SERVICE_META in types/index.ts)
 | ID | Name | Emoji |
@@ -139,4 +198,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Active development, not in production use
 - Used for internal demos to colleagues
 - Main branch = demo-ready at all times
-- Pending: print templates for work orders (waiting for documents from Andrei)
+- **Pending:** run migration 012 in Supabase SQL Editor
+- **Pending:** fill employee shift assignments in Admin → Смены
+- **Pending:** add required workers/vehicles fields to plan item form (head panel)
+- **Pending:** print templates for work orders (waiting for documents)
