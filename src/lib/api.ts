@@ -886,35 +886,33 @@ export async function updateBreakdownStatus(
   return !error
 }
 
-// Fetch drivers — users whose current profession has is_driver=true.
-// Detection is profession-based (Водитель автомобиля, Тракторист, etc.)
-// so no manual flag needed on employee_assignments.
-// Returns UserWithAssignment[] so DriverStats/DriverList can run isWorkerOnDuty().
+// Fetch drivers — users whose position text matches driver keywords.
+// Uses users.position (free text loaded from XLS) so no structured
+// employee_positions data is required.
+// Returns UserWithAssignment[] so DriverList can run isWorkerOnDuty() per driver.
 export async function fetchDriverUsers(): Promise<UserWithAssignment[]> {
-  // Step 1: get user_ids whose current position has a driver profession
-  const { data: positions } = await supabase
-    .from('employee_positions')
-    .select('user_id, professions!inner(is_driver)')
-    .is('ended_at', null)
-    .eq('professions.is_driver', true)
+  // Keywords that identify driver professions in position text
+  const DRIVER_KEYWORDS = ['водитель', 'тракторист', 'машинист']
 
-  if (!positions || positions.length === 0) return []
-  const driverUserIds = positions.map((p: { user_id: string }) => p.user_id)
-
-  // Step 2: fetch those users + their current schedule assignment
+  // Fetch all active users then filter client-side (Supabase doesn't support OR ILIKE)
   const [usersRes, assignRes] = await Promise.all([
-    supabase.from('users').select('*').in('user_id', driverUserIds).eq('is_active', true),
+    supabase.from('users').select('*').eq('is_active', true),
     supabase
       .from('employee_assignments')
       .select('*, schedules(code, name)')
-      .in('user_id', driverUserIds)
       .is('ended_at', null),
   ])
 
-  const users = (usersRes.data || []) as User[]
+  const allUsers = (usersRes.data || []) as User[]
   const rawAssigns = (assignRes.data || []) as Array<
     EmployeeAssignmentWithScheduleCode & { schedules?: { code: string; name: string } }
   >
+
+  // Filter users whose position text contains a driver keyword
+  const driverUsers = allUsers.filter(u => {
+    const pos = (u.position ?? '').toLowerCase()
+    return DRIVER_KEYWORDS.some(kw => pos.includes(kw))
+  })
 
   const assignMap = new Map<string, EmployeeAssignmentWithScheduleCode>()
   rawAssigns.forEach(a => {
@@ -925,7 +923,7 @@ export async function fetchDriverUsers(): Promise<UserWithAssignment[]> {
     })
   })
 
-  return users
+  return driverUsers
     .map(u => ({ ...u, assignment: assignMap.get(u.user_id) ?? null }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
 }
