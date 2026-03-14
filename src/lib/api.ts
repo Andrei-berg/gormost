@@ -10,6 +10,7 @@ import type {
   WorkPlanStatus, VehicleStatus,
   Profession, Schedule,
   EmployeePositionWithProfession, EmployeeAssignmentWithSchedule, EmployeeDetail,
+  EmployeeAssignmentWithScheduleCode, UserWithAssignment, WorkAssignment, WorkAssignmentWithUser,
 } from '@/types'
 
 // ============ USERS ============
@@ -1018,4 +1019,157 @@ export async function transferEmployee(
     date,
   })
   return true
+}
+
+// ============ SHIFT ROSTER ============
+
+/**
+ * Fetch all active users with their current schedule assignment (joined from employee_assignments + schedules).
+ * Returns UserWithAssignment[]: each user with assignment=null if not assigned.
+ */
+export async function fetchUsersWithAssignments(): Promise<UserWithAssignment[]> {
+  const [usersRes, assignRes] = await Promise.all([
+    supabase.from('users').select('*').eq('is_active', true).order('full_name'),
+    supabase
+      .from('employee_assignments')
+      .select('*, schedules(code, name)')
+      .is('ended_at', null),
+  ])
+  const users = (usersRes.data || []) as User[]
+  const rawAssigns = (assignRes.data || []) as Array<EmployeeAssignmentWithScheduleCode & { schedules?: { code: string; name: string } }>
+
+  const assignMap = new Map<string, EmployeeAssignmentWithScheduleCode>()
+  rawAssigns.forEach(a => {
+    assignMap.set(a.user_id, {
+      ...a,
+      schedule_code: a.schedules?.code,
+      schedule_name: a.schedules?.name,
+    })
+  })
+
+  return users.map(u => ({
+    ...u,
+    assignment: assignMap.get(u.user_id) ?? null,
+  }))
+}
+
+/**
+ * Upsert an employee's shift assignment (shift_num + schedule).
+ * Ends any existing active assignment and creates a new one.
+ */
+export async function upsertEmployeeAssignment(
+  userId: string,
+  data: {
+    schedule_id: string
+    shift_num: 1 | 2 | 3 | 4 | null
+    rotation_group: string | null
+    shift_reference_date: string | null
+    is_driver: boolean
+  },
+  performedBy: string
+): Promise<boolean> {
+  // End current active assignment
+  await supabase
+    .from('employee_assignments')
+    .update({ ended_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('ended_at', null)
+
+  const { error } = await supabase
+    .from('employee_assignments')
+    .insert({
+      user_id: userId,
+      schedule_id: data.schedule_id,
+      shift_num: data.shift_num,
+      rotation_group: data.rotation_group,
+      shift_reference_date: data.shift_reference_date,
+      is_driver: data.is_driver,
+      started_at: new Date().toISOString().split('T')[0],
+      created_by: performedBy,
+    })
+
+  if (!error) await logAction(performedBy, 'UPDATE_SHIFT_ASSIGNMENT', 'user', userId, data as Record<string, unknown>)
+  return !error
+}
+
+// ============ WORK ASSIGNMENTS (brigade formation) ============
+
+/**
+ * Fetch all work assignments for a plan item, with user details.
+ */
+export async function fetchWorkAssignments(planItemId: string): Promise<WorkAssignmentWithUser[]> {
+  const { data } = await supabase
+    .from('work_assignments')
+    .select('*, user:users(user_id, full_name, position, tab_number)')
+    .eq('plan_item_id', planItemId)
+    .order('assigned_at')
+  return (data || []) as WorkAssignmentWithUser[]
+}
+
+/**
+ * Assign an employee to a work plan item.
+ */
+export async function createWorkAssignment(
+  planItemId: string,
+  userId: string,
+  role: WorkAssignment['role'],
+  assignedBy: string
+): Promise<boolean> {
+  const { error } = await supabase.from('work_assignments').insert({
+    plan_item_id: planItemId,
+    user_id: userId,
+    role,
+    assigned_by: assignedBy,
+  })
+  if (!error) await logAction(assignedBy, 'ASSIGN_WORKER', 'work_assignment', planItemId, { userId, role })
+  return !error
+}
+
+/**
+ * Remove a work assignment.
+ */
+export async function deleteWorkAssignment(assignmentId: string): Promise<boolean> {
+  const { error } = await supabase.from('work_assignments').delete().eq('id', assignmentId)
+  return !error
+}
+
+/**
+ * Mark a work plan as BOSS_CONFIRMED (подтверждено начальником на совещании).
+ */
+export async function confirmWorkPlanBoss(planId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'BOSS_CONFIRMED', updated_at: new Date().toISOString() })
+    .eq('id', planId)
+    .eq('status', 'PLANNED')
+  if (!error) await logAction(userId, 'BOSS_CONFIRM_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+/**
+ * Mark a work plan as ASSIGNED (all workers named, ready to start).
+ */
+export async function markWorkPlanAssigned(planId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'ASSIGNED', updated_at: new Date().toISOString() })
+    .eq('id', planId)
+  if (!error) await logAction(userId, 'ASSIGN_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+/**
+ * Mark a work plan item as redirected (emergency).
+ */
+export async function redirectWorkPlanItem(
+  itemId: string,
+  reason: string,
+  userId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plan_items')
+    .update({ is_redirected: true, redirect_reason: reason })
+    .eq('id', itemId)
+  if (!error) await logAction(userId, 'REDIRECT_BRIGADE', 'work_plan_item', itemId, { reason })
+  return !error
 }

@@ -116,6 +116,76 @@ export function formatTime(date: Date): string {
 }
 
 // ============================================
+// Shift roster helpers
+// ============================================
+
+/**
+ * Get the shift number on duty for a given date using the global BASE_DATE anchor.
+ * Same logic as getShiftForDate but returns just the number.
+ */
+export function getShiftNumberForDate(date: Date): 1 | 2 | 3 | 4 {
+  return getShiftForDate(date).shiftNumber
+}
+
+/**
+ * Determine if an employee with a given assignment is working on a specific date.
+ * Rules:
+ *   1/3, сутки/3 — only when their shift (shift_num) is on duty
+ *   5/2           — weekday AND their shift is on duty
+ *   3/3           — rolling 6-day cycle (no shift constraint)
+ *   6/6           — rolling 12-day cycle (no shift constraint)
+ *   15/15         — calendar half: rotation_group '1' → 1–15, '2' → 16–end
+ */
+export function isWorkerOnDuty(
+  assignment: {
+    shift_num: number | null
+    schedule_code: string
+    shift_reference_date: string | null
+    rotation_group: string | null
+  },
+  date: Date
+): boolean {
+  const target = new Date(date)
+  target.setHours(0, 0, 0, 0)
+
+  const { shift_num, schedule_code, shift_reference_date, rotation_group } = assignment
+  const code = schedule_code
+
+  if (code === '1/3' || code === 'сутки/3') {
+    if (!shift_num) return false
+    return getShiftNumberForDate(target) === shift_num
+  }
+
+  if (code === '5/2') {
+    if (!shift_num) return false
+    const dow = target.getDay()
+    const isWeekday = dow !== 0 && dow !== 6
+    return isWeekday && getShiftNumberForDate(target) === shift_num
+  }
+
+  if (code === '3/3') {
+    if (!shift_reference_date) return false
+    const ref = new Date(shift_reference_date); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    return ((days % 6) + 6) % 6 < 3
+  }
+
+  if (code === '6/6') {
+    if (!shift_reference_date) return false
+    const ref = new Date(shift_reference_date); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    return ((days % 12) + 12) % 12 < 6
+  }
+
+  if (code === '15/15') {
+    const day = target.getDate()
+    return rotation_group === '2' ? day >= 16 : day <= 15
+  }
+
+  return false
+}
+
+// ============================================
 // Phase 04: Employee schedule resolution
 // ============================================
 

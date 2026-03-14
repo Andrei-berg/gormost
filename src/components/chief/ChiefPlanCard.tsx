@@ -250,6 +250,11 @@ function ItemForm({ initial, onSave, onCancel }: {
       time_start: timeStart || null,
       time_end: timeEnd || null,
       notes: notes.trim() || null,
+      required_workers: 0,
+      required_foremen: 0,
+      required_vehicles: 0,
+      is_redirected: false,
+      redirect_reason: null,
     })
   }
 

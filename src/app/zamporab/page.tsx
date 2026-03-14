@@ -6,12 +6,13 @@ import KanbanBoard from '@/components/KanbanBoard'
 import RequestModal from '@/components/RequestModal'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
-  fetchServices, fetchStaffRequests, fetchUsers, approveRequest, createStaffRequest,
-  fetchWorkPlans, fetchWorkPlanWithItems, confirmWorkPlanZamporab,
+  fetchServices, fetchStaffRequests, fetchUsers, approveRequest,
+  fetchWorkPlans, fetchWorkPlanWithItems,
 } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, StaffRequest, User, AuthSession, WorkPlanWithItems } from '@/types'
-import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
+import ZamporabPlanCard from '@/components/zamporab/ZamporabPlanCard'
 import EmptyState from '@/components/EmptyState'
 
 export default function ZamPorabPage() {
@@ -126,54 +127,15 @@ function Content({ session }: { session: AuthSession }) {
                 <h3 className="text-lg font-bold text-blue-400">Планы ожидают вашего подтверждения ({pendingPlans.length})</h3>
               </div>
               <div className="space-y-3">
-                {pendingPlans.map(plan => {
-                  const svc = services.find(s => s.service_id === plan.service_id)
-                  const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
-                  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
-                  const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
-                  return (
-                    <div key={plan.id} className="glass rounded-xl p-4 border border-blue-500/20">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{meta.emoji}</span>
-                          <div>
-                            <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
-                            <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
-                            {statusCfg.label}
-                          </span>
-                          <button
-                            onClick={async () => {
-                              await confirmWorkPlanZamporab(plan.id, session.user_id)
-                              loadData()
-                            }}
-                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all"
-                          >
-                            ✓ Подтвердить план
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        {plan.items.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 text-xs text-white/60 pl-2">
-                            {item.time_start && <span className="font-mono text-cyan-400 shrink-0">{item.time_start}{item.time_end ? `–${item.time_end}` : ''}</span>}
-                            <span className="font-medium text-white/80">{item.location}</span>
-                            <span className="text-white/40">—</span>
-                            <span>{item.work_description}</span>
-                            {item.workers.length > 0 && (
-                              <span className="text-white/30">· 👷 {item.workers.join(', ')}</span>
-                            )}
-                          </div>
-                        ))}
-                        {plan.items.length === 0 && <div className="text-xs text-white/20 italic pl-2">Позиции не добавлены</div>}
-                      </div>
-                    </div>
-                  )
-                })}
+                {pendingPlans.map(plan => (
+                  <ZamporabPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    services={services}
+                    session={session}
+                    onRefresh={loadData}
+                  />
+                ))}
               </div>
               <div className="border-b border-white/10 mt-6 mb-6" />
             </div>

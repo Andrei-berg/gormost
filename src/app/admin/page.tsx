@@ -12,6 +12,7 @@ import {
   fetchChangelog
 } from '@/lib/api'
 import type { User, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
+import ShiftTab from '@/components/admin/ShiftTab'
 
 const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'ADMIN',           label: 'Администратор',      defaultPosition: 'Администратор' },
@@ -26,7 +27,7 @@ const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'WORKER',          label: 'Рабочий',            defaultPosition: '' },
 ]
 
-type Tab = 'users' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'changelog'
+type Tab = 'users' | 'shifts' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'changelog'
 
 export default function AdminPage() {
   return (
@@ -41,6 +42,7 @@ function Content({ session }: { session: AuthSession }) {
 
   const tabs: { id: Tab; label: string; emoji: string }[] = [
     { id: 'users', label: 'Пользователи', emoji: '👤' },
+    { id: 'shifts', label: 'Смены', emoji: '🔄' },
     { id: 'services', label: 'Службы', emoji: '🏢' },
     { id: 'categories', label: 'Категории', emoji: '📁' },
     { id: 'objects', label: 'Объекты', emoji: '🏗️' },
@@ -66,6 +68,7 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {tab === 'users' && <UsersTab session={session} />}
+      {tab === 'shifts' && <ShiftTab session={session} />}
       {tab === 'services' && <ServicesTab />}
       {tab === 'categories' && <CategoriesTab />}
       {tab === 'objects' && <ObjectsTab />}

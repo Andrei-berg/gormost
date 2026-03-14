@@ -1,36 +1,32 @@
 'use client'
 import { useState } from 'react'
-import type { WorkPlanWithItems, WorkPlanItem, AuthSession } from '@/types'
-import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import type { WorkPlanWithItems, WorkPlanItem, Service, AuthSession } from '@/types'
+import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-  submitWorkPlan, deleteWorkPlan,
+  confirmWorkPlanZamporab,
 } from '@/lib/api'
 
 interface Props {
   plan: WorkPlanWithItems
+  services: Service[]
   session: AuthSession
   onRefresh: () => void
 }
 
-export default function PlanCard({ plan, session, onRefresh }: Props) {
+export default function ZamporabPlanCard({ plan, services, session, onRefresh }: Props) {
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
 
-  const canEdit = plan.status === 'DRAFT' || plan.status === 'REJECTED'
-  const canSubmit = canEdit && plan.items.length > 0
+  const svc = services.find(s => s.service_id === plan.service_id)
+  const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
+  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
-  const shiftLabel = plan.shift_type === 'DAY' ? 'День · 07:30–19:00' : 'Ночь · 21:00–07:00'
-  const shiftEmoji = plan.shift_type === 'DAY' ? '☀️' : '🌙'
 
-  const handleSubmit = async () => {
-    await submitWorkPlan(plan.id, session.user_id)
-    onRefresh()
-  }
-
-  const handleDelete = async () => {
-    if (!confirm('Удалить план?')) return
-    await deleteWorkPlan(plan.id, session.user_id)
+  const handleConfirm = async () => {
+    setConfirming(true)
+    await confirmWorkPlanZamporab(plan.id, session.user_id)
     onRefresh()
   }
 
@@ -39,68 +35,48 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
     onRefresh()
   }
 
-  const handleSaveItem = async (data: Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order'>) => {
+  const handleSaveItem = async (data: ItemFormData) => {
     await createWorkPlanItem({ plan_id: plan.id, sort_order: plan.items.length, ...data })
     setShowAddItem(false)
     onRefresh()
   }
 
-  const handleUpdateItem = async (itemId: string, data: Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order'>) => {
+  const handleUpdateItem = async (itemId: string, data: ItemFormData) => {
     await updateWorkPlanItem(itemId, data)
     setEditingItemId(null)
     onRefresh()
   }
 
   return (
-    <div className="glass rounded-xl overflow-hidden">
-      {/* Plan header */}
+    <div className="glass rounded-xl overflow-hidden border border-blue-500/20">
+      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <span className="text-lg">{shiftEmoji}</span>
+          <span className="text-xl">{meta.emoji}</span>
           <div>
-            <div className="text-sm font-medium text-white">{shiftLabel}</div>
-            <span
-              className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full border mt-0.5 ${statusCfg.bg}`}
-              style={{ color: statusCfg.color }}
-            >
-              {statusCfg.label}
-            </span>
+            <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
+            <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {canSubmit && (
-            <button
-              onClick={handleSubmit}
-              className="px-3 py-1.5 rounded-lg bg-green-600/80 hover:bg-green-500 text-white text-sm font-medium"
-            >
-              {plan.status === 'REJECTED' ? 'Отправить повторно' : 'На согласование'}
-            </button>
-          )}
-          {plan.status === 'DRAFT' && (
-            <button
-              onClick={handleDelete}
-              className="px-2 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 text-sm"
-            >
-              Удалить
-            </button>
-          )}
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
+            {statusCfg.label}
+          </span>
+          <button
+            onClick={handleConfirm}
+            disabled={confirming}
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-all"
+          >
+            ✓ Подтвердить план
+          </button>
         </div>
       </div>
 
-      {/* Chief notes if rejected */}
-      {plan.status === 'REJECTED' && plan.chief_notes && (
-        <div className="mx-4 mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-          <div className="text-[10px] text-red-400/70 uppercase tracking-wider mb-1">Комментарий гл. инженера</div>
-          <div className="text-sm text-red-300">{plan.chief_notes}</div>
-        </div>
-      )}
-
-      {/* Items list */}
+      {/* Items */}
       <div className="p-4 space-y-2">
         {plan.items.length === 0 && (
-          <div className="text-center text-white/30 text-sm py-4">
-            Нет позиций — добавьте работы ниже
-          </div>
+          <div className="text-center text-white/30 text-sm py-3">Нет позиций в плане</div>
         )}
 
         {plan.items.map(item =>
@@ -115,36 +91,32 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
             <ItemRow
               key={item.id}
               item={item}
-              canEdit={canEdit}
               onEdit={() => setEditingItemId(item.id)}
               onDelete={() => handleDeleteItem(item.id)}
             />
           )
         )}
 
-        {canEdit && (
-          showAddItem ? (
-            <PlanItemForm
-              onSave={handleSaveItem}
-              onCancel={() => setShowAddItem(false)}
-            />
-          ) : (
-            <button
-              onClick={() => setShowAddItem(true)}
-              className="w-full py-2 rounded-lg border border-dashed border-white/20 text-white/40 hover:text-white/60 hover:border-white/30 text-sm transition-colors"
-            >
-              + Добавить позицию
-            </button>
-          )
+        {showAddItem ? (
+          <PlanItemForm
+            onSave={handleSaveItem}
+            onCancel={() => setShowAddItem(false)}
+          />
+        ) : (
+          <button
+            onClick={() => setShowAddItem(true)}
+            className="w-full py-2 rounded-lg border border-dashed border-white/20 text-white/40 hover:text-white/60 hover:border-white/30 text-sm transition-colors"
+          >
+            + Добавить позицию
+          </button>
         )}
       </div>
     </div>
   )
 }
 
-function ItemRow({ item, canEdit, onEdit, onDelete }: {
+function ItemRow({ item, onEdit, onDelete }: {
   item: WorkPlanItem
-  canEdit: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -169,12 +141,10 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
         )}
         {item.notes && <div className="text-xs text-white/30 mt-1">{item.notes}</div>}
       </div>
-      {canEdit && (
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 text-xs">✏️</button>
-          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 text-xs">🗑️</button>
-        </div>
-      )}
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 text-xs">✏️</button>
+        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 text-xs">🗑️</button>
+      </div>
     </div>
   )
 }

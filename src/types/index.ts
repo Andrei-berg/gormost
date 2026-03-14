@@ -309,7 +309,7 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 // WORK PLANNING MODULE — v3.0
 // ============================================
 
-export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'IN_PROGRESS' | 'DONE'
+export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'BOSS_CONFIRMED' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE'
 export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
 export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS'
 
@@ -342,8 +342,41 @@ export interface WorkPlanItem {
   time_end: string | null     // 'HH:MM'
   sort_order: number
   notes: string | null
+  // headcount requirements (set by service chief when planning)
+  required_workers: number
+  required_foremen: number
+  required_vehicles: number
+  // emergency redirect
+  is_redirected: boolean
+  redirect_reason: string | null
   created_at: string
   updated_at: string
+}
+
+// Work assignment — employee assigned to a specific work plan item (brigade)
+export type WorkAssignmentRole = 'WORKER' | 'BRIGADIER' | 'MASTER' | 'DRIVER'
+
+export interface WorkAssignment {
+  id: string
+  plan_item_id: string
+  user_id: string
+  role: WorkAssignmentRole
+  assigned_by: string | null
+  assigned_at: string
+}
+
+export interface WorkAssignmentWithUser extends WorkAssignment {
+  user: Pick<User, 'user_id' | 'full_name' | 'position' | 'tab_number'>
+}
+
+// EmployeeAssignment extended with joined schedule fields
+export interface EmployeeAssignmentWithScheduleCode extends EmployeeAssignment {
+  schedule_code?: string
+  schedule_name?: string
+}
+
+export interface UserWithAssignment extends User {
+  assignment: EmployeeAssignmentWithScheduleCode | null
 }
 
 export interface Vehicle {
@@ -387,13 +420,15 @@ export interface VehicleWithAssignments extends Vehicle {
 // Config constants
 
 export const WORK_PLAN_STATUS_CONFIG: Record<WorkPlanStatus, { label: string; color: string; bg: string }> = {
-  DRAFT:      { label: 'Черновик',        color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
-  SUBMITTED:  { label: 'На согласовании', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
-  APPROVED:   { label: 'Согласован',      color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
-  REJECTED:   { label: 'Отклонён',        color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
-  PLANNED:    { label: 'Запланирован',    color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
-  IN_PROGRESS:{ label: 'В работе',        color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
-  DONE:       { label: 'Выполнен',        color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  DRAFT:          { label: 'Черновик',          color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+  SUBMITTED:      { label: 'На согласовании',   color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  APPROVED:       { label: 'Согл. гл. инж.',    color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  REJECTED:       { label: 'Отклонён',          color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  PLANNED:        { label: 'Согл. зампрораб',   color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
+  BOSS_CONFIRMED: { label: 'Утверждён нач.',    color: '#a855f7', bg: 'bg-purple-500/20 border-purple-500/30' },
+  ASSIGNED:       { label: 'Люди назначены',    color: '#06b6d4', bg: 'bg-cyan-500/20 border-cyan-500/30' },
+  IN_PROGRESS:    { label: 'В работе',          color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
+  DONE:           { label: 'Выполнен',          color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
 }
 
 export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color: string; bg: string }> = {
