@@ -8,14 +8,14 @@ import EmployeeDetailCard from '@/components/hr/EmployeeDetailCard'
 import HireModal from '@/components/hr/HireModal'
 import DismissModal from '@/components/hr/DismissModal'
 import TransferModal from '@/components/hr/TransferModal'
-import { fetchAllCurrentStatuses, fetchServices, fetchUsers } from '@/lib/api'
-import type { AuthSession, EnrichedEmployee, Service, User } from '@/types'
+import { fetchAllCurrentStatuses, fetchServices, fetchUsers, fetchUsersWithAssignments } from '@/lib/api'
+import type { AuthSession, EnrichedEmployee, Service, User, UserWithAssignment } from '@/types'
 import HRToolbar from '@/components/hr/HRToolbar'
 import HRTableView from '@/components/hr/HRTableView'
 
 export default function HRPage() {
   return (
-    <AuthGuard roles={['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS']}>
+    <AuthGuard roles={['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS', 'HR']}>
       {(session) => <Content session={session} />}
     </AuthGuard>
   )
@@ -25,6 +25,7 @@ function Content({ session }: { session: AuthSession }) {
   const [employees, setEmployees] = useState<EnrichedEmployee[]>([])
   const [dismissedUsers, setDismissedUsers] = useState<User[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [assignmentMap, setAssignmentMap] = useState<Map<string, UserWithAssignment['assignment']>>(new Map())
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDismissed, setShowDismissed] = useState(false)
@@ -41,14 +42,18 @@ function Content({ session }: { session: AuthSession }) {
   const [transferTarget, setTransferTarget] = useState<{ userId: string; name: string } | null>(null)
 
   const loadData = useCallback(async () => {
-    const [emps, svcs, allUsers] = await Promise.all([
+    const [emps, svcs, allUsers, usersWithAssign] = await Promise.all([
       fetchAllCurrentStatuses(),
       fetchServices(),
       fetchUsers(false), // all users including inactive
+      fetchUsersWithAssignments(),
     ])
     setEmployees(emps.filter(e => e.user.service_id !== null))
     setServices(svcs)
     setDismissedUsers(allUsers.filter(u => !u.is_active))
+    const aMap = new Map<string, UserWithAssignment['assignment']>()
+    usersWithAssign.forEach(u => aMap.set(u.user_id, u.assignment))
+    setAssignmentMap(aMap)
     setLastUpdated(new Date())
     setLoading(false)
   }, [])
@@ -56,8 +61,9 @@ function Content({ session }: { session: AuthSession }) {
   useEffect(() => { loadData() }, [loadData])
 
   const isHead = session.role_level === 'HEAD'
-  const canEdit = !isHead
-  const canAdmin = session.role_level === 'ADMIN'
+  const canEdit = !isHead  // HEAD sees only own service, no editing
+  const isHR = session.role_level === 'HR'
+  const canAdmin = session.role_level === 'ADMIN' || isHR  // HR can hire/dismiss/transfer
 
   const visibleEmployees = isHead
     ? employees.filter(e => e.user.service_id === session.service_id)
@@ -123,6 +129,7 @@ function Content({ session }: { session: AuthSession }) {
               onNameClick={(uid) => setSelectedUserId(uid)}
               onRefresh={loadData}
               services={services}
+              assignmentMap={assignmentMap}
             />
           ) : (
             <>
@@ -136,6 +143,7 @@ function Content({ session }: { session: AuthSession }) {
                   currentUserId={session.user_id}
                   onRefresh={loadData}
                   onNameClick={(uid) => setSelectedUserId(uid)}
+                  assignmentMap={assignmentMap}
                 />
               ))}
               {grouped.length === 0 && (

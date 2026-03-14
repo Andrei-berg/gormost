@@ -1,5 +1,5 @@
 'use client'
-import type { EnrichedEmployee } from '@/types'
+import type { EnrichedEmployee, UserWithAssignment } from '@/types'
 import { SERVICE_META } from '@/types'
 import EmployeeCard from './EmployeeCard'
 
@@ -11,16 +11,11 @@ interface Props {
   currentUserId: string
   onRefresh: () => void
   onNameClick: (userId: string) => void
+  assignmentMap?: Map<string, UserWithAssignment['assignment']>
 }
 
 export default function ServiceSection({
-  serviceId,
-  serviceName,
-  employees,
-  canEdit,
-  currentUserId,
-  onRefresh,
-  onNameClick,
+  serviceId, serviceName, employees, canEdit, currentUserId, onRefresh, onNameClick, assignmentMap,
 }: Props) {
   const meta = SERVICE_META[serviceId] ?? { emoji: '📋', color: '#ffffff', bg: 'bg-white/10' }
 
@@ -40,6 +35,7 @@ export default function ServiceSection({
             currentUserId={currentUserId}
             onRefresh={onRefresh}
             onNameClick={onNameClick}
+            assignment={assignmentMap?.get(emp.user.user_id) ?? null}
           />
         ))}
       </div>

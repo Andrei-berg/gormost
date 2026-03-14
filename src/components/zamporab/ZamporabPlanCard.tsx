@@ -4,7 +4,7 @@ import type { WorkPlanWithItems, WorkPlanItem, Service, AuthSession } from '@/ty
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-  confirmWorkPlanZamporab,
+  confirmWorkPlanZamporab, returnWorkPlanZamporab,
 } from '@/lib/api'
 
 interface Props {
@@ -15,18 +15,37 @@ interface Props {
 }
 
 export default function ZamporabPlanCard({ plan, services, session, onRefresh }: Props) {
+  const [expanded, setExpanded] = useState(true)
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [showReturnForm, setShowReturnForm] = useState(false)
+  const [returnNotes, setReturnNotes] = useState('')
+  const [returning, setReturning] = useState(false)
 
   const svc = services.find(s => s.service_id === plan.service_id)
   const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
-  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
+  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 21:00–07:00'
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
+
+  // Headcount totals across all items
+  const totalWorkers = plan.items.reduce((s, i) => s + (i.required_workers ?? 0), 0)
+  const totalForemen = plan.items.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
+  const totalVehicles = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
 
   const handleConfirm = async () => {
     setConfirming(true)
     await confirmWorkPlanZamporab(plan.id, session.user_id)
+    onRefresh()
+  }
+
+  const handleReturn = async () => {
+    if (!returnNotes.trim()) return
+    setReturning(true)
+    await returnWorkPlanZamporab(plan.id, session.user_id, returnNotes.trim())
+    setReturning(false)
+    setShowReturnForm(false)
+    setReturnNotes('')
     onRefresh()
   }
 
@@ -49,16 +68,39 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
 
   return (
     <div className="glass rounded-xl overflow-hidden border border-blue-500/20">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
+      {/* Header — clickable to collapse/expand */}
+      <div
+        className="flex items-center justify-between p-4 border-b border-white/10 cursor-pointer hover:bg-white/[0.02] transition-colors"
+        onClick={() => setExpanded(e => !e)}
+      >
         <div className="flex items-center gap-3">
           <span className="text-xl">{meta.emoji}</span>
           <div>
             <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
             <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
           </div>
+          {/* Headcount summary */}
+          {(totalWorkers > 0 || totalForemen > 0 || totalVehicles > 0) && (
+            <div className="flex gap-2 ml-2">
+              {totalWorkers > 0 && (
+                <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
+                  👷 {totalWorkers} раб.
+                </span>
+              )}
+              {totalForemen > 0 && (
+                <span className="text-[10px] bg-violet-500/15 text-violet-300 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+                  🦺 {totalForemen} маст.
+                </span>
+              )}
+              {totalVehicles > 0 && (
+                <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                  🚛 {totalVehicles} ТС
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
           <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
             {statusCfg.label}
@@ -70,47 +112,86 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
           >
             ✓ Подтвердить план
           </button>
+          <button
+            onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
+            disabled={returning}
+            className="px-3 py-2 rounded-xl bg-yellow-600/20 hover:bg-yellow-600/40 disabled:opacity-40 text-yellow-400 text-sm transition-all"
+          >
+            Вернуть на доработку
+          </button>
+          <span className="text-white/20 text-xs ml-1">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
 
-      {/* Items */}
-      <div className="p-4 space-y-2">
-        {plan.items.length === 0 && (
-          <div className="text-center text-white/30 text-sm py-3">Нет позиций в плане</div>
-        )}
+      {/* Return form */}
+      {showReturnForm && (
+        <div className="mx-4 mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 space-y-2">
+          <div className="text-xs text-yellow-400/70 uppercase tracking-wider">Что нужно исправить</div>
+          <textarea
+            value={returnNotes}
+            onChange={e => setReturnNotes(e.target.value)}
+            rows={2}
+            placeholder="Укажите замечания для начальника службы..."
+            className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-yellow-500/50 resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleReturn}
+              disabled={!returnNotes.trim() || returning}
+              className="px-4 py-1.5 rounded-lg bg-yellow-600/80 hover:bg-yellow-500 disabled:opacity-40 text-white text-sm font-medium"
+            >
+              Вернуть на доработку
+            </button>
+            <button
+              onClick={() => setShowReturnForm(false)}
+              className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
 
-        {plan.items.map(item =>
-          editingItemId === item.id ? (
+      {/* Items — collapsible */}
+      {expanded && (
+        <div className="p-4 space-y-2">
+          {plan.items.length === 0 && (
+            <div className="text-center text-white/30 text-sm py-3">Нет позиций в плане</div>
+          )}
+
+          {plan.items.map(item =>
+            editingItemId === item.id ? (
+              <PlanItemForm
+                key={item.id}
+                initial={item}
+                onSave={(data) => handleUpdateItem(item.id, data)}
+                onCancel={() => setEditingItemId(null)}
+              />
+            ) : (
+              <ItemRow
+                key={item.id}
+                item={item}
+                onEdit={() => setEditingItemId(item.id)}
+                onDelete={() => handleDeleteItem(item.id)}
+              />
+            )
+          )}
+
+          {showAddItem ? (
             <PlanItemForm
-              key={item.id}
-              initial={item}
-              onSave={(data) => handleUpdateItem(item.id, data)}
-              onCancel={() => setEditingItemId(null)}
+              onSave={handleSaveItem}
+              onCancel={() => setShowAddItem(false)}
             />
           ) : (
-            <ItemRow
-              key={item.id}
-              item={item}
-              onEdit={() => setEditingItemId(item.id)}
-              onDelete={() => handleDeleteItem(item.id)}
-            />
-          )
-        )}
-
-        {showAddItem ? (
-          <PlanItemForm
-            onSave={handleSaveItem}
-            onCancel={() => setShowAddItem(false)}
-          />
-        ) : (
-          <button
-            onClick={() => setShowAddItem(true)}
-            className="w-full py-2 rounded-lg border border-dashed border-white/20 text-white/40 hover:text-white/60 hover:border-white/30 text-sm transition-colors"
-          >
-            + Добавить позицию
-          </button>
-        )}
-      </div>
+            <button
+              onClick={() => setShowAddItem(true)}
+              className="w-full py-2 rounded-lg border border-dashed border-white/20 text-white/40 hover:text-white/60 hover:border-white/30 text-sm transition-colors"
+            >
+              + Добавить позицию
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -132,6 +213,28 @@ function ItemRow({ item, onEdit, onDelete }: {
           <span className="text-sm font-medium text-white truncate">{item.location}</span>
         </div>
         <div className="text-sm text-white/60">{item.work_description}</div>
+
+        {/* Required headcount badges */}
+        {(item.required_workers > 0 || item.required_foremen > 0 || item.required_vehicles > 0) && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {item.required_workers > 0 && (
+              <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
+                👷 {item.required_workers} рабочих
+              </span>
+            )}
+            {item.required_foremen > 0 && (
+              <span className="text-[10px] bg-violet-500/15 text-violet-300 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+                🦺 {item.required_foremen} мастеров
+              </span>
+            )}
+            {item.required_vehicles > 0 && (
+              <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                🚛 {item.required_vehicles} ТС
+              </span>
+            )}
+          </div>
+        )}
+
         {item.workers.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {item.workers.map((w, i) => (
@@ -162,6 +265,9 @@ function PlanItemForm({ initial, onSave, onCancel }: {
   const [timeStart, setTimeStart] = useState(initial?.time_start || '')
   const [timeEnd, setTimeEnd] = useState(initial?.time_end || '')
   const [notes, setNotes] = useState(initial?.notes || '')
+  const [reqWorkers, setReqWorkers] = useState(String(initial?.required_workers ?? 0))
+  const [reqForemen, setReqForemen] = useState(String(initial?.required_foremen ?? 0))
+  const [reqVehicles, setReqVehicles] = useState(String(initial?.required_vehicles ?? 0))
 
   const handleSave = () => {
     if (!location.trim() || !workDesc.trim()) return
@@ -172,16 +278,17 @@ function PlanItemForm({ initial, onSave, onCancel }: {
       time_start: timeStart || null,
       time_end: timeEnd || null,
       notes: notes.trim() || null,
-      required_workers: 0,
-      required_foremen: 0,
-      required_vehicles: 0,
-      is_redirected: false,
-      redirect_reason: null,
+      required_workers: Number(reqWorkers) || 0,
+      required_foremen: Number(reqForemen) || 0,
+      required_vehicles: Number(reqVehicles) || 0,
+      is_redirected: initial?.is_redirected ?? false,
+      redirect_reason: initial?.redirect_reason ?? null,
     })
   }
 
   const inputCls = 'w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50'
   const labelCls = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
+  const numCls = 'w-full px-2 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm text-center focus:outline-none focus:border-blue-500/50'
 
   return (
     <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 space-y-2">
@@ -207,6 +314,21 @@ function PlanItemForm({ initial, onSave, onCancel }: {
         <div>
           <label className={labelCls}>Примечание</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="..." className={inputCls} />
+        </div>
+      </div>
+      {/* Headcount planning */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className={labelCls}>👷 Рабочих</label>
+          <input type="number" min="0" value={reqWorkers} onChange={e => setReqWorkers(e.target.value)} className={numCls} />
+        </div>
+        <div>
+          <label className={labelCls}>🦺 Мастеров</label>
+          <input type="number" min="0" value={reqForemen} onChange={e => setReqForemen(e.target.value)} className={numCls} />
+        </div>
+        <div>
+          <label className={labelCls}>🚛 ТС</label>
+          <input type="number" min="0" value={reqVehicles} onChange={e => setReqVehicles(e.target.value)} className={numCls} />
         </div>
       </div>
       <div>

@@ -13,6 +13,7 @@ import type { Request, Category, GObject, Construction, WorkType, Service, Staff
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabPlanCard from '@/components/zamporab/ZamporabPlanCard'
+import ZamporabOwnPlan from '@/components/zamporab/ZamporabOwnPlan'
 import EmptyState from '@/components/EmptyState'
 
 export default function ZamPorabPage() {
@@ -22,6 +23,8 @@ export default function ZamPorabPage() {
     </AuthGuard>
   )
 }
+
+type Tab = 'plans' | 'kanban' | 'staff'
 
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
@@ -35,7 +38,7 @@ function Content({ session }: { session: AuthSession }) {
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
   const [showModal, setShowModal] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
-  const [tab, setTab] = useState<'kanban' | 'staff'>('kanban')
+  const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
 
   const loadData = useCallback(async () => {
@@ -59,10 +62,7 @@ function Content({ session }: { session: AuthSession }) {
       const now = new Date()
       const deadline = new Date(now)
       deadline.setHours(16, 30, 0, 0)
-      if (now > deadline) {
-        setTimerText('Дедлайн прошёл')
-        return
-      }
+      if (now > deadline) { setTimerText('Дедлайн прошёл'); return }
       const diff = deadline.getTime() - now.getTime()
       const h = Math.floor(diff / 3600000)
       const m = Math.floor((diff % 3600000) / 60000)
@@ -79,8 +79,8 @@ function Content({ session }: { session: AuthSession }) {
     loadData()
   }
 
-  // Count unapproved
   const unapproved = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length
+  const pendingStaff = staffReqs.filter(s => s.status === 'PENDING').length
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
@@ -89,58 +89,92 @@ function Content({ session }: { session: AuthSession }) {
       <PlanStats
         requests={requests}
         services={services}
-        pendingApproval={requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length}
+        pendingApproval={unapproved}
       />
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setTab('kanban')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Заявки по службам
-        </button>
-        <button onClick={() => setTab('staff')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Запросы людей
-          {staffReqs.filter(s => s.status === 'PENDING').length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {staffReqs.filter(s => s.status === 'PENDING').length}
+        <button
+          onClick={() => setTab('plans')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'plans' ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          Планы работ
+          {pendingPlans.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {pendingPlans.length}
             </span>
           )}
         </button>
-        {unapproved > 0 && (
-          <span className="text-xs text-amber-400 ml-2">⚠ {unapproved} заявок ожидают согласования</span>
-        )}
-        <div className="ml-auto flex gap-2">
+        <button
+          onClick={() => setTab('kanban')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          Заявки по службам
+          {unapproved > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {unapproved}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab('staff')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          Запросы людей
+          {pendingStaff > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {pendingStaff}
+            </span>
+          )}
+        </button>
+        <div className="ml-auto">
           <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
-          <button onClick={() => { setSelectedReq(null); setShowModal(true) }}
-            className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
-            + Новая заявка
-          </button>
         </div>
       </div>
 
-      {tab === 'kanban' ? (
-        <div className="overflow-x-auto pb-4">
-          {/* Work plans awaiting zamporab confirmation */}
+      {/* Tab: Plans */}
+      {tab === 'plans' && (
+        <div className="space-y-8">
+          {/* Own plan creation section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📋</span>
+              <h3 className="text-base font-bold text-emerald-400">Мой план работ</h3>
+            </div>
+            <ZamporabOwnPlan session={session} services={services} />
+          </div>
+
+          {/* Plans from other services awaiting confirmation */}
           {pendingPlans.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">⏳</span>
-                <h3 className="text-lg font-bold text-blue-400">Планы ожидают вашего подтверждения ({pendingPlans.length})</h3>
+            <div>
+              <div className="border-t border-white/10 pt-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">⏳</span>
+                  <h3 className="text-base font-bold text-blue-400">
+                    Ожидают вашего подтверждения ({pendingPlans.length})
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  {pendingPlans.map(plan => (
+                    <ZamporabPlanCard
+                      key={plan.id}
+                      plan={plan}
+                      services={services}
+                      session={session}
+                      onRefresh={loadData}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-3">
-                {pendingPlans.map(plan => (
-                  <ZamporabPlanCard
-                    key={plan.id}
-                    plan={plan}
-                    services={services}
-                    session={session}
-                    onRefresh={loadData}
-                  />
-                ))}
-              </div>
-              <div className="border-b border-white/10 mt-6 mb-6" />
             </div>
           )}
-          {/* Ожидают согласования зампрораба */}
+        </div>
+      )}
+
+      {/* Tab: Kanban */}
+      {tab === 'kanban' && (
+        <div className="overflow-x-auto pb-4">
+          {/* Requests pending zamporab approval */}
           {(() => {
             const pending = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab)
             if (pending.length === 0) return null
@@ -182,7 +216,7 @@ function Content({ session }: { session: AuthSession }) {
             )
           })()}
 
-          {/* Group by service — показываем все службы */}
+          {/* All services kanban */}
           {services.map(svc => {
             const svcReqs = requests.filter(r => r.service_id === svc.service_id)
             const meta = SERVICE_META[svc.service_id]
@@ -202,13 +236,16 @@ function Content({ session }: { session: AuthSession }) {
                     onStatusChange={loadData}
                   />
                 ) : (
-                  <EmptyState message="Нет заявок — план не составлен" />
+                  <EmptyState message="Нет заявок" />
                 )}
               </div>
             )
           })}
         </div>
-      ) : (
+      )}
+
+      {/* Tab: Staff requests */}
+      {tab === 'staff' && (
         <StaffRequestsView staffReqs={staffReqs} services={services} users={allUsers} session={session} onRefresh={loadData} />
       )}
 

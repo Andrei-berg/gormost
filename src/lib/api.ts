@@ -614,6 +614,17 @@ export async function confirmWorkPlanZamporab(planId: string, userId: string): P
   return !error
 }
 
+// ZAMPORAB returns plan for revision → REJECTED (back to service chief)
+export async function returnWorkPlanZamporab(planId: string, userId: string, notes: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'REJECTED', chief_notes: notes, updated_at: now })
+    .eq('id', planId).eq('status', 'APPROVED')
+  if (!error) await logAction(userId, 'RETURN_WORK_PLAN_ZAMPORAB', 'work_plan', planId, { notes })
+  return !error
+}
+
 // FOREMAN/MASTER starts work → IN_PROGRESS
 export async function startWorkPlan(planId: string, userId: string): Promise<boolean> {
   const now = new Date().toISOString()

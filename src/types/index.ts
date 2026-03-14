@@ -3,7 +3,7 @@
 // Matches real Supabase schema
 // ============================================
 
-export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER'
+export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR'
 export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 export type Urgency = 'NORMAL' | 'URGENT' | 'EMERGENCY'
@@ -253,7 +253,7 @@ export const PANELS: PanelConfig[] = [
   {
     id: 'hr', path: '/hr', title: 'Кадры',
     subtitle: 'Статус сотрудников · Присутствие · История', emoji: '👥',
-    roles: ['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS'],
+    roles: ['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS', 'HR'],
     color: 'from-teal-600/40 to-teal-800/40 border-teal-500/30',
     roleLabel: 'Кадровый учёт',
   },

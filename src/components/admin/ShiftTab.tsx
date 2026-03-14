@@ -256,10 +256,6 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             <option value="2">16–31 числа</option>
           </select>
         )}
-        <label className="flex items-center gap-1 text-xs text-white/40 cursor-pointer">
-          <input type="checkbox" checked={isDriver} onChange={e => setIsDriver(e.target.checked)} className="rounded" />
-          Водитель
-        </label>
       </td>
       <td className="px-3 py-2">
         <div className="flex gap-1">
@@ -270,7 +266,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
               shift_num: shiftNum ? (Number(shiftNum) as 1|2|3|4) : null,
               rotation_group: rotationGroup || null,
               shift_reference_date: refDate || null,
-              is_driver: isDriver,
+              is_driver: isDriver, // preserve existing value, not editable here
             })}
             className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs"
           >
