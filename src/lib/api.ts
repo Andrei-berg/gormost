@@ -886,25 +886,26 @@ export async function updateBreakdownStatus(
   return !error
 }
 
-// Fetch drivers on shift — users with is_driver=true and active employee_assignment
+// Fetch drivers — users whose active employee_assignment has is_driver=true
 export async function fetchDriverUsers(): Promise<User[]> {
+  // Step 1: get user_ids with is_driver=true from employee_assignments
+  const { data: assignments } = await supabase
+    .from('employee_assignments')
+    .select('user_id')
+    .eq('is_driver', true)
+    .is('ended_at', null)
+  if (!assignments || assignments.length === 0) return []
+
+  const userIds = [...new Set(assignments.map((a: { user_id: string }) => a.user_id))]
+
+  // Step 2: fetch those users
   const { data } = await supabase
     .from('users')
-    .select(`
-      *,
-      employee_assignments!inner(is_driver, ended_at)
-    `)
-    .eq('employee_assignments.is_driver', true)
-    .is('employee_assignments.ended_at', null)
+    .select('*')
+    .in('user_id', userIds)
     .eq('is_active', true)
     .order('full_name')
-  // flatten: return unique users
-  const seen = new Set<string>()
-  return ((data || []) as User[]).filter(u => {
-    if (seen.has(u.user_id)) return false
-    seen.add(u.user_id)
-    return true
-  })
+  return (data || []) as User[]
 }
 
 // ============ HR — PHASE 04 ============
