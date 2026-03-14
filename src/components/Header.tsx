@@ -125,7 +125,7 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-12 z-50 w-56 glass-strong rounded-2xl p-2 border border-white/10 shadow-2xl">
+              <div className="absolute right-0 top-12 z-[999] w-56 glass-strong rounded-2xl p-2 border border-white/10 shadow-2xl">
                 <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Панели</div>
                 {regularPanels.map(p => {
                   const isActive = pathname === p.path
