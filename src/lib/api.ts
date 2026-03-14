@@ -886,26 +886,38 @@ export async function updateBreakdownStatus(
   return !error
 }
 
-// Fetch drivers — users whose active employee_assignment has is_driver=true
-export async function fetchDriverUsers(): Promise<User[]> {
-  // Step 1: get user_ids with is_driver=true from employee_assignments
-  const { data: assignments } = await supabase
-    .from('employee_assignments')
-    .select('user_id')
-    .eq('is_driver', true)
-    .is('ended_at', null)
-  if (!assignments || assignments.length === 0) return []
+// Fetch drivers — users whose active employee_assignment has is_driver=true.
+// Returns UserWithAssignment[] so DriverStats can run isWorkerOnDuty() per driver.
+export async function fetchDriverUsers(): Promise<UserWithAssignment[]> {
+  const [assignRes, usersRes] = await Promise.all([
+    supabase
+      .from('employee_assignments')
+      .select('*, schedules(code, name)')
+      .eq('is_driver', true)
+      .is('ended_at', null),
+    supabase.from('users').select('*').eq('is_active', true),
+  ])
 
-  const userIds = [...new Set(assignments.map((a: { user_id: string }) => a.user_id))]
+  const rawAssigns = (assignRes.data || []) as Array<
+    EmployeeAssignmentWithScheduleCode & { schedules?: { code: string; name: string } }
+  >
+  const users = (usersRes.data || []) as User[]
 
-  // Step 2: fetch those users
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .in('user_id', userIds)
-    .eq('is_active', true)
-    .order('full_name')
-  return (data || []) as User[]
+  // Build map: user_id → assignment with schedule_code
+  const assignMap = new Map<string, EmployeeAssignmentWithScheduleCode>()
+  rawAssigns.forEach(a => {
+    assignMap.set(a.user_id, {
+      ...a,
+      schedule_code: a.schedules?.code,
+      schedule_name: a.schedules?.name,
+    })
+  })
+
+  // Keep only users who have a driver assignment
+  return users
+    .filter(u => assignMap.has(u.user_id))
+    .map(u => ({ ...u, assignment: assignMap.get(u.user_id)! }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
 }
 
 // ============ HR — PHASE 04 ============

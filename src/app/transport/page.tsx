@@ -8,7 +8,6 @@ import BreakdownJournal from '@/components/transport/BreakdownJournal'
 import DriverStats from '@/components/transport/DriverStats'
 import {
   fetchVehiclesWithDayAssignments,
-  fetchVehicles,
   fetchWorkPlans,
   fetchItemsWithVehicles,
   fetchOpenBreakdowns,
@@ -16,7 +15,8 @@ import {
   fetchDriverUsers,
 } from '@/lib/api'
 import type {
-  AuthSession, VehicleWithAssignments, VehicleBreakdownWithVehicle, User,
+  AuthSession, VehicleWithAssignments, VehicleBreakdownWithVehicle,
+  User, UserWithAssignment,
 } from '@/types'
 
 export default function TransportPage() {
@@ -31,7 +31,7 @@ function Content({ session }: { session: AuthSession }) {
   const [vehicles, setVehicles]       = useState<VehicleWithAssignments[]>([])
   const [plans, setPlans]             = useState<PlanGroup[]>([])
   const [breakdowns, setBreakdowns]   = useState<VehicleBreakdownWithVehicle[]>([])
-  const [driverUsers, setDriverUsers] = useState<User[]>([])
+  const [driverUsers, setDriverUsers] = useState<UserWithAssignment[]>([])
   const [tab, setTab]                 = useState<'fleet' | 'plan' | 'defects'>('fleet')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -54,11 +54,10 @@ function Content({ session }: { session: AuthSession }) {
     setVehicles(veh)
     setPlans(planGroups)
     setBreakdowns(bd)
-    setDriverUsers(drivers as User[])
+    setDriverUsers(drivers)
     setLastUpdated(new Date())
   }, [today])
 
-  // When switching to defects tab — load full history (not just open)
   const loadAllBreakdowns = useCallback(async () => {
     const bd = await fetchVehicleBreakdowns()
     setBreakdowns(bd)
@@ -67,11 +66,8 @@ function Content({ session }: { session: AuthSession }) {
   useEffect(() => { loadData() }, [loadData])
 
   const handleRefresh = () => {
-    if (tab === 'defects') {
-      loadAllBreakdowns()
-    } else {
-      loadData()
-    }
+    if (tab === 'defects') loadAllBreakdowns()
+    else loadData()
   }
 
   // KPI
@@ -84,16 +80,11 @@ function Content({ session }: { session: AuthSession }) {
     return Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000) >= 3
   }).length
 
-  const allItems         = plans.flatMap(p => p.items)
-  const needsCount       = allItems.filter(i =>
+  const allItems   = plans.flatMap(p => p.items)
+  const needsCount = allItems.filter(i =>
     i.vehicles.length === 0 || i.vehicles.some(v => v.status === 'BROKEN')
   ).length
-  const vehiclesAssigned = allItems.filter(i => i.vehicles.length > 0 && !i.vehicles.some(v => v.status === 'BROKEN')).length
-
   const openDefects = breakdowns.filter(b => b.status === 'OPEN').length
-
-  // All vehicles (flat, for breakdown form)
-  const allVehicles = vehicles
 
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
@@ -122,15 +113,16 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       </div>
 
-      {/* Driver stats — only for TRANSPORT/ADMIN */}
-      {/* {canEdit && (
+      {/* Driver stats — TRANSPORT/ADMIN only */}
+      {canEdit && (
         <div className="mb-4">
           <DriverStats
             drivers={driverUsers}
-            vehiclesAssignedCount={vehiclesAssigned}
+            vehicles={vehicles}
+            date={today}
           />
         </div>
-      )} */}
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
@@ -173,7 +165,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'fleet' && (
         <FleetBoard
           vehicles={vehicles}
-          drivers={driverUsers as import('@/types').User[]}
+          drivers={driverUsers as User[]}
           canEdit={canEdit}
           onRefresh={loadData}
         />
@@ -189,8 +181,8 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'defects' && (
         <BreakdownJournal
           breakdowns={breakdowns}
-          vehicles={allVehicles}
-          currentUser={{ ...session, is_active: true } as unknown as import('@/types').User}
+          vehicles={vehicles}
+          currentUser={{ ...session, is_active: true } as unknown as User}
           canEdit={canEdit}
           onRefresh={loadAllBreakdowns}
         />
