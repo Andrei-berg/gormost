@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import TaskList from '@/components/foreman/TaskList'
+import BrigadeAssigner from '@/components/foreman/BrigadeAssigner'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions,
   fetchWorkTypes, fetchServices, updateRequestStatus,
@@ -30,6 +31,7 @@ function Content({ session }: { session: AuthSession }) {
   const [services, setServices] = useState<Service[]>([])
   const [myPlans, setMyPlans] = useState<WorkPlanWithItems[]>([])
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
+  const [tab, setTab] = useState<'tasks' | 'brigade'>('brigade')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [planLoading, setPlanLoading] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -182,25 +184,35 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       )}
 
-      {/* Filter */}
+      {/* Main tabs */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setFilter('mine')} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === 'mine' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Мои задачи
+        <button onClick={() => setTab('brigade')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'brigade' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-white/50'}`}>
+          👷 Бригады
         </button>
-        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Все заявки
+        <button onClick={() => setTab('tasks')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'tasks' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
+          Заявки
         </button>
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      <TaskList
-        requests={requests}
-        myRequestIds={myRequestIds}
-        categories={categories} objects={objects} constructions={constructions}
-        workTypes={workTypes} services={services}
-        actionLoading={actionLoading}
-        onAction={handleAction}
-      />
+      {tab === 'brigade' && <BrigadeAssigner session={session} services={services} />}
+
+      {tab === 'tasks' && (
+        <>
+          <div className="flex items-center gap-2 mb-4">
+            <button onClick={() => setFilter('mine')} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === 'mine' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Мои задачи</button>
+            <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Все заявки</button>
+          </div>
+          <TaskList
+            requests={requests}
+            myRequestIds={myRequestIds}
+            categories={categories} objects={objects} constructions={constructions}
+            workTypes={workTypes} services={services}
+            actionLoading={actionLoading}
+            onAction={handleAction}
+          />
+        </>
+      )}
     </div>
   )
 }

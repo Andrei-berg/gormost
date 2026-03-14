@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import OverviewCharts from '@/components/boss/OverviewCharts'
-import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchChangelog, fetchPeopleStats } from '@/lib/api'
-import type { Request, Service, ChangelogEntry, AuthSession } from '@/types'
+import WorkPlansMeeting from '@/components/boss/WorkPlansMeeting'
+import ShiftRoster from '@/components/ShiftRoster'
+import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchChangelog, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api'
+import type { Request, Service, ChangelogEntry, AuthSession, UserWithAssignment } from '@/types'
 import EmptyState from '@/components/EmptyState'
 
 export default function BossPage() {
@@ -18,17 +20,19 @@ export default function BossPage() {
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [allUsers, setAllUsers] = useState<UserWithAssignment[]>([])
   const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number>; byService: Record<string, number>; byPriority: Record<string, number> }>({ total: 0, byStatus: {}, byService: {}, byPriority: {} })
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([])
   const [totalDeployed, setTotalDeployed] = useState(0)
-  const [tab, setTab] = useState<'overview' | 'approve' | 'log'>('overview')
+  const [tab, setTab] = useState<'overview' | 'plans' | 'roster' | 'approve' | 'log'>('overview')
 
   const loadData = useCallback(async () => {
-    const [reqs, svcs, st, log, ps] = await Promise.all([
-      fetchRequests(), fetchServices(), fetchRequestStats(), fetchChangelog(30), fetchPeopleStats()
+    const [reqs, svcs, st, log, ps, users] = await Promise.all([
+      fetchRequests(), fetchServices(), fetchRequestStats(), fetchChangelog(30), fetchPeopleStats(),
+      fetchUsersWithAssignments(),
     ])
     setRequests(reqs); setServices(svcs); setStats(st); setChangelog(log)
-    setTotalDeployed(ps.totalDeployed)
+    setTotalDeployed(ps.totalDeployed); setAllUsers(users)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
@@ -78,10 +82,16 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <button onClick={() => setTab('overview')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'overview' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Обзор</button>
+        <button onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-purple-600 text-white' : 'bg-white/5 text-white/50'}`}>
+          📋 Совещание
+        </button>
+        <button onClick={() => setTab('roster')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'roster' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
+          👥 Смена
+        </button>
         <button onClick={() => setTab('approve')} className={`px-4 py-2 rounded-lg text-sm font-medium relative ${tab === 'approve' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
-          Утверждение
+          Заявки
           {pendingApproval.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">{pendingApproval.length}</span>}
         </button>
         <button onClick={() => setTab('log')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'log' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Журнал</button>
@@ -89,6 +99,8 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {tab === 'overview' && <OverviewCharts stats={stats} services={services} requests={requests} />}
+      {tab === 'plans' && <WorkPlansMeeting session={session} services={services} />}
+      {tab === 'roster' && <ShiftRoster users={allUsers} services={services} />}
 
       {tab === 'approve' && (
         <div className="space-y-3">
