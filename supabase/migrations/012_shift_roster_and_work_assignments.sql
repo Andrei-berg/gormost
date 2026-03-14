@@ -55,19 +55,23 @@ ALTER TABLE work_plan_items
 
 ALTER TABLE work_assignments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "work_assignments_select"
+DROP POLICY IF EXISTS "work_assignments_select" ON work_assignments;
+CREATE POLICY "work_assignments_select"
   ON work_assignments FOR SELECT
   USING (auth.role() = 'authenticated' OR auth.role() = 'anon');
 
-CREATE POLICY IF NOT EXISTS "work_assignments_insert"
+DROP POLICY IF EXISTS "work_assignments_insert" ON work_assignments;
+CREATE POLICY "work_assignments_insert"
   ON work_assignments FOR INSERT
   WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "work_assignments_update"
+DROP POLICY IF EXISTS "work_assignments_update" ON work_assignments;
+CREATE POLICY "work_assignments_update"
   ON work_assignments FOR UPDATE
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "work_assignments_delete"
+DROP POLICY IF EXISTS "work_assignments_delete" ON work_assignments;
+CREATE POLICY "work_assignments_delete"
   ON work_assignments FOR DELETE
   USING (true);
 
