@@ -886,24 +886,36 @@ export async function updateBreakdownStatus(
   return !error
 }
 
-// Fetch drivers — users whose active employee_assignment has is_driver=true.
-// Returns UserWithAssignment[] so DriverStats can run isWorkerOnDuty() per driver.
+// Fetch drivers — users whose current profession has is_driver=true.
+// Detection is profession-based (Водитель автомобиля, Тракторист, etc.)
+// so no manual flag needed on employee_assignments.
+// Returns UserWithAssignment[] so DriverStats/DriverList can run isWorkerOnDuty().
 export async function fetchDriverUsers(): Promise<UserWithAssignment[]> {
-  const [assignRes, usersRes] = await Promise.all([
+  // Step 1: get user_ids whose current position has a driver profession
+  const { data: positions } = await supabase
+    .from('employee_positions')
+    .select('user_id, professions!inner(is_driver)')
+    .is('ended_at', null)
+    .eq('professions.is_driver', true)
+
+  if (!positions || positions.length === 0) return []
+  const driverUserIds = positions.map((p: { user_id: string }) => p.user_id)
+
+  // Step 2: fetch those users + their current schedule assignment
+  const [usersRes, assignRes] = await Promise.all([
+    supabase.from('users').select('*').in('user_id', driverUserIds).eq('is_active', true),
     supabase
       .from('employee_assignments')
       .select('*, schedules(code, name)')
-      .eq('is_driver', true)
+      .in('user_id', driverUserIds)
       .is('ended_at', null),
-    supabase.from('users').select('*').eq('is_active', true),
   ])
 
+  const users = (usersRes.data || []) as User[]
   const rawAssigns = (assignRes.data || []) as Array<
     EmployeeAssignmentWithScheduleCode & { schedules?: { code: string; name: string } }
   >
-  const users = (usersRes.data || []) as User[]
 
-  // Build map: user_id → assignment with schedule_code
   const assignMap = new Map<string, EmployeeAssignmentWithScheduleCode>()
   rawAssigns.forEach(a => {
     assignMap.set(a.user_id, {
@@ -913,10 +925,8 @@ export async function fetchDriverUsers(): Promise<UserWithAssignment[]> {
     })
   })
 
-  // Keep only users who have a driver assignment
   return users
-    .filter(u => assignMap.has(u.user_id))
-    .map(u => ({ ...u, assignment: assignMap.get(u.user_id)! }))
+    .map(u => ({ ...u, assignment: assignMap.get(u.user_id) ?? null }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
 }
 

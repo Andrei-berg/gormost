@@ -509,6 +509,7 @@ export interface Profession {
   name: string
   grade: string | null
   category: 'ИТР' | 'рабочий'
+  is_driver: boolean
   is_active: boolean
   created_at: string
 }
