@@ -123,14 +123,14 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {/* Driver stats — only for TRANSPORT/ADMIN */}
-      {canEdit && (
+      {/* {canEdit && (
         <div className="mb-4">
           <DriverStats
             drivers={driverUsers}
             vehiclesAssignedCount={vehiclesAssigned}
           />
         </div>
-      )}
+      )} */}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
