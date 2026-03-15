@@ -197,13 +197,13 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 }
               </button>
             )}
-            {plan.status === 'DRAFT' && (
+            {(plan.status === 'DRAFT' || plan.status === 'SUBMITTED') && (
               <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="w-full py-1.5 rounded-lg bg-red-600/15 hover:bg-red-600/30 text-red-400 text-xs transition-all disabled:opacity-50"
               >
-                {deleting ? '...' : 'Удалить'}
+                {deleting ? '...' : plan.status === 'SUBMITTED' ? '↩ Отозвать' : 'Удалить'}
               </button>
             )}
           </div>
