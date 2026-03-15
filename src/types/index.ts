@@ -437,6 +437,33 @@ export interface VehicleBreakdownWithVehicle extends VehicleBreakdown {
   vehicle: Pick<Vehicle, 'id' | 'name' | 'plate' | 'vehicle_type'>
 }
 
+// Cross-service coordination
+export type CrossServiceRequestStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED'
+
+export interface CrossServiceRequest {
+  id: string
+  from_plan_item_id: string
+  from_plan_id: string
+  from_service_id: string
+  to_service_id: string
+  description: string
+  needed_count: number
+  time_start: string | null
+  time_end: string | null
+  status: CrossServiceRequestStatus
+  response_note: string | null
+  responded_by: string | null
+  responded_at: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export const CROSS_SERVICE_STATUS_CONFIG: Record<CrossServiceRequestStatus, { label: string; color: string; bg: string }> = {
+  PENDING:   { label: 'Ожидает ответа', color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+  CONFIRMED: { label: 'Подтверждено',   color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  DECLINED:  { label: 'Отклонено',      color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+}
+
 // Enriched types for UI
 
 export interface WorkPlanWithItems extends WorkPlan {

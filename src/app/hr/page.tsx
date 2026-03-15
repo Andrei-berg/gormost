@@ -97,7 +97,7 @@ function Content({ session }: { session: AuthSession }) {
         <div className="text-center text-white/40 py-12">Загрузка...</div>
       ) : (
         <>
-          <SummaryPanel employees={visibleEmployees} services={services} />
+          <SummaryPanel employees={visibleEmployees} services={services} assignmentMap={assignmentMap} />
 
           <HRToolbar
             view={view}

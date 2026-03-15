@@ -2,12 +2,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
-import type { WorkPlanWithItems, WorkPlan, AuthSession } from '@/types'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests } from '@/lib/api'
+import type { WorkPlanWithItems, WorkPlan, AuthSession, CrossServiceRequest } from '@/types'
 import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
-import CreatePlanModal from '@/components/head/CreatePlanModal'
+import WorkPlanModal from '@/components/head/WorkPlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
+import IncomingRequests from '@/components/head/IncomingRequests'
 
 export default function HeadPage() {
   return (
@@ -17,27 +18,58 @@ export default function HeadPage() {
   )
 }
 
+function getDeadlineTimer(): string | null {
+  const now = new Date()
+  const deadline = new Date(now)
+  deadline.setHours(16, 0, 0, 0)
+  if (now >= deadline) return null
+  const diff = deadline.getTime() - now.getTime()
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  return h > 0 ? `${h}ч ${m}м до совещания` : `${m} мин до совещания`
+}
+
 function Content({ session }: { session: AuthSession }) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [rawPlans, setRawPlans] = useState<WorkPlan[]>([])
+  const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [showCreate, setShowCreate] = useState(false)
-  const [tab, setTab] = useState<'plans' | 'staff'>('plans')
+  const [tab, setTab] = useState<'plans' | 'staff' | 'incoming'>('plans')
+  const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineTimer())
 
   const loadData = useCallback(async () => {
     const raw = await fetchWorkPlans({ serviceId: session.service_id ?? undefined })
     setRawPlans(raw)
     const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
     setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    if (session.service_id) {
+      const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })
+      setIncomingRequests(incoming)
+    }
   }, [session.service_id])
 
   useEffect(() => { loadData() }, [loadData])
 
+  // Refresh deadline timer every minute
+  useEffect(() => {
+    const t = setInterval(() => setTimerLabel(getDeadlineTimer()), 60000)
+    return () => clearInterval(t)
+  }, [])
+
+  const pendingCount = incomingRequests.filter(r => r.status === 'PENDING').length
+
   return (
     <div className="min-h-screen p-4 max-w-[1400px] mx-auto">
-      <Header session={session} title="Начальник службы" emoji="🏢" mode="PLANNING" />
+      <Header
+        session={session}
+        title="Начальник службы"
+        emoji="🏢"
+        mode="PLANNING"
+        showTimer={timerLabel ?? undefined}
+      />
       <ServiceStats plans={plans} />
 
-      {/* Tab switcher */}
+      {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => setTab('plans')}
@@ -51,10 +83,21 @@ function Content({ session }: { session: AuthSession }) {
         >
           👷 Состав смены
         </button>
+        <button
+          onClick={() => setTab('incoming')}
+          className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'incoming' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          🔗 Запросы от служб
+          {pendingCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+              {pendingCount}
+            </span>
+          )}
+        </button>
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      {tab === 'plans' ? (
+      {tab === 'plans' && (
         <>
           <PlanList
             plans={plans}
@@ -63,7 +106,7 @@ function Content({ session }: { session: AuthSession }) {
             onCreatePlan={() => setShowCreate(true)}
           />
           {showCreate && (
-            <CreatePlanModal
+            <WorkPlanModal
               session={session}
               existingPlans={rawPlans}
               onClose={() => setShowCreate(false)}
@@ -71,9 +114,11 @@ function Content({ session }: { session: AuthSession }) {
             />
           )}
         </>
-      ) : (
-        <StaffBoard serviceId={session.service_id ?? ''} />
       )}
+
+      {tab === 'staff' && <StaffBoard serviceId={session.service_id ?? ''} />}
+
+      {tab === 'incoming' && <IncomingRequests session={session} />}
     </div>
   )
 }

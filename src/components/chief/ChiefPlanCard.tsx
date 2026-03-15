@@ -99,9 +99,9 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
               <button
                 onClick={() => { setShowRejectForm(!showRejectForm); setRejectNotes('') }}
                 disabled={saving}
-                className="px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 disabled:opacity-40 text-red-400 text-sm"
+                className="px-3 py-1.5 rounded-lg bg-yellow-600/20 hover:bg-yellow-600/40 disabled:opacity-40 text-yellow-400 text-sm"
               >
-                Отклонить
+                Вернуть на доработку
               </button>
             </>
           )}
@@ -110,22 +110,22 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
 
       {/* Reject form */}
       {showRejectForm && (
-        <div className="mx-4 mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
-          <div className="text-xs text-red-400/70 uppercase tracking-wider">Причина отклонения</div>
+        <div className="mx-4 mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 space-y-2">
+          <div className="text-xs text-yellow-400/70 uppercase tracking-wider">Что нужно исправить</div>
           <textarea
             value={rejectNotes}
             onChange={e => setRejectNotes(e.target.value)}
             rows={2}
             placeholder="Укажите что нужно исправить..."
-            className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-red-500/50 resize-none"
+            className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-yellow-500/50 resize-none"
           />
           <div className="flex gap-2">
             <button
               onClick={handleReject}
               disabled={!rejectNotes.trim() || saving}
-              className="px-4 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-medium"
+              className="px-4 py-1.5 rounded-lg bg-yellow-600/80 hover:bg-yellow-500 disabled:opacity-40 text-white text-sm font-medium"
             >
-              Отклонить
+              Вернуть на доработку
             </button>
             <button
               onClick={() => setShowRejectForm(false)}

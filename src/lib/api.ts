@@ -12,6 +12,7 @@ import type {
   Profession, Schedule,
   EmployeePositionWithProfession, EmployeeAssignmentWithSchedule, EmployeeDetail,
   EmployeeAssignmentWithScheduleCode, UserWithAssignment, WorkAssignment, WorkAssignmentWithUser,
+  CrossServiceRequest,
 } from '@/types'
 
 // ============ USERS ============
@@ -1265,6 +1266,52 @@ export async function markWorkPlanAssigned(planId: string, userId: string): Prom
     .update({ status: 'ASSIGNED', updated_at: new Date().toISOString() })
     .eq('id', planId)
   if (!error) await logAction(userId, 'ASSIGN_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+// ============ CROSS-SERVICE REQUESTS ============
+
+export async function createCrossServiceRequest(
+  data: Omit<CrossServiceRequest, 'id' | 'status' | 'response_note' | 'responded_by' | 'responded_at' | 'created_at'>
+): Promise<CrossServiceRequest | null> {
+  const { data: row, error } = await supabase
+    .from('cross_service_requests')
+    .insert(data)
+    .select()
+    .single()
+  if (error) { console.error('createCrossServiceRequest:', error.message); return null }
+  return row as CrossServiceRequest
+}
+
+export async function fetchCrossServiceRequests(filters: {
+  toServiceId?: string
+  fromServiceId?: string
+  fromPlanId?: string
+}): Promise<CrossServiceRequest[]> {
+  let q = supabase.from('cross_service_requests').select('*').order('created_at', { ascending: false })
+  if (filters.toServiceId)   q = q.eq('to_service_id', filters.toServiceId)
+  if (filters.fromServiceId) q = q.eq('from_service_id', filters.fromServiceId)
+  if (filters.fromPlanId)    q = q.eq('from_plan_id', filters.fromPlanId)
+  const { data } = await q
+  return (data || []) as CrossServiceRequest[]
+}
+
+export async function respondToCrossServiceRequest(
+  id: string,
+  status: 'CONFIRMED' | 'DECLINED',
+  responseNote: string | null,
+  respondedBy: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('cross_service_requests')
+    .update({
+      status,
+      response_note: responseNote,
+      responded_by: respondedBy,
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (!error) await logAction(respondedBy, 'RESPOND_CROSS_SERVICE_REQUEST', 'cross_service_requests', id, { status, responseNote })
   return !error
 }
 
