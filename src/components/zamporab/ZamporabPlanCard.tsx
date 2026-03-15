@@ -120,20 +120,22 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
       </div>
 
       {/* Action buttons bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-white/[0.02]">
         <button
           onClick={handleConfirm}
           disabled={confirming}
-          className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold transition-all"
+          className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-all"
         >
-          {confirming ? 'Подтверждаю...' : '✓ Подтвердить план'}
+          {confirming ? '...' : '✓ Подтвердить'}
         </button>
-        <button
-          onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
-          className="px-4 py-2.5 rounded-xl bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-sm font-medium transition-all"
-        >
-          Вернуть на доработку
-        </button>
+        {!isDirect && (
+          <button
+            onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
+            className="px-3 py-1.5 rounded-lg bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-sm transition-all"
+          >
+            Вернуть на доработку
+          </button>
+        )}
       </div>
 
       {/* Return form */}
