@@ -4,8 +4,11 @@ import type { WorkPlanWithItems, WorkPlanItem, Service, AuthSession } from '@/ty
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-  confirmWorkPlanZamporab, returnWorkPlanZamporab,
+  confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
 } from '@/lib/api'
+
+// SRV-STR (СЭИС) is managed by Zamporab — skips chief engineer
+const ZAMPORAB_OWN_SERVICE = 'SRV-STR'
 
 interface Props {
   plan: WorkPlanWithItems
@@ -33,9 +36,16 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
   const totalForemen = plan.items.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
   const totalVehicles = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
 
+  const isOwnService = plan.service_id === ZAMPORAB_OWN_SERVICE
+  const isDirect = isOwnService && plan.status === 'SUBMITTED'
+
   const handleConfirm = async () => {
     setConfirming(true)
-    await confirmWorkPlanZamporab(plan.id, session.user_id)
+    if (isDirect) {
+      await approveWorkPlanDirect(plan.id, session.user_id)
+    } else {
+      await confirmWorkPlanZamporab(plan.id, session.user_id)
+    }
     onRefresh()
   }
 
@@ -101,7 +111,10 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
           )}
         </div>
         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-          <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
+          {isDirect
+            ? <span className="text-[10px] text-violet-400">СЭИС · без согласования ГИ</span>
+            : <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
+          }
           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
             {statusCfg.label}
           </span>

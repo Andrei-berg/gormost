@@ -7,7 +7,7 @@ import RequestModal from '@/components/RequestModal'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
   fetchServices, fetchStaffRequests, fetchUsers, approveRequest,
-  fetchWorkPlans, fetchWorkPlanWithItems,
+  fetchWorkPlans, fetchWorkPlanWithItems, approveWorkPlanDirect,
 } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, StaffRequest, User, AuthSession, WorkPlanWithItems } from '@/types'
 import { SERVICE_META } from '@/types'
@@ -42,15 +42,17 @@ function Content({ session }: { session: AuthSession }) {
   const [timerText, setTimerText] = useState('')
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs, srs, usrs, rawPlans] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, srs, usrs, rawPlans, ownPlans] = await Promise.all([
       fetchRequests(), fetchCategories(), fetchObjects(), fetchConstructions(),
       fetchWorkTypes(), fetchServices(), fetchStaffRequests(), fetchUsers(),
       fetchWorkPlans({ status: 'APPROVED' }),
+      fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }), // SRV-STR bypasses chief engineer
     ])
     setRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
     setStaffReqs(srs); setAllUsers(usrs)
-    const plansWithItems = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
+    const allRaw = [...rawPlans, ...ownPlans]
+    const plansWithItems = await Promise.all(allRaw.map(p => fetchWorkPlanWithItems(p.id)))
     setPendingPlans(plansWithItems.filter(Boolean) as WorkPlanWithItems[])
   }, [])
 

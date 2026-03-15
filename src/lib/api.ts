@@ -604,6 +604,17 @@ export async function approveWorkPlan(planId: string, userId: string, notes?: st
   return !error
 }
 
+// ZAMPORAB directly approves own-service (SRV-STR) plan: SUBMITTED → PLANNED (bypasses chief engineer)
+export async function approveWorkPlanDirect(planId: string, userId: string): Promise<boolean> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'PLANNED', zamporab_approved_by: userId, zamporab_approved_at: now, updated_at: now })
+    .eq('id', planId).eq('status', 'SUBMITTED')
+  if (!error) await logAction(userId, 'APPROVE_WORK_PLAN_DIRECT', 'work_plan', planId, null)
+  return !error
+}
+
 // ZAMPORAB confirms chief-approved plan → PLANNED
 export async function confirmWorkPlanZamporab(planId: string, userId: string): Promise<boolean> {
   const now = new Date().toISOString()

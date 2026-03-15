@@ -45,7 +45,9 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  const visible = filter === 'ALL' ? plans : plans.filter(p => p.status === filter)
+  // SRV-STR (СЭИС) is managed by Zamporab — skips chief engineer approval
+  const visiblePlans = plans.filter(p => p.service_id !== 'SRV-STR')
+  const visible = filter === 'ALL' ? visiblePlans : visiblePlans.filter(p => p.status === filter)
 
   const grouped = visible.reduce<Record<string, WorkPlanWithItems[]>>((acc, p) => {
     if (!acc[p.plan_date]) acc[p.plan_date] = []
