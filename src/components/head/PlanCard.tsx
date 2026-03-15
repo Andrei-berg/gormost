@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import type { WorkPlanWithItems, WorkPlanItem, AuthSession } from '@/types'
+import type { WorkPlanWithItems, WorkPlanItem, WorkPlanItemWithVehicles, AuthSession } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
@@ -206,11 +206,13 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
 // ── Item row ───────────────────────────────────────────────────────────────
 
 function ItemRow({ item, canEdit, onEdit, onDelete }: {
-  item: WorkPlanItem
+  item: WorkPlanItemWithVehicles
   canEdit: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
+  const hasVehicles = item.vehicles && item.vehicles.length > 0
+
   return (
     <div className="flex items-start gap-2 p-2.5 rounded-lg bg-white/4 group hover:bg-white/6 transition-colors">
       <div className="flex-1 min-w-0">
@@ -231,7 +233,22 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
             {item.required_brigadiers > 0 && <span className="text-[10px] bg-yellow-500/15  text-yellow-300  px-1.5 py-0.5 rounded">⭐ {item.required_brigadiers}</span>}
             {item.required_masters > 0    && <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded">🎓 {item.required_masters}</span>}
             {item.required_foremen > 0    && <span className="text-[10px] bg-purple-500/15  text-purple-300  px-1.5 py-0.5 rounded">📋 {item.required_foremen}</span>}
-            {item.required_vehicles > 0   && <span className="text-[10px] bg-amber-500/15   text-amber-300   px-1.5 py-0.5 rounded">🚗 {item.required_vehicles}</span>}
+            {item.required_vehicles > 0   && !hasVehicles && <span className="text-[10px] bg-amber-500/15 text-amber-300 px-1.5 py-0.5 rounded">🚗 нужно {item.required_vehicles}</span>}
+          </div>
+        )}
+
+        {/* Assigned vehicles — shown prominently when mechanic has assigned them */}
+        {hasVehicles && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {item.vehicles.map(v => (
+              <div key={v.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25">
+                <span className="text-sm">🚗</span>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[11px] font-semibold text-amber-200">{v.name}</span>
+                  <span className="text-[10px] text-amber-400 font-mono">{v.plate}{v.fleet_number ? ` · гар.${v.fleet_number}` : ''}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -259,7 +276,7 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
 
 // ── Item edit form ─────────────────────────────────────────────────────────
 
-type ItemFormData = Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order'>
+type ItemFormData = Omit<WorkPlanItemWithVehicles, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order' | 'vehicles'>
 
 function PlanItemForm({ initial, onSave, onCancel }: {
   initial?: WorkPlanItem

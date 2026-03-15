@@ -543,9 +543,18 @@ export async function fetchWorkPlanWithItems(planId: string): Promise<WorkPlanWi
     supabase.from('work_plan_items').select('*').eq('plan_id', planId).order('sort_order'),
   ])
   if (!planRes.data) return null
+  const items = (itemsRes.data || []) as WorkPlanItem[]
+  const itemIds = items.map(i => i.id)
+  const { data: vaData } = itemIds.length > 0
+    ? await supabase.from('vehicle_assignments').select('*, vehicle:vehicles(*)').in('plan_item_id', itemIds)
+    : { data: [] }
+  const allAssignments = (vaData || []) as Array<VehicleAssignment & { vehicle: Vehicle }>
   return {
     ...(planRes.data as WorkPlan),
-    items: (itemsRes.data || []) as WorkPlanItem[],
+    items: items.map(item => ({
+      ...item,
+      vehicles: allAssignments.filter(a => a.plan_item_id === item.id).map(a => a.vehicle),
+    })),
   }
 }
 

@@ -502,12 +502,15 @@ function ItemCard({
             onClick={initCrossService}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
               item.cross_service
-                ? 'bg-violet-500/15 border-violet-500/25 text-violet-400'
-                : 'bg-white/5 border-white/8 text-white/35 hover:text-white/60 hover:bg-white/8'
+                ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+                : 'bg-violet-500/8 border-violet-500/20 text-violet-400/70 hover:text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/35'
             }`}
           >
-            <span>{item.showCross && item.cross_service ? '▾' : '▸'}</span>
-            <span>{item.cross_service ? `🔗 ${SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} запрос` : '🔗 Другая служба'}</span>
+            <span>🔗</span>
+            <span>{item.cross_service
+              ? `${SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} запрос отправится · ${item.showCross ? '▾' : '▸'}`
+              : 'Смежная служба'
+            }</span>
           </button>
         </div>
 

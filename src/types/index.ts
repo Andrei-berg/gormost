@@ -469,7 +469,7 @@ export const CROSS_SERVICE_STATUS_CONFIG: Record<CrossServiceRequestStatus, { la
 // Enriched types for UI
 
 export interface WorkPlanWithItems extends WorkPlan {
-  items: WorkPlanItem[]
+  items: WorkPlanItemWithVehicles[]
 }
 
 export interface WorkPlanItemWithVehicles extends WorkPlanItem {
