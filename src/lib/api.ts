@@ -629,10 +629,11 @@ export async function confirmWorkPlanZamporab(planId: string, userId: string): P
 // ZAMPORAB returns plan for revision → REJECTED (back to service chief)
 export async function returnWorkPlanZamporab(planId: string, userId: string, notes: string): Promise<boolean> {
   const now = new Date().toISOString()
+  // Accept both APPROVED (other services) and SUBMITTED (SRV-STR own service)
   const { error } = await supabase
     .from('work_plans')
     .update({ status: 'REJECTED', chief_notes: notes, updated_at: now })
-    .eq('id', planId).eq('status', 'APPROVED')
+    .eq('id', planId).in('status', ['APPROVED', 'SUBMITTED'])
   if (!error) await logAction(userId, 'RETURN_WORK_PLAN_ZAMPORAB', 'work_plan', planId, { notes })
   return !error
 }

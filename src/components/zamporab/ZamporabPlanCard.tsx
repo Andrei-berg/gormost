@@ -110,30 +110,30 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-          {isDirect
-            ? <span className="text-[10px] text-violet-400">СЭИС · без согласования ГИ</span>
-            : <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>
-          }
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+          {!isDirect && <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>}
           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
             {statusCfg.label}
           </span>
-          <button
-            onClick={handleConfirm}
-            disabled={confirming}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-all"
-          >
-            ✓ Подтвердить план
-          </button>
-          <button
-            onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
-            disabled={returning}
-            className="px-3 py-2 rounded-xl bg-yellow-600/20 hover:bg-yellow-600/40 disabled:opacity-40 text-yellow-400 text-sm transition-all"
-          >
-            Вернуть на доработку
-          </button>
           <span className="text-white/20 text-xs ml-1">{expanded ? '▲' : '▼'}</span>
         </div>
+      </div>
+
+      {/* Action buttons bar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+        <button
+          onClick={handleConfirm}
+          disabled={confirming}
+          className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold transition-all"
+        >
+          {confirming ? 'Подтверждаю...' : '✓ Подтвердить план'}
+        </button>
+        <button
+          onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
+          className="px-4 py-2.5 rounded-xl bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-sm font-medium transition-all"
+        >
+          Вернуть на доработку
+        </button>
       </div>
 
       {/* Return form */}
