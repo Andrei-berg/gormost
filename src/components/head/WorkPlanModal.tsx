@@ -104,6 +104,14 @@ function emptyItem(): DraftItem {
 
 const ALL_SERVICES = Object.entries(SERVICE_META).map(([id]) => id)
 
+const SERVICE_NAMES: Record<string, string> = {
+  'SRV-ENG':  'Инженерные системы',
+  'SRV-STR':  'Строительная служба',
+  'SRV-FIRE': 'Пожарная безопасность',
+  'SRV-VENT': 'Вентиляция',
+  'SRV-CCTV': 'Видеонаблюдение',
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -405,7 +413,11 @@ function ItemCard({
   )
 
   const initCrossService = () => {
-    if (item.cross_service) { onUpdate({ cross_service: null, showCross: false }); return }
+    if (item.cross_service) {
+      // toggle visibility only, don't delete
+      onUpdate({ showCross: !item.showCross })
+      return
+    }
     onUpdate({
       cross_service: {
         to_service_id: otherServices[0] ?? '',
@@ -417,6 +429,8 @@ function ItemCard({
       showCross: true,
     })
   }
+
+  const removeCrossService = () => onUpdate({ cross_service: null, showCross: false })
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
@@ -507,10 +521,12 @@ function ItemCard({
             }`}
           >
             <span>🔗</span>
-            <span>{item.cross_service
-              ? `${SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} запрос отправится · ${item.showCross ? '▾' : '▸'}`
-              : 'Смежная служба'
-            }</span>
+            <span>
+              {item.cross_service
+                ? `${SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} ${SERVICE_NAMES[item.cross_service.to_service_id] ?? item.cross_service.to_service_id} ${item.showCross ? '▾' : '▸'}`
+                : 'Смежная служба'
+              }
+            </span>
           </button>
         </div>
 
@@ -555,53 +571,63 @@ function ItemCard({
 
         {/* Cross-service expanded */}
         {item.cross_service && item.showCross && (
-          <div className="rounded-lg bg-violet-500/5 border border-violet-500/15 p-3 space-y-2">
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-white/40">Служба</span>
-                <select
-                  value={item.cross_service.to_service_id}
-                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, to_service_id: e.target.value } })}
-                  className="bg-slate-700 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
-                  style={{ colorScheme: 'dark' }}
-                >
-                  {otherServices.map(sid => (
-                    <option key={sid} value={sid} className="bg-slate-700 text-white">
-                      {SERVICE_META[sid]?.emoji ?? ''} {sid}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-white/40">Чел.</span>
-                <input
-                  type="number" min={1} max={20}
-                  value={item.cross_service.needed_count}
-                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, needed_count: Number(e.target.value) } })}
-                  className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-violet-500/50"
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <input
-                  type="time"
-                  value={item.cross_service.time_start}
-                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, time_start: e.target.value } })}
-                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
-                />
-                <span className="text-white/30 text-xs">–</span>
-                <input
-                  type="time"
-                  value={item.cross_service.time_end}
-                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, time_end: e.target.value } })}
-                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
-                />
+          <div className="rounded-lg bg-violet-500/5 border border-violet-500/20 p-3 space-y-2.5">
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-violet-300 uppercase tracking-wider">🔗 Запрос смежной службе</span>
+              <button onClick={removeCrossService} className="text-white/25 hover:text-red-400 text-xs transition-colors px-1">✕ убрать</button>
+            </div>
+
+            {/* Service selector as buttons */}
+            <div>
+              <div className="text-[10px] text-white/35 mb-1.5">Кому направляем запрос</div>
+              <div className="flex flex-wrap gap-1.5">
+                {otherServices.map(sid => (
+                  <button
+                    key={sid}
+                    onClick={() => onUpdate({ cross_service: { ...item.cross_service!, to_service_id: sid } })}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      item.cross_service!.to_service_id === sid
+                        ? 'bg-violet-600/40 border-violet-500/60 text-white'
+                        : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80'
+                    }`}
+                  >
+                    <span>{SERVICE_META[sid]?.emoji ?? ''}</span>
+                    <span>{SERVICE_NAMES[sid] ?? sid}</span>
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Count + time */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-white/40">Людей</span>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => onUpdate({ cross_service: { ...item.cross_service!, needed_count: Math.max(1, item.cross_service!.needed_count - 1) } })}
+                    className="w-6 h-6 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">−</button>
+                  <span className="w-7 text-center text-sm font-semibold text-white">{item.cross_service.needed_count}</span>
+                  <button onClick={() => onUpdate({ cross_service: { ...item.cross_service!, needed_count: Math.min(20, item.cross_service!.needed_count + 1) } })}
+                    className="w-6 h-6 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">+</button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-white/40">с</span>
+                <input type="time" value={item.cross_service.time_start}
+                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, time_start: e.target.value } })}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" />
+                <span className="text-white/30 text-xs">–</span>
+                <input type="time" value={item.cross_service.time_end}
+                  onChange={e => onUpdate({ cross_service: { ...item.cross_service!, time_end: e.target.value } })}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" />
+              </div>
+            </div>
+
             <input
               type="text"
               value={item.cross_service.description}
               onChange={e => onUpdate({ cross_service: { ...item.cross_service!, description: e.target.value } })}
-              placeholder="Что нужно выполнить (для другой службы)…"
+              placeholder="Что нужно сделать (опишите задачу для другой службы)…"
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50"
             />
           </div>
