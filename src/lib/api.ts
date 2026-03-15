@@ -545,15 +545,22 @@ export async function fetchWorkPlanWithItems(planId: string): Promise<WorkPlanWi
   if (!planRes.data) return null
   const items = (itemsRes.data || []) as WorkPlanItem[]
   const itemIds = items.map(i => i.id)
-  const { data: vaData } = itemIds.length > 0
-    ? await supabase.from('vehicle_assignments').select('*, vehicle:vehicles(*)').in('plan_item_id', itemIds)
-    : { data: [] }
-  const allAssignments = (vaData || []) as Array<VehicleAssignment & { vehicle: Vehicle }>
+  const [vaRes, csRes] = await Promise.all([
+    itemIds.length > 0
+      ? supabase.from('vehicle_assignments').select('*, vehicle:vehicles(*)').in('plan_item_id', itemIds)
+      : Promise.resolve({ data: [] }),
+    itemIds.length > 0
+      ? supabase.from('cross_service_requests').select('*').in('from_plan_item_id', itemIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  const allAssignments = (vaRes.data || []) as Array<VehicleAssignment & { vehicle: Vehicle }>
+  const allCrossReqs = (csRes.data || []) as CrossServiceRequest[]
   return {
     ...(planRes.data as WorkPlan),
     items: items.map(item => ({
       ...item,
       vehicles: allAssignments.filter(a => a.plan_item_id === item.id).map(a => a.vehicle),
+      cross_requests: allCrossReqs.filter(r => r.from_plan_item_id === item.id),
     })),
   }
 }
@@ -740,6 +747,7 @@ export async function fetchItemsWithVehicles(planId: string): Promise<WorkPlanIt
     vehicles: assignments
       .filter(a => a.plan_item_id === item.id)
       .map(a => a.vehicle),
+    cross_requests: [],
   }))
 }
 

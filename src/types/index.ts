@@ -474,6 +474,7 @@ export interface WorkPlanWithItems extends WorkPlan {
 
 export interface WorkPlanItemWithVehicles extends WorkPlanItem {
   vehicles: Vehicle[]
+  cross_requests: CrossServiceRequest[]
 }
 
 export interface VehicleWithAssignments extends Vehicle {

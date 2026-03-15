@@ -1,7 +1,15 @@
 'use client'
 import { useState } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, WorkPlanItemWithVehicles, AuthSession } from '@/types'
-import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META } from '@/types'
+
+const SERVICE_NAMES: Record<string, string> = {
+  'SRV-ENG':  'Инженерные системы',
+  'SRV-STR':  'Строительная служба',
+  'SRV-FIRE': 'Пожарная безопасность',
+  'SRV-VENT': 'Вентиляция',
+  'SRV-CCTV': 'Видеонаблюдение',
+}
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan,
@@ -261,6 +269,25 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
           </div>
         )}
 
+        {/* Cross-service requests status */}
+        {item.cross_requests && item.cross_requests.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {item.cross_requests.map(r => {
+              const cfg = CROSS_SERVICE_STATUS_CONFIG[r.status]
+              const toMeta = SERVICE_META[r.to_service_id]
+              return (
+                <div key={r.id} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] ${cfg.bg}`} style={{ color: cfg.color }}>
+                  <span>🔗</span>
+                  <span className="font-medium">{toMeta?.emoji ?? ''} {SERVICE_NAMES[r.to_service_id] ?? r.to_service_id}</span>
+                  <span className="opacity-70">· {r.needed_count} чел.</span>
+                  <span className="font-semibold">· {cfg.label}</span>
+                  {r.response_note && <span className="opacity-60 ml-1">"{r.response_note}"</span>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {item.notes && <div className="text-[11px] text-white/30 mt-1 italic">{item.notes}</div>}
       </div>
 
@@ -276,7 +303,7 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
 
 // ── Item edit form ─────────────────────────────────────────────────────────
 
-type ItemFormData = Omit<WorkPlanItemWithVehicles, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order' | 'vehicles'>
+type ItemFormData = Omit<WorkPlanItemWithVehicles, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order' | 'vehicles' | 'cross_requests'>
 
 function PlanItemForm({ initial, onSave, onCancel }: {
   initial?: WorkPlanItem

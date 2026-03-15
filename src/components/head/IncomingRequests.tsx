@@ -4,6 +4,14 @@ import { fetchCrossServiceRequests, respondToCrossServiceRequest } from '@/lib/a
 import type { CrossServiceRequest, AuthSession } from '@/types'
 import { CROSS_SERVICE_STATUS_CONFIG, SERVICE_META } from '@/types'
 
+const SERVICE_NAMES: Record<string, string> = {
+  'SRV-ENG':  'Инженерные системы',
+  'SRV-STR':  'Строительная служба',
+  'SRV-FIRE': 'Пожарная безопасность',
+  'SRV-VENT': 'Вентиляция',
+  'SRV-CCTV': 'Видеонаблюдение',
+}
+
 interface Props {
   session: AuthSession
 }
@@ -107,7 +115,7 @@ function RequestCard({ req, responding, noteValue, onNoteChange, onConfirm, onDe
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">{fromMeta?.emoji ?? '📋'}</span>
         <div>
-          <div className="text-sm font-medium text-white">{req.from_service_id}</div>
+          <div className="text-sm font-medium text-white">{SERVICE_NAMES[req.from_service_id] ?? req.from_service_id}</div>
           <div className="text-xs text-white/40">
             {new Date(req.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}{' '}
             {new Date(req.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
