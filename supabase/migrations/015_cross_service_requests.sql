@@ -17,9 +17,9 @@ CREATE TABLE cross_service_requests (
   status             TEXT        NOT NULL DEFAULT 'PENDING'
                                  CHECK (status IN ('PENDING', 'CONFIRMED', 'DECLINED')),
   response_note      TEXT,
-  responded_by       TEXT        REFERENCES users(user_id),
+  responded_by       TEXT,       -- user_id (no FK to avoid type mismatch)
   responded_at       TIMESTAMPTZ,
-  created_by         TEXT        REFERENCES users(user_id),
+  created_by         TEXT,       -- user_id (no FK to avoid type mismatch)
   created_at         TIMESTAMPTZ DEFAULT NOW()
 );
 
