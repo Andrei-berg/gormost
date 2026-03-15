@@ -7,14 +7,22 @@ import RequestModal from '@/components/RequestModal'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
   fetchServices, fetchStaffRequests, fetchUsers, approveRequest,
-  fetchWorkPlans, fetchWorkPlanWithItems, approveWorkPlanDirect,
+  fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
 } from '@/lib/api'
-import type { Request, Category, GObject, Construction, WorkType, Service, StaffRequest, User, AuthSession, WorkPlanWithItems } from '@/types'
+import type {
+  Request, Category, GObject, Construction, WorkType, Service,
+  StaffRequest, User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
+} from '@/types'
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabPlanCard from '@/components/zamporab/ZamporabPlanCard'
-import ZamporabOwnPlan from '@/components/zamporab/ZamporabOwnPlan'
 import EmptyState from '@/components/EmptyState'
+// HEAD components
+import ServiceStats from '@/components/head/ServiceStats'
+import PlanList from '@/components/head/PlanList'
+import WorkPlanModal from '@/components/head/WorkPlanModal'
+import StaffBoard from '@/components/head/StaffBoard'
+import IncomingRequests from '@/components/head/IncomingRequests'
 
 export default function ZamPorabPage() {
   return (
@@ -24,7 +32,7 @@ export default function ZamPorabPage() {
   )
 }
 
-type Tab = 'plans' | 'kanban' | 'staff'
+type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'staffreqs'
 
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
@@ -35,26 +43,44 @@ function Content({ session }: { session: AuthSession }) {
   const [services, setServices] = useState<Service[]>([])
   const [staffReqs, setStaffReqs] = useState<StaffRequest[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
+  // own plans (HEAD-style)
+  const [ownPlans, setOwnPlans] = useState<WorkPlanWithItems[]>([])
+  const [rawOwnPlans, setRawOwnPlans] = useState<WorkPlan[]>([])
+  const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
+  // plans awaiting zamporab confirmation
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
+  const [showCreate, setShowCreate] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
   const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs, srs, usrs, rawPlans, ownPlans] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, srs, usrs, rawApproved, rawSubmittedStr] = await Promise.all([
       fetchRequests(), fetchCategories(), fetchObjects(), fetchConstructions(),
       fetchWorkTypes(), fetchServices(), fetchStaffRequests(), fetchUsers(),
       fetchWorkPlans({ status: 'APPROVED' }),
-      fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }), // SRV-STR bypasses chief engineer
+      fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }),
     ])
     setRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
     setStaffReqs(srs); setAllUsers(usrs)
-    const allRaw = [...rawPlans, ...ownPlans]
-    const plansWithItems = await Promise.all(allRaw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPendingPlans(plansWithItems.filter(Boolean) as WorkPlanWithItems[])
-  }, [])
+
+    // Pending plans awaiting zamporab confirmation
+    const allPending = [...rawApproved, ...rawSubmittedStr]
+    const pendingWithItems = await Promise.all(allPending.map(p => fetchWorkPlanWithItems(p.id)))
+    setPendingPlans(pendingWithItems.filter(Boolean) as WorkPlanWithItems[])
+
+    // Own service plans (HEAD-style)
+    if (session.service_id) {
+      const raw = await fetchWorkPlans({ serviceId: session.service_id })
+      setRawOwnPlans(raw)
+      const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
+      setOwnPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+      const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })
+      setIncomingRequests(incoming)
+    }
+  }, [session.service_id])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -83,92 +109,96 @@ function Content({ session }: { session: AuthSession }) {
 
   const unapproved = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length
   const pendingStaff = staffReqs.filter(s => s.status === 'PENDING').length
+  const pendingIncoming = incomingRequests.filter(r => r.status === 'PENDING').length
+
+  const tabCls = (t: Tab, color = 'bg-blue-600') =>
+    `px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === t ? `${color} text-white` : 'bg-white/5 text-white/50 hover:bg-white/10'}`
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
 
-      <PlanStats
-        requests={requests}
-        services={services}
-        pendingApproval={unapproved}
-      />
+      <PlanStats requests={requests} services={services} pendingApproval={unapproved} />
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setTab('plans')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'plans' ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          Планы работ
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <button onClick={() => setTab('plans')} className={tabCls('plans', 'bg-blue-600')}>
+          📋 Мои планы
+        </button>
+        <button onClick={() => setTab('pending')} className={tabCls('pending', 'bg-emerald-600')}>
+          ⏳ Подтверждение
           {pendingPlans.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
               {pendingPlans.length}
             </span>
           )}
         </button>
-        <button
-          onClick={() => setTab('kanban')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          Заявки по службам
+        <button onClick={() => setTab('kanban')} className={tabCls('kanban', 'bg-blue-600')}>
+          📊 Заявки
           {unapproved > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
               {unapproved}
             </span>
           )}
         </button>
-        <button
-          onClick={() => setTab('staff')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          Запросы людей
+        <button onClick={() => setTab('staff')} className={tabCls('staff', 'bg-blue-600')}>
+          👷 Смена
+        </button>
+        <button onClick={() => setTab('incoming')} className={tabCls('incoming', 'bg-violet-600')}>
+          🔗 Смежные
+          {pendingIncoming > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
+              {pendingIncoming}
+            </span>
+          )}
+        </button>
+        <button onClick={() => setTab('staffreqs')} className={tabCls('staffreqs', 'bg-blue-600')}>
+          👤 Люди
           {pendingStaff > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
               {pendingStaff}
             </span>
           )}
         </button>
-        <div className="ml-auto">
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
-        </div>
+        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      {/* Tab: Plans */}
+      {/* Tab: Own plans (HEAD-style) */}
       {tab === 'plans' && (
-        <div className="space-y-8">
-          {/* Own plan creation section */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📋</span>
-              <h3 className="text-base font-bold text-emerald-400">Мой план работ</h3>
-            </div>
-            <ZamporabOwnPlan session={session} services={services} />
-          </div>
+        <>
+          <ServiceStats plans={ownPlans} />
+          <PlanList
+            plans={ownPlans}
+            session={session}
+            onRefresh={loadData}
+            onCreatePlan={() => setShowCreate(true)}
+          />
+          {showCreate && (
+            <WorkPlanModal
+              session={session}
+              existingPlans={rawOwnPlans}
+              onClose={() => setShowCreate(false)}
+              onSaved={loadData}
+            />
+          )}
+        </>
+      )}
 
-          {/* Plans from other services awaiting confirmation */}
-          {pendingPlans.length > 0 && (
-            <div>
-              <div className="border-t border-white/10 pt-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">⏳</span>
-                  <h3 className="text-base font-bold text-blue-400">
-                    Ожидают вашего подтверждения ({pendingPlans.length})
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  {pendingPlans.map(plan => (
-                    <ZamporabPlanCard
-                      key={plan.id}
-                      plan={plan}
-                      services={services}
-                      session={session}
-                      onRefresh={loadData}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
+      {/* Tab: Pending confirmation from other services */}
+      {tab === 'pending' && (
+        <div className="space-y-3">
+          {pendingPlans.length === 0 ? (
+            <EmptyState message="Нет планов, ожидающих подтверждения" />
+          ) : (
+            pendingPlans.map(plan => (
+              <ZamporabPlanCard
+                key={plan.id}
+                plan={plan}
+                services={services}
+                session={session}
+                onRefresh={loadData}
+              />
+            ))
           )}
         </div>
       )}
@@ -176,7 +206,6 @@ function Content({ session }: { session: AuthSession }) {
       {/* Tab: Kanban */}
       {tab === 'kanban' && (
         <div className="overflow-x-auto pb-4">
-          {/* Requests pending zamporab approval */}
           {(() => {
             const pending = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab)
             if (pending.length === 0) return null
@@ -203,10 +232,7 @@ function Content({ session }: { session: AuthSession }) {
                           <div className="text-xs text-white/40 mt-0.5">{svc?.service_name} · {cat?.category_name}</div>
                           {r.description && <div className="text-xs text-white/30 mt-1">{r.description}</div>}
                         </div>
-                        <button
-                          onClick={() => handleApprove(r.request_id)}
-                          className="shrink-0 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-all"
-                        >
+                        <button onClick={() => handleApprove(r.request_id)} className="shrink-0 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-all">
                           ✓ Согласовать
                         </button>
                       </div>
@@ -217,8 +243,6 @@ function Content({ session }: { session: AuthSession }) {
               </div>
             )
           })()}
-
-          {/* All services kanban */}
           {services.map(svc => {
             const svcReqs = requests.filter(r => r.service_id === svc.service_id)
             const meta = SERVICE_META[svc.service_id]
@@ -246,8 +270,11 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       )}
 
-      {/* Tab: Staff requests */}
-      {tab === 'staff' && (
+      {tab === 'staff' && <StaffBoard serviceId={session.service_id ?? ''} />}
+
+      {tab === 'incoming' && <IncomingRequests session={session} />}
+
+      {tab === 'staffreqs' && (
         <StaffRequestsView staffReqs={staffReqs} services={services} users={allUsers} session={session} onRefresh={loadData} />
       )}
 
