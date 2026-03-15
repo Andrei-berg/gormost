@@ -10,6 +10,7 @@ interface SlotOption {
   date: string
   shift: ShiftType
   label: string
+  shortLabel: string
 }
 
 function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
@@ -26,8 +27,14 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
     if (taken.has(`${dateStr}_${shift}`)) return
     const dd = d.getDate().toString().padStart(2, '0')
     const mm = (d.getMonth() + 1).toString().padStart(2, '0')
-    const shiftLabel = shift === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
-    options.push({ date: dateStr, shift, label: `${dayNames[d.getDay()]} ${dd}.${mm} · ${shiftLabel}` })
+    const dayName = dayNames[d.getDay()]
+    const isDay = shift === 'DAY'
+    options.push({
+      date: dateStr,
+      shift,
+      label: `${dayName} ${dd}.${mm} · ${isDay ? '☀️ 07:30–19:00' : '🌙 19:00–07:00'}`,
+      shortLabel: `${isDay ? '☀️' : '🌙'} ${dd}.${mm}`,
+    })
   }
 
   add(0, 'NIGHT')
@@ -37,15 +44,16 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
   return options
 }
 
-function getDeadlineCountdown(): string {
+function getDeadlineCountdown(): { label: string; passed: boolean } {
   const now = new Date()
   const deadline = new Date(now)
   deadline.setHours(16, 0, 0, 0)
-  if (now >= deadline) return 'Срок истёк'
+  if (now >= deadline) return { label: 'Срок истёк', passed: true }
   const diff = deadline.getTime() - now.getTime()
   const h = Math.floor(diff / 3600000)
   const m = Math.floor((diff % 3600000) / 60000)
-  return h > 0 ? `${h}ч ${m}м` : `${m} мин`
+  const label = h > 0 ? `${h}ч ${m}м` : `${m} мин`
+  return { label, passed: false }
 }
 
 // ── Draft item types ───────────────────────────────────────────────────────
@@ -59,7 +67,7 @@ interface CrossServiceDraft {
 }
 
 interface DraftItem {
-  _id: string  // temp client-side id
+  _id: string
   location: string
   work_description: string
   time_start: string
@@ -90,8 +98,6 @@ function emptyItem(): DraftItem {
   }
 }
 
-// ── Other services (excluding current) ────────────────────────────────────
-
 const ALL_SERVICES = Object.entries(SERVICE_META).map(([id]) => id)
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -113,13 +119,11 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
   const [workerSearch, setWorkerSearch] = useState<Record<string, string>>({})
   const [countdown, setCountdown] = useState(getDeadlineCountdown())
 
-  // Deadline countdown timer
   useEffect(() => {
     const t = setInterval(() => setCountdown(getDeadlineCountdown()), 30000)
     return () => clearInterval(t)
   }, [])
 
-  // Load service employees for named worker selection
   useEffect(() => {
     fetchUsers(true).then(all => {
       setServiceUsers(all.filter(u => u.service_id === session.service_id))
@@ -208,48 +212,57 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
   }
 
   const otherServices = ALL_SERVICES.filter(id => id !== session.service_id)
-  const deadlinePassed = countdown === 'Срок истёк'
+  const serviceMeta = session.service_id ? SERVICE_META[session.service_id] : null
+  const filledCount = items.filter(it => it.location.trim() || it.work_description.trim()).length
+
+  // Totals
+  const totalWorkers = items.reduce((s, it) => s + it.required_workers, 0)
+  const totalForemen = items.reduce((s, it) => s + it.required_foremen, 0)
+  const totalVehicles = items.reduce((s, it) => s + it.required_vehicles, 0)
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[999] flex items-start justify-center p-4 pt-6 overflow-y-auto"
+      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[999] flex items-start justify-center p-3 pt-4 overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="glass-strong rounded-2xl w-full max-w-4xl border border-white/10 shadow-2xl flex flex-col mb-6">
+      <div className="glass-strong rounded-2xl w-full max-w-3xl border border-white/10 shadow-2xl flex flex-col mb-6">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-white">📋 Новый план работ</h2>
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-              deadlinePassed
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{serviceMeta?.emoji ?? '📋'}</span>
+              <span className="text-white font-semibold text-sm">Новый план работ</span>
+            </div>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+              countdown.passed
                 ? 'bg-red-500/20 border-red-500/30 text-red-400'
-                : 'bg-amber-500/20 border-amber-500/30 text-amber-400'
+                : 'bg-amber-500/15 border-amber-500/25 text-amber-400'
             }`}>
-              <span>⏰</span>
-              <span>До совещания 16:00: {countdown}</span>
+              ⏰ {countdown.passed ? 'Срок истёк' : `до 16:00 · ${countdown.label}`}
             </div>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors text-xl leading-none">✕</button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/10 transition-all text-lg leading-none">✕</button>
         </div>
 
-        {/* Shift selector */}
-        <div className="px-6 py-4 border-b border-white/10">
-          <div className="text-xs text-white/40 uppercase tracking-widest mb-3">Выберите смену</div>
+        {/* ── Shift selector ── */}
+        <div className="px-5 py-3 border-b border-white/10">
+          <div className="text-[10px] text-white/35 uppercase tracking-widest mb-2">Смена</div>
           {options.length === 0 ? (
             <div className="text-white/30 text-sm">Все ближайшие смены уже запланированы</div>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {options.map(opt => {
                 const key = `${opt.date}_${opt.shift}`
+                const isSelected = selected === key
                 return (
                   <button
                     key={key}
                     onClick={() => setSelected(key)}
-                    className={`px-4 py-2 rounded-xl text-sm border transition-all ${
-                      selected === key
-                        ? 'bg-blue-600/30 border-blue-500/50 text-white font-medium'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                      isSelected
+                        ? 'bg-blue-600/40 border-blue-500/60 text-white shadow-sm shadow-blue-500/20'
+                        : 'bg-white/5 border-white/10 text-white/55 hover:bg-white/10 hover:text-white/80'
                     }`}
                   >
                     {opt.label}
@@ -260,13 +273,15 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           )}
         </div>
 
-        {/* Items */}
-        <div className="px-6 py-4 space-y-4">
+        {/* ── Items ── */}
+        <div className="px-5 py-4 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs text-white/40 uppercase tracking-widest">Позиции плана ({items.length})</div>
+            <span className="text-[10px] text-white/35 uppercase tracking-widest">
+              Позиции плана {items.length > 0 && <span className="text-white/50">· {items.length}</span>}
+            </span>
             <button
               onClick={() => setItems(prev => [...prev, emptyItem()])}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30 text-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/50 text-xs font-medium transition-all"
             >
               + Добавить позицию
             </button>
@@ -289,35 +304,60 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           ))}
 
           {items.length === 0 && (
-            <div className="text-center text-white/30 text-sm py-8 border-2 border-dashed border-white/10 rounded-xl">
-              Нет позиций — нажмите «+ Добавить позицию»
-            </div>
+            <button
+              onClick={() => setItems([emptyItem()])}
+              className="w-full py-8 border-2 border-dashed border-white/10 rounded-xl text-white/30 text-sm hover:border-blue-500/30 hover:text-blue-400/60 transition-all"
+            >
+              + Нажмите, чтобы добавить первую позицию
+            </button>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10">
+        {/* ── Totals bar ── */}
+        {items.length > 0 && (
+          <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl bg-white/4 border border-white/8 flex items-center gap-4 flex-wrap">
+            <span className="text-[10px] text-white/35 uppercase tracking-widest">Итого</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">👷</span>
+              <span className="text-white font-semibold text-sm">{totalWorkers}</span>
+              <span className="text-white/40 text-xs">рабочих</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">📋</span>
+              <span className="text-white font-semibold text-sm">{totalForemen}</span>
+              <span className="text-white/40 text-xs">ИТР</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">🚗</span>
+              <span className="text-white font-semibold text-sm">{totalVehicles}</span>
+              <span className="text-white/40 text-xs">техники</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Footer ── */}
+        <div className="px-5 pb-5">
           {error && (
             <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
               {error}
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={handleCreate}
               disabled={!selected || saving || options.length === 0}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-medium text-sm transition-all"
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-blue-600/20"
             >
               {saving
-                ? 'Создаётся...'
-                : `Создать план${items.filter(it => it.location.trim() || it.work_description.trim()).length > 0
-                    ? ` · ${items.filter(it => it.location.trim() || it.work_description.trim()).length} поз.`
-                    : ''}`
+                ? '⏳ Создаётся...'
+                : filledCount > 0
+                  ? `✓ Создать план · ${filledCount} поз.`
+                  : 'Создать план'
               }
             </button>
             <button
               onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 text-sm transition-all"
+              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 text-sm transition-all"
             >
               Отмена
             </button>
@@ -328,7 +368,7 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
   )
 }
 
-// ── Item card sub-component ────────────────────────────────────────────────
+// ── Item card ──────────────────────────────────────────────────────────────
 
 interface ItemCardProps {
   item: DraftItem
@@ -368,102 +408,134 @@ function ItemCard({
   }
 
   return (
-    <div className="glass rounded-xl p-4 border border-white/10 space-y-3">
-      {/* Row 1: index + location + delete */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-white/30 w-6 shrink-0">#{index + 1}</span>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] border-b border-white/8">
+        <span className="text-[11px] font-bold text-white/25 w-5 shrink-0 text-center">
+          {index + 1}
+        </span>
         <input
           type="text"
           value={item.location}
           onChange={e => onUpdate({ location: e.target.value })}
-          placeholder="Объект / место работ"
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+          placeholder="📍 Объект / место работ"
+          className="flex-1 bg-transparent text-sm text-white placeholder-white/25 focus:outline-none min-w-0"
         />
         <button
           onClick={onRemove}
-          className="p-2 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          className="w-6 h-6 flex items-center justify-center rounded-md text-white/15 hover:text-red-400 hover:bg-red-500/10 transition-all text-sm shrink-0"
           title="Удалить позицию"
         >
-          🗑️
+          ✕
         </button>
       </div>
 
-      {/* Row 2: description */}
-      <textarea
-        value={item.work_description}
-        onChange={e => onUpdate({ work_description: e.target.value })}
-        placeholder="Описание работ"
-        rows={2}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 resize-none"
-      />
+      {/* Card body */}
+      <div className="px-3 py-3 space-y-2.5">
+        {/* Work description */}
+        <textarea
+          value={item.work_description}
+          onChange={e => onUpdate({ work_description: e.target.value })}
+          placeholder="Описание работ…"
+          rows={2}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/40 resize-none transition-colors"
+        />
 
-      {/* Row 3: times + headcount */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-white/40">Начало</span>
-          <input
-            type="time"
-            value={item.time_start}
-            onChange={e => onUpdate({ time_start: e.target.value })}
-            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500/50"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-white/40">Конец</span>
-          <input
-            type="time"
-            value={item.time_end}
-            onChange={e => onUpdate({ time_end: e.target.value })}
-            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500/50"
-          />
-        </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <NumberInput label="Рабочих" value={item.required_workers} onChange={v => onUpdate({ required_workers: v })} />
-          <NumberInput label="ИТР" value={item.required_foremen} onChange={v => onUpdate({ required_foremen: v })} />
-          <NumberInput label="Водит." value={item.required_vehicles} onChange={v => onUpdate({ required_vehicles: v })} />
-        </div>
-      </div>
+        {/* Time + Headcount row */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/* Times */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-white/35">с</span>
+            <input
+              type="time"
+              value={item.time_start}
+              onChange={e => onUpdate({ time_start: e.target.value })}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/40 transition-colors"
+            />
+            <span className="text-[11px] text-white/35">до</span>
+            <input
+              type="time"
+              value={item.time_end}
+              onChange={e => onUpdate({ time_end: e.target.value })}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/40 transition-colors"
+            />
+          </div>
 
-      {/* Row 4: named workers toggle */}
-      <div>
-        <button
-          onClick={() => onUpdate({ showNamed: !item.showNamed })}
-          className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-            item.named_workers.length > 0 ? 'text-emerald-400' : 'text-white/40 hover:text-white/70'
-          }`}
-        >
-          <span>{item.showNamed ? '▾' : '▸'}</span>
-          <span>👷 Назначить поимённо (опционально)</span>
-          {item.named_workers.length > 0 && (
-            <span className="bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded-full text-[10px]">
-              {item.named_workers.length}
-            </span>
-          )}
-        </button>
+          {/* Headcount steppers */}
+          <div className="flex items-center gap-3 ml-auto">
+            <Stepper
+              icon="👷"
+              label="Рабочих"
+              value={item.required_workers}
+              onChange={v => onUpdate({ required_workers: v })}
+            />
+            <Stepper
+              icon="📋"
+              label="ИТР"
+              value={item.required_foremen}
+              onChange={v => onUpdate({ required_foremen: v })}
+            />
+            <Stepper
+              icon="🚗"
+              label="Техника"
+              value={item.required_vehicles}
+              onChange={v => onUpdate({ required_vehicles: v })}
+            />
+          </div>
+        </div>
+
+        {/* Optional sections row */}
+        <div className="flex flex-wrap gap-2 pt-0.5">
+          {/* Named workers toggle */}
+          <button
+            onClick={() => onUpdate({ showNamed: !item.showNamed })}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+              item.named_workers.length > 0
+                ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400'
+                : 'bg-white/5 border-white/8 text-white/35 hover:text-white/60 hover:bg-white/8'
+            }`}
+          >
+            <span>{item.showNamed ? '▾' : '▸'}</span>
+            <span>Поимённо{item.named_workers.length > 0 ? ` · ${item.named_workers.length}` : ''}</span>
+          </button>
+
+          {/* Cross-service toggle */}
+          <button
+            onClick={initCrossService}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+              item.cross_service
+                ? 'bg-violet-500/15 border-violet-500/25 text-violet-400'
+                : 'bg-white/5 border-white/8 text-white/35 hover:text-white/60 hover:bg-white/8'
+            }`}
+          >
+            <span>{item.showCross && item.cross_service ? '▾' : '▸'}</span>
+            <span>{item.cross_service ? `🔗 ${SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} запрос` : '🔗 Другая служба'}</span>
+          </button>
+        </div>
+
+        {/* Named workers expanded */}
         {item.showNamed && (
-          <div className="mt-2 pl-4 space-y-2">
-            {/* Added workers */}
+          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-3 space-y-2">
             {item.named_workers.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {item.named_workers.map(name => (
-                  <span key={name} className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300">
+                  <span key={name} className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[11px] text-emerald-300">
                     {name}
-                    <button onClick={() => onRemoveWorker(name)} className="text-emerald-500/60 hover:text-red-400 transition-colors">×</button>
+                    <button onClick={() => onRemoveWorker(name)} className="text-emerald-500/50 hover:text-red-400 transition-colors ml-0.5">×</button>
                   </span>
                 ))}
               </div>
             )}
-            {/* Search + add */}
             <div className="relative">
               <input
                 type="text"
                 value={workerSearch}
                 onChange={e => onWorkerSearchChange(e.target.value)}
-                placeholder="Поиск сотрудника..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50"
+                placeholder="Поиск сотрудника…"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/40"
               />
               {workerSearch && filteredUsers.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-20 max-h-40 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/15 rounded-xl shadow-2xl z-20 max-h-40 overflow-y-auto">
                   {filteredUsers.slice(0, 10).map(u => (
                     <button
                       key={u.user_id}
@@ -479,59 +551,43 @@ function ItemCard({
             </div>
           </div>
         )}
-      </div>
 
-      {/* Row 5: cross-service toggle */}
-      <div>
-        <button
-          onClick={initCrossService}
-          className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-            item.cross_service ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
-          }`}
-        >
-          <span>{item.showCross && item.cross_service ? '▾' : '▸'}</span>
-          <span>🔗 Привлечь другую службу</span>
-          {item.cross_service && (
-            <span className="bg-violet-500/20 border border-violet-500/30 px-1.5 py-0.5 rounded-full text-[10px] text-violet-300">
-              {SERVICE_META[item.cross_service.to_service_id]?.emoji ?? ''} запрос отправится
-            </span>
-          )}
-        </button>
+        {/* Cross-service expanded */}
         {item.cross_service && item.showCross && (
-          <div className="mt-2 pl-4 space-y-2">
-            <div className="flex flex-wrap gap-2 items-start">
-              {/* Service selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/40 shrink-0">Служба</span>
+          <div className="rounded-lg bg-violet-500/5 border border-violet-500/15 p-3 space-y-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-white/40">Служба</span>
                 <select
                   value={item.cross_service.to_service_id}
                   onChange={e => onUpdate({ cross_service: { ...item.cross_service!, to_service_id: e.target.value } })}
-                  className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
+                  className="bg-slate-700 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
+                  style={{ colorScheme: 'dark' }}
                 >
                   {otherServices.map(sid => (
-                    <option key={sid} value={sid}>{SERVICE_META[sid]?.emoji ?? ''} {sid}</option>
+                    <option key={sid} value={sid} className="bg-slate-700 text-white">
+                      {SERVICE_META[sid]?.emoji ?? ''} {sid}
+                    </option>
                   ))}
                 </select>
               </div>
-              {/* Count */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/40">Человек</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-white/40">Чел.</span>
                 <input
                   type="number" min={1} max={20}
                   value={item.cross_service.needed_count}
                   onChange={e => onUpdate({ cross_service: { ...item.cross_service!, needed_count: Number(e.target.value) } })}
-                  className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-violet-500/50"
+                  className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-violet-500/50"
                 />
               </div>
-              {/* Time */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <input
                   type="time"
                   value={item.cross_service.time_start}
                   onChange={e => onUpdate({ cross_service: { ...item.cross_service!, time_start: e.target.value } })}
                   className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
                 />
-                <span className="text-white/30">–</span>
+                <span className="text-white/30 text-xs">–</span>
                 <input
                   type="time"
                   value={item.cross_service.time_end}
@@ -540,13 +596,12 @@ function ItemCard({
                 />
               </div>
             </div>
-            {/* Description */}
             <input
               type="text"
               value={item.cross_service.description}
               onChange={e => onUpdate({ cross_service: { ...item.cross_service!, description: e.target.value } })}
-              placeholder="Что нужно сделать (для другой службы)"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
+              placeholder="Что нужно выполнить (для другой службы)…"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50"
             />
           </div>
         )}
@@ -555,18 +610,35 @@ function ItemCard({
   )
 }
 
-// ── Small number input ─────────────────────────────────────────────────────
+// ── Stepper control ────────────────────────────────────────────────────────
 
-function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function Stepper({ icon, label, value, onChange }: {
+  icon: string
+  label: string
+  value: number
+  onChange: (v: number) => void
+}) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[10px] text-white/40">{label}</span>
-      <input
-        type="number" min={0} max={50}
-        value={value}
-        onChange={e => onChange(Math.max(0, Number(e.target.value)))}
-        className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-center focus:outline-none focus:border-blue-500/50"
-      />
+      <span className="text-[10px] text-white/30">{label}</span>
+      <div className="flex items-center gap-0.5">
+        <button
+          onClick={() => onChange(Math.max(0, value - 1))}
+          className="w-6 h-6 rounded-md bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 text-sm font-bold transition-all flex items-center justify-center leading-none"
+        >
+          −
+        </button>
+        <div className="w-7 text-center text-sm font-semibold text-white leading-none py-1.5">
+          {value}
+        </div>
+        <button
+          onClick={() => onChange(Math.min(50, value + 1))}
+          className="w-6 h-6 rounded-md bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 text-sm font-bold transition-all flex items-center justify-center leading-none"
+        >
+          +
+        </button>
+      </div>
+      <span className="text-base leading-none">{icon}</span>
     </div>
   )
 }
