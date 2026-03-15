@@ -294,6 +294,8 @@ function PlanItemForm({ initial, onSave, onCancel }: {
       time_end: timeEnd || null,
       notes: notes.trim() || null,
       required_workers: Number(reqWorkers) || 0,
+      required_brigadiers: 0,
+      required_masters: 0,
       required_foremen: Number(reqForemen) || 0,
       required_vehicles: Number(reqVehicles) || 0,
       is_redirected: initial?.is_redirected ?? false,

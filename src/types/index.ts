@@ -346,6 +346,8 @@ export interface WorkPlanItem {
   notes: string | null
   // headcount requirements (set by service chief when planning)
   required_workers: number
+  required_brigadiers: number
+  required_masters: number
   required_foremen: number
   required_vehicles: number
   // emergency redirect

@@ -251,6 +251,8 @@ function ItemForm({ initial, onSave, onCancel }: {
       time_end: timeEnd || null,
       notes: notes.trim() || null,
       required_workers: 0,
+      required_brigadiers: 0,
+      required_masters: 0,
       required_foremen: 0,
       required_vehicles: 0,
       is_redirected: false,

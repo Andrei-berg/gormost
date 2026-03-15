@@ -73,6 +73,8 @@ interface DraftItem {
   time_start: string
   time_end: string
   required_workers: number
+  required_brigadiers: number
+  required_masters: number
   required_foremen: number
   required_vehicles: number
   named_workers: string[]
@@ -89,7 +91,9 @@ function emptyItem(): DraftItem {
     time_start: '07:30',
     time_end: '16:00',
     required_workers: 2,
-    required_foremen: 1,
+    required_brigadiers: 1,
+    required_masters: 1,
+    required_foremen: 0,
     required_vehicles: 0,
     named_workers: [],
     cross_service: null,
@@ -183,6 +187,8 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           notes: null,
           workers: it.named_workers,
           required_workers: it.required_workers,
+          required_brigadiers: it.required_brigadiers,
+          required_masters: it.required_masters,
           required_foremen: it.required_foremen,
           required_vehicles: it.required_vehicles,
           is_redirected: false,
@@ -216,9 +222,11 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
   const filledCount = items.filter(it => it.location.trim() || it.work_description.trim()).length
 
   // Totals
-  const totalWorkers = items.reduce((s, it) => s + it.required_workers, 0)
-  const totalForemen = items.reduce((s, it) => s + it.required_foremen, 0)
-  const totalVehicles = items.reduce((s, it) => s + it.required_vehicles, 0)
+  const totalWorkers    = items.reduce((s, it) => s + it.required_workers, 0)
+  const totalBrigadiers = items.reduce((s, it) => s + it.required_brigadiers, 0)
+  const totalMasters    = items.reduce((s, it) => s + it.required_masters, 0)
+  const totalForemen    = items.reduce((s, it) => s + it.required_foremen, 0)
+  const totalVehicles   = items.reduce((s, it) => s + it.required_vehicles, 0)
 
   return (
     <div
@@ -317,21 +325,11 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
         {items.length > 0 && (
           <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl bg-white/4 border border-white/8 flex items-center gap-4 flex-wrap">
             <span className="text-[10px] text-white/35 uppercase tracking-widest">Итого</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base">👷</span>
-              <span className="text-white font-semibold text-sm">{totalWorkers}</span>
-              <span className="text-white/40 text-xs">рабочих</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base">📋</span>
-              <span className="text-white font-semibold text-sm">{totalForemen}</span>
-              <span className="text-white/40 text-xs">ИТР</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base">🚗</span>
-              <span className="text-white font-semibold text-sm">{totalVehicles}</span>
-              <span className="text-white/40 text-xs">техники</span>
-            </div>
+            <TotalBadge icon="👷" count={totalWorkers}    label="рабочих" />
+            <TotalBadge icon="⭐" count={totalBrigadiers} label="бригадир" />
+            <TotalBadge icon="🎓" count={totalMasters}    label="мастер" />
+            {totalForemen > 0 && <TotalBadge icon="📋" count={totalForemen} label="ИТР" />}
+            <TotalBadge icon="🚗" count={totalVehicles}   label="техника" />
           </div>
         )}
 
@@ -364,6 +362,19 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Total badge ───────────────────────────────────────────────────────────
+
+function TotalBadge({ icon, count, label }: { icon: string; count: number; label: string }) {
+  if (count === 0) return null
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-base">{icon}</span>
+      <span className="text-white font-semibold text-sm">{count}</span>
+      <span className="text-white/40 text-xs">{label}</span>
     </div>
   )
 }
@@ -462,25 +473,12 @@ function ItemCard({
           </div>
 
           {/* Headcount steppers */}
-          <div className="flex items-center gap-3 ml-auto">
-            <Stepper
-              icon="👷"
-              label="Рабочих"
-              value={item.required_workers}
-              onChange={v => onUpdate({ required_workers: v })}
-            />
-            <Stepper
-              icon="📋"
-              label="ИТР"
-              value={item.required_foremen}
-              onChange={v => onUpdate({ required_foremen: v })}
-            />
-            <Stepper
-              icon="🚗"
-              label="Техника"
-              value={item.required_vehicles}
-              onChange={v => onUpdate({ required_vehicles: v })}
-            />
+          <div className="flex items-center gap-3 ml-auto flex-wrap">
+            <Stepper icon="👷" label="Рабочих"   value={item.required_workers}    onChange={v => onUpdate({ required_workers: v })} />
+            <Stepper icon="⭐" label="Бригадир"   value={item.required_brigadiers} onChange={v => onUpdate({ required_brigadiers: v })} />
+            <Stepper icon="🎓" label="Мастер"     value={item.required_masters}    onChange={v => onUpdate({ required_masters: v })} />
+            <Stepper icon="📋" label="ИТР"        value={item.required_foremen}    onChange={v => onUpdate({ required_foremen: v })} />
+            <Stepper icon="🚗" label="Техника"    value={item.required_vehicles}   onChange={v => onUpdate({ required_vehicles: v })} />
           </div>
         </div>
 

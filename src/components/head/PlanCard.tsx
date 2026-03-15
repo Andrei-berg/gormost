@@ -26,9 +26,11 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
 
   // Totals
-  const totalWorkers = plan.items.reduce((s, it) => s + (it.required_workers ?? 0), 0)
-  const totalForemen = plan.items.reduce((s, it) => s + (it.required_foremen ?? 0), 0)
-  const totalVehicles = plan.items.reduce((s, it) => s + (it.required_vehicles ?? 0), 0)
+  const totalWorkers    = plan.items.reduce((s, it) => s + (it.required_workers    ?? 0), 0)
+  const totalBrigadiers = plan.items.reduce((s, it) => s + (it.required_brigadiers ?? 0), 0)
+  const totalMasters    = plan.items.reduce((s, it) => s + (it.required_masters    ?? 0), 0)
+  const totalForemen    = plan.items.reduce((s, it) => s + (it.required_foremen    ?? 0), 0)
+  const totalVehicles   = plan.items.reduce((s, it) => s + (it.required_vehicles   ?? 0), 0)
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -147,27 +149,14 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
           </div>
 
           {/* Headcount totals */}
-          {(totalWorkers > 0 || totalForemen > 0 || totalVehicles > 0) && (
+          {(totalWorkers > 0 || totalBrigadiers > 0 || totalMasters > 0 || totalForemen > 0 || totalVehicles > 0) && (
             <div className="space-y-1.5">
               <div className="text-[10px] text-white/30 uppercase tracking-widest">Всего</div>
-              {totalWorkers > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/50">👷 Рабочих</span>
-                  <span className="text-sm font-semibold text-white">{totalWorkers}</span>
-                </div>
-              )}
-              {totalForemen > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/50">📋 ИТР</span>
-                  <span className="text-sm font-semibold text-white">{totalForemen}</span>
-                </div>
-              )}
-              {totalVehicles > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/50">🚗 Техника</span>
-                  <span className="text-sm font-semibold text-white">{totalVehicles}</span>
-                </div>
-              )}
+              {totalWorkers    > 0 && <TotalRow icon="👷" label="Рабочих"   count={totalWorkers} />}
+              {totalBrigadiers > 0 && <TotalRow icon="⭐" label="Бригадир"  count={totalBrigadiers} />}
+              {totalMasters    > 0 && <TotalRow icon="🎓" label="Мастер"    count={totalMasters} />}
+              {totalForemen    > 0 && <TotalRow icon="📋" label="ИТР"       count={totalForemen} />}
+              {totalVehicles   > 0 && <TotalRow icon="🚗" label="Техника"   count={totalVehicles} />}
             </div>
           )}
 
@@ -236,17 +225,13 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
         <div className="text-xs text-white/55 mt-0.5 leading-relaxed">{item.work_description}</div>
 
         {/* Headcount badges */}
-        {(item.required_workers > 0 || item.required_foremen > 0 || item.required_vehicles > 0) && (
+        {(item.required_workers > 0 || item.required_brigadiers > 0 || item.required_masters > 0 || item.required_foremen > 0 || item.required_vehicles > 0) && (
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {item.required_workers > 0 && (
-              <span className="text-[10px] bg-blue-500/15 text-blue-300 px-1.5 py-0.5 rounded">👷 {item.required_workers}</span>
-            )}
-            {item.required_foremen > 0 && (
-              <span className="text-[10px] bg-purple-500/15 text-purple-300 px-1.5 py-0.5 rounded">📋 {item.required_foremen}</span>
-            )}
-            {item.required_vehicles > 0 && (
-              <span className="text-[10px] bg-amber-500/15 text-amber-300 px-1.5 py-0.5 rounded">🚗 {item.required_vehicles}</span>
-            )}
+            {item.required_workers > 0    && <span className="text-[10px] bg-blue-500/15    text-blue-300    px-1.5 py-0.5 rounded">👷 {item.required_workers}</span>}
+            {item.required_brigadiers > 0 && <span className="text-[10px] bg-yellow-500/15  text-yellow-300  px-1.5 py-0.5 rounded">⭐ {item.required_brigadiers}</span>}
+            {item.required_masters > 0    && <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded">🎓 {item.required_masters}</span>}
+            {item.required_foremen > 0    && <span className="text-[10px] bg-purple-500/15  text-purple-300  px-1.5 py-0.5 rounded">📋 {item.required_foremen}</span>}
+            {item.required_vehicles > 0   && <span className="text-[10px] bg-amber-500/15   text-amber-300   px-1.5 py-0.5 rounded">🚗 {item.required_vehicles}</span>}
           </div>
         )}
 
@@ -288,6 +273,8 @@ function PlanItemForm({ initial, onSave, onCancel }: {
   const [timeEnd, setTimeEnd] = useState(initial?.time_end || '')
   const [notes, setNotes] = useState(initial?.notes || '')
   const [reqWorkers, setReqWorkers] = useState(initial?.required_workers ?? 0)
+  const [reqBrigadiers, setReqBrigadiers] = useState(initial?.required_brigadiers ?? 0)
+  const [reqMasters, setReqMasters] = useState(initial?.required_masters ?? 0)
   const [reqForemen, setReqForemen] = useState(initial?.required_foremen ?? 0)
   const [reqVehicles, setReqVehicles] = useState(initial?.required_vehicles ?? 0)
 
@@ -300,15 +287,17 @@ function PlanItemForm({ initial, onSave, onCancel }: {
       time_start: timeStart || null,
       time_end: timeEnd || null,
       notes: notes.trim() || null,
-      required_workers: reqWorkers,
-      required_foremen: reqForemen,
-      required_vehicles: reqVehicles,
+      required_workers:    reqWorkers,
+      required_brigadiers: reqBrigadiers,
+      required_masters:    reqMasters,
+      required_foremen:    reqForemen,
+      required_vehicles:   reqVehicles,
       is_redirected: false,
       redirect_reason: null,
     })
   }
 
-  const inp = 'w-full px-2.5 py-1.5 rounded-lg bg-white/8 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50'
+  const inp = 'w-full px-2.5 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50'
   const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
 
   return (
@@ -327,16 +316,18 @@ function PlanItemForm({ initial, onSave, onCancel }: {
       <div className="flex flex-wrap gap-2 items-end">
         <div>
           <label className={lbl}>С</label>
-          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className="px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className="px-2 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm focus:outline-none focus:border-blue-500/50" />
         </div>
         <div>
           <label className={lbl}>До</label>
-          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="px-2 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm focus:outline-none focus:border-blue-500/50" />
         </div>
-        <div className="flex items-end gap-2 ml-2">
-          <MiniStepper label="👷" value={reqWorkers} onChange={setReqWorkers} />
-          <MiniStepper label="📋" value={reqForemen} onChange={setReqForemen} />
-          <MiniStepper label="🚗" value={reqVehicles} onChange={setReqVehicles} />
+        <div className="flex items-end gap-2 ml-2 flex-wrap">
+          <MiniStepper label="👷" value={reqWorkers}    onChange={setReqWorkers} />
+          <MiniStepper label="⭐" value={reqBrigadiers} onChange={setReqBrigadiers} />
+          <MiniStepper label="🎓" value={reqMasters}    onChange={setReqMasters} />
+          <MiniStepper label="📋" value={reqForemen}    onChange={setReqForemen} />
+          <MiniStepper label="🚗" value={reqVehicles}   onChange={setReqVehicles} />
         </div>
         <div className="flex-1 min-w-32">
           <label className={lbl}>Примечание</label>
@@ -367,6 +358,15 @@ function PlanItemForm({ initial, onSave, onCancel }: {
           Отмена
         </button>
       </div>
+    </div>
+  )
+}
+
+function TotalRow({ icon, label, count }: { icon: string; label: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-white/50">{icon} {label}</span>
+      <span className="text-sm font-semibold text-white">{count}</span>
     </div>
   )
 }
