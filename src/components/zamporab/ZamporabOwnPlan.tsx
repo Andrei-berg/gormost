@@ -241,7 +241,9 @@ function OwnPlanCard({ plan, session, onRefresh }: {
             </button>
           )}
           {plan.status === 'SUBMITTED' && (
-            <span className="text-xs text-orange-400/70">⏳ Ожидает гл. инженера</span>
+            <span className="text-xs text-orange-400/70">
+              {plan.service_id === 'SRV-STR' ? '⏳ Ожидает вашего подтверждения' : '⏳ Ожидает гл. инженера'}
+            </span>
           )}
           <span className="text-white/20 text-xs">{expanded ? '▲' : '▼'}</span>
         </div>
