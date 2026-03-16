@@ -194,7 +194,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 }
               </button>
             )}
-            {(plan.status === 'DRAFT' || plan.status === 'SUBMITTED') && (
+            {(plan.status === 'DRAFT' || plan.status === 'SUBMITTED' || plan.status === 'REJECTED') && (
               <button
                 onClick={handleDelete}
                 disabled={deleting}

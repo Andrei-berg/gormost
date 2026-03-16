@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { WorkPlanWithItems, AuthSession } from '@/types'
 import PlanCard from './PlanCard'
 
@@ -18,6 +19,17 @@ function formatDate(dateStr: string): string {
 }
 
 export default function PlanList({ plans, session, onRefresh, onCreatePlan }: Props) {
+  const [showRejectedWarning, setShowRejectedWarning] = useState(false)
+
+  const handleCreateClick = () => {
+    const hasRejected = plans.some(p => p.status === 'REJECTED')
+    if (hasRejected) {
+      setShowRejectedWarning(true)
+      return
+    }
+    onCreatePlan()
+  }
+
   const grouped = plans.reduce<Record<string, WorkPlanWithItems[]>>((acc, p) => {
     if (!acc[p.plan_date]) acc[p.plan_date] = []
     acc[p.plan_date].push(p)
@@ -31,12 +43,28 @@ export default function PlanList({ plans, session, onRefresh, onCreatePlan }: Pr
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-white/60 uppercase tracking-wider">Планы работ</h2>
         <button
-          onClick={onCreatePlan}
+          onClick={handleCreateClick}
           className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
         >
           + Новый план
         </button>
       </div>
+
+      {showRejectedWarning && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25">
+          <span className="text-xl shrink-0">⚠️</span>
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-amber-300 mb-1">Есть план, требующий доработки</div>
+            <div className="text-xs text-amber-400/80">
+              У вас есть план, возвращённый на доработку. Пожалуйста, внесите исправления в текущий документ или удалите его перед созданием нового.
+            </div>
+          </div>
+          <button
+            onClick={() => setShowRejectedWarning(false)}
+            className="text-amber-500/50 hover:text-amber-400 text-sm shrink-0"
+          >✕</button>
+        </div>
+      )}
 
       {dates.length === 0 && (
         <div className="text-center py-16 text-white/30">
