@@ -15,7 +15,7 @@ import type {
 } from '@/types'
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
-import ZamporabPlanCard from '@/components/zamporab/ZamporabPlanCard'
+import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
 import EmptyState from '@/components/EmptyState'
 // HEAD components
 import ServiceStats from '@/components/head/ServiceStats'
@@ -49,6 +49,7 @@ function Content({ session }: { session: AuthSession }) {
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   // plans awaiting zamporab confirmation
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
+  const [reviewPlan, setReviewPlan] = useState<WorkPlanWithItems | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
@@ -184,23 +185,32 @@ function Content({ session }: { session: AuthSession }) {
         </>
       )}
 
-      {/* Tab: Pending confirmation from other services */}
+      {/* Tab: Pending confirmation */}
       {tab === 'pending' && (
         <div className="space-y-3">
           {pendingPlans.length === 0 ? (
             <EmptyState message="Нет планов, ожидающих подтверждения" />
           ) : (
             pendingPlans.map(plan => (
-              <ZamporabPlanCard
+              <PendingPlanCard
                 key={plan.id}
                 plan={plan}
                 services={services}
-                session={session}
-                onRefresh={loadData}
+                onOpen={() => setReviewPlan(plan)}
               />
             ))
           )}
         </div>
+      )}
+
+      {reviewPlan && (
+        <ZamporabReviewModal
+          plan={reviewPlan}
+          services={services}
+          session={session}
+          onClose={() => setReviewPlan(null)}
+          onSaved={() => { setReviewPlan(null); loadData() }}
+        />
       )}
 
       {/* Tab: Kanban */}
@@ -348,6 +358,63 @@ function StaffRequestsView({ staffReqs, services, users, session, onRefresh }: {
         </div>
       )}
       {staffReqs.length === 0 && <EmptyState message="Нет запросов на людей" />}
+    </div>
+  )
+}
+
+// ── Compact pending plan card ──────────────────────────────────────────────
+
+function PendingPlanCard({ plan, services, onOpen }: {
+  plan: WorkPlanWithItems
+  services: Service[]
+  onOpen: () => void
+}) {
+  const svc  = services.find(s => s.service_id === plan.service_id)
+  const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
+  const shiftEmoji = plan.shift_type === 'DAY' ? '☀️' : '🌙'
+  const [yy, mm, dd] = plan.plan_date.split('-')
+  const dateLabel = `${dd}.${mm}.${yy}`
+
+  const totalWorkers  = plan.items.reduce((s, i) => s + (i.required_workers ?? 0), 0)
+  const totalVehicles = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
+  const crossCount    = plan.items.reduce((s, i) => s + (i.cross_requests?.length ?? 0), 0)
+
+  const isDirect = plan.service_id === 'SRV-STR' && plan.status === 'SUBMITTED'
+
+  return (
+    <div
+      onClick={onOpen}
+      className="glass rounded-xl border border-blue-500/20 p-4 flex items-center gap-4 cursor-pointer hover:border-blue-500/40 hover:bg-white/[0.03] transition-all group"
+    >
+      <span className="text-2xl shrink-0">{meta.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</span>
+          <span className="text-xs text-white/40">{shiftEmoji} {dateLabel}</span>
+          {!isDirect && <span className="text-[10px] text-green-400/70">✓ Гл. инженер</span>}
+        </div>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="text-[11px] text-white/40">{plan.items.length} поз.</span>
+          {totalWorkers > 0 && (
+            <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
+              👷 {totalWorkers}
+            </span>
+          )}
+          {totalVehicles > 0 && (
+            <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+              🚛 {totalVehicles}
+            </span>
+          )}
+          {crossCount > 0 && (
+            <span className="text-[10px] bg-violet-500/15 text-violet-300 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+              🔗 {crossCount} смежн.
+            </span>
+          )}
+        </div>
+      </div>
+      <button className="shrink-0 px-4 py-2 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-300 text-sm font-medium group-hover:bg-blue-600/50 transition-all">
+        Открыть →
+      </button>
     </div>
   )
 }
