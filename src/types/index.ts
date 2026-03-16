@@ -311,7 +311,7 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 
 export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'BOSS_CONFIRMED' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE'
 export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
-export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS' | 'TRACTOR' | 'AERIAL' | 'WASHER' | 'LOADER'
+export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS' | 'TRACTOR' | 'AERIAL' | 'WASHER' | 'LOADER' | 'KMU' | 'CRANE'
 export type VehicleBreakdownSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
 export type VehicleBreakdownStatus = 'OPEN' | 'IN_REPAIR' | 'RESOLVED'
 
@@ -405,6 +405,12 @@ export interface Vehicle {
   has_water_tank: boolean           // наличие цистерны (моечная)
   garage_location: string | null    // бокс / место стоянки
   assigned_driver_id: string | null // закреплённый водитель
+  // extended fields (migration 019) — from fleet inventory Excel
+  chassis: string | null            // базовое шасси: КАМАЗ 65115, ГАЗ C42R33
+  equipment_specs: string | null    // оснащение: АГП-14Р (14м), Телескопический (54м)
+  unit: string | null               // участок: Лефортово, АВР, Зеленоград…
+  current_location: string | null   // место нахождения: на участке, ДТП, Элефант Люберцы
+  deployment: string | null         // командировка: Валдай, Курск, Луганск
   created_at: string
   updated_at: string
 }
@@ -502,14 +508,16 @@ export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color
 }
 
 export const VEHICLE_TYPE_CONFIG: Record<VehicleType, { label: string; emoji: string }> = {
-  CAR:     { label: 'Легковой',       emoji: '🚗' },
-  TRUCK:   { label: 'Грузовой',       emoji: '🚛' },
-  BUS:     { label: 'Вахтовка/Автобус', emoji: '🚌' },
-  SPECIAL: { label: 'Спецтехника',    emoji: '🚧' },
-  TRACTOR: { label: 'Трактор',        emoji: '🚜' },
-  AERIAL:  { label: 'Автовышка/Люлька', emoji: '🏗️' },
-  WASHER:  { label: 'Моечная машина', emoji: '🚿' },
-  LOADER:  { label: 'Погрузчик',      emoji: '🏋️' },
+  CAR:     { label: 'Легковой',        emoji: '🚗' },
+  TRUCK:   { label: 'Самосвал/Груз.',  emoji: '🚛' },
+  KMU:     { label: 'КМУ',             emoji: '🦾' },
+  AERIAL:  { label: 'Автовышка',       emoji: '🏗️' },
+  CRANE:   { label: 'Кран',            emoji: '🏛️' },
+  LOADER:  { label: 'Погрузчик',       emoji: '📦' },
+  TRACTOR: { label: 'Трактор',         emoji: '🚜' },
+  BUS:     { label: 'Вахтовка/Авт.',   emoji: '🚌' },
+  WASHER:  { label: 'Поливомоечная',   emoji: '🚿' },
+  SPECIAL: { label: 'Спецтехника',     emoji: '🚧' },
 }
 
 export const VEHICLE_BREAKDOWN_SEVERITY_CONFIG: Record<VehicleBreakdownSeverity, { label: string; color: string; bg: string }> = {
