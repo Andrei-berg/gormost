@@ -1,10 +1,70 @@
 'use client'
 import { useState } from 'react'
-import type { Vehicle, VehicleStatus, VehicleWithAssignments, User } from '@/types'
+import type { Vehicle, VehicleStatus, VehicleType, VehicleWithAssignments, User } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
 import { updateVehicleStatus } from '@/lib/api'
 import VehicleStatusModal from './VehicleStatusModal'
 import VehicleForm from './VehicleForm'
+
+// Export fleet data to CSV grouped by vehicle type (matches авто.xlsx format)
+function exportFleetCsv(vehicles: Vehicle[]) {
+  const STATUS_RU: Record<string, string> = {
+    ACTIVE:      'Исправен',
+    BROKEN:      'Неисправен',
+    MAINTENANCE: 'В сервисе',
+  }
+
+  // Group by type preserving VEHICLE_TYPE_CONFIG order
+  const typeOrder = Object.keys(VEHICLE_TYPE_CONFIG) as VehicleType[]
+  const grouped = new Map<VehicleType, Vehicle[]>()
+  for (const t of typeOrder) grouped.set(t, [])
+  for (const v of vehicles) grouped.get(v.vehicle_type)?.push(v)
+
+  const esc = (s: string | null | undefined) => {
+    const val = s ?? ''
+    return val.includes(',') || val.includes('"') || val.includes('\n')
+      ? `"${val.replace(/"/g, '""')}"`
+      : val
+  }
+
+  const header = ['№', 'Гос.рег.номер', 'Назв. ТС', 'Классификация ТС', 'Базовое шасси',
+                  'Оснащение / Комплектация', 'Участок', 'Год', 'Состояние',
+                  'Место нахождения', 'Командировка', 'Примечание']
+
+  const rows: string[] = []
+  for (const [type, group] of grouped) {
+    if (group.length === 0) continue
+    const cfg = VEHICLE_TYPE_CONFIG[type]
+    rows.push(cfg.emoji + ' ' + cfg.label)         // section header
+    rows.push(header.join(','))
+    group.forEach((v, i) => {
+      rows.push([
+        i + 1,
+        esc(v.plate),
+        esc(v.name),
+        esc(v.make ? `${v.make}${v.model ? ' ' + v.model : ''}` : cfg.label),
+        esc(v.chassis),
+        esc(v.equipment_specs),
+        esc(v.unit),
+        v.year ?? '',
+        STATUS_RU[v.status] ?? v.status,
+        esc(v.current_location),
+        esc(v.deployment),
+        esc(v.notes),
+      ].join(','))
+    })
+    rows.push('')  // blank line between groups
+  }
+
+  const bom = '\uFEFF'
+  const blob = new Blob([bom + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `автопарк_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 interface Props {
   vehicles: VehicleWithAssignments[]
@@ -61,17 +121,23 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
 
   return (
     <>
-      {/* Add vehicle button */}
-      {canEdit && (
-        <div className="flex justify-end mb-3">
+      {/* Toolbar: export + add */}
+      <div className="flex justify-end gap-2 mb-3">
+        <button
+          onClick={() => exportFleetCsv(vehicles)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40 text-sm hover:bg-white/10 hover:text-white/60 transition-colors"
+        >
+          ↓ Экспорт CSV
+        </button>
+        {canEdit && (
           <button
             onClick={() => setShowAddForm(true)}
             className="px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors"
           >
             + Добавить ТС
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {sorted.map(v => {
