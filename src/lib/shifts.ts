@@ -130,7 +130,7 @@ export function getShiftNumberForDate(date: Date): 1 | 2 | 3 | 4 {
 /**
  * Determine if an employee with a given assignment is working on a specific date.
  * Rules:
- *   1/3, сутки/3 — only when their shift (shift_num) is on duty
+ *   1/3           — only when their shift (shift_num) is on duty
  *   5/2           — weekday AND their shift is on duty
  *   2/2           — rolling 4-day cycle; if active_phase provided, uses its anchor_date
  *   3/3           — rolling 6-day cycle; if active_phase provided, uses its anchor_date
@@ -156,7 +156,7 @@ export function isWorkerOnDuty(
   const { shift_num, schedule_code, shift_reference_date, rotation_group, active_phase } = assignment
   const code = schedule_code
 
-  if (code === '1/3' || code === 'сутки/3') {
+  if (code === '1/3') {
     if (!shift_num) return false
     return getShiftNumberForDate(target) === shift_num
   }
@@ -221,7 +221,7 @@ const SHIFT_TIMES = {
 /**
  * Resolve full shift status for an employee on a given date.
  *
- * For shift-based schedules (сутки/3, 1/3): phase is always 'night' (24h duty),
+ * For shift-based schedules (1/3): phase is always 'night' (24h duty),
  * shift_start and shift_end are '07:30' (handover times).
  *
  * For cyclic schedules (2/2, 3/3, 6/6, 15/15): requires an active ShiftPhase
@@ -246,7 +246,7 @@ export function resolveShiftStatus(
   const { schedule_code, shift_num, rotation_group, active_phase } = assignment
 
   // --- Суточный: 24h shift-based ---
-  if (schedule_code === 'сутки/3' || schedule_code === '1/3') {
+  if (schedule_code === '1/3') {
     const working = !!shift_num && getShiftNumberForDate(target) === shift_num
     return {
       working,
@@ -349,7 +349,7 @@ export function resolveShiftForDate(
   ref.setHours(0, 0, 0, 0)
   const daysElapsed = Math.floor((target.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24))
 
-  if (schedule_code === 'сутки/3' || schedule_code === '1/3') {
+  if (schedule_code === '1/3') {
     const isWorking = daysElapsed % 4 === 0
     return { isWorking, shiftType: isWorking ? 'NIGHT' : null }
   }

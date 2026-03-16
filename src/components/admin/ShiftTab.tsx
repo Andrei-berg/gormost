@@ -225,7 +225,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
 
   const svcName = services.find(s => s.service_id === user.service_id)?.service_name
 
-  const needsShift = scheduleCode === 'сутки/3' || scheduleCode === '1/3' || scheduleCode === '5/2'
+  const needsShift = scheduleCode === '1/3' || scheduleCode === '5/2'
   const needsRefDate = scheduleCode === '3/3' || scheduleCode === '6/6'
   const needsHalf = scheduleCode === '15/15'
 
