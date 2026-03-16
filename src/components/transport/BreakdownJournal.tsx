@@ -248,6 +248,12 @@ export default function BreakdownJournal({ breakdowns, vehicles, currentUser, ca
     ? breakdowns
     : breakdowns.filter(b => b.status === filterStatus)
 
+  // Vehicles with BROKEN/MAINTENANCE status that have no breakdown entry
+  const breakdownVehicleIds = new Set(breakdowns.map(b => b.vehicle_id))
+  const unregisteredBroken = vehicles.filter(
+    v => (v.status === 'BROKEN' || v.status === 'MAINTENANCE') && !breakdownVehicleIds.has(v.id)
+  )
+
   const openCount = breakdowns.filter(b => b.status === 'OPEN').length
   const inRepair  = breakdowns.filter(b => b.status === 'IN_REPAIR').length
 
@@ -264,6 +270,11 @@ export default function BreakdownJournal({ breakdowns, vehicles, currentUser, ca
           {inRepair > 0 && (
             <span className="text-xs bg-orange-500/20 border border-orange-500/30 text-orange-400 px-2 py-1 rounded-lg">
               {inRepair} в ремонте
+            </span>
+          )}
+          {unregisteredBroken.length > 0 && (
+            <span className="text-xs bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-2 py-1 rounded-lg">
+              {unregisteredBroken.length} без карточки
             </span>
           )}
         </div>
@@ -292,13 +303,53 @@ export default function BreakdownJournal({ breakdowns, vehicles, currentUser, ca
         ))}
       </div>
 
+      {/* Unregistered broken vehicles — no breakdown entry yet */}
+      {unregisteredBroken.length > 0 && (
+        <div className="mb-4">
+          <div className="text-[11px] font-semibold text-yellow-400/60 uppercase tracking-widest mb-2">
+            Сломаны / На ТО — без карточки дефекта
+          </div>
+          <div className="space-y-2">
+            {unregisteredBroken.map(v => {
+              const typeCfg   = VEHICLE_TYPE_CONFIG[v.vehicle_type]
+              const statusCfg = v.status === 'BROKEN'
+                ? { label: 'Сломан', color: '#ef4444', bg: 'bg-red-500/10 border-red-500/20' }
+                : { label: 'ТО / Ремонт', color: '#f97316', bg: 'bg-orange-500/10 border-orange-500/20' }
+              return (
+                <div key={v.id} className={`glass rounded-xl px-4 py-3 border flex items-center gap-3 ${statusCfg.bg}`}>
+                  <span className="text-xl">{typeCfg.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-sm font-medium">{v.name}</div>
+                    <div className="text-white/30 text-xs font-mono">{v.plate}{v.unit ? ` · ${v.unit}` : ''}</div>
+                    {v.breakdown_details && (
+                      <div className="text-white/50 text-xs mt-0.5">{v.breakdown_details}</div>
+                    )}
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full border" style={{ color: statusCfg.color, borderColor: statusCfg.color + '40' }}>
+                    {statusCfg.label}
+                  </span>
+                  {canEdit && (
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      className="text-xs px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors whitespace-nowrap"
+                    >
+                      + Карточку
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Breakdown list */}
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && unregisteredBroken.length === 0 ? (
         <div className="text-center text-white/20 py-16">
           <div className="text-4xl mb-3">✅</div>
           <div>Дефектов нет</div>
         </div>
-      ) : (
+      ) : filtered.length === 0 ? null : (
         <div className="space-y-3">
           {filtered.map(b => {
             const severityCfg = VEHICLE_BREAKDOWN_SEVERITY_CONFIG[b.severity]
