@@ -41,6 +41,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returnNotes, setReturnNotes] = useState('')
   const [returning, setReturning] = useState(false)
@@ -60,12 +61,16 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
 
   const handleConfirm = async () => {
     setConfirming(true)
-    if (isDirect) {
-      await approveWorkPlanDirect(plan.id, session.user_id)
+    setConfirmError(null)
+    const ok = isDirect
+      ? await approveWorkPlanDirect(plan.id, session.user_id)
+      : await confirmWorkPlanZamporab(plan.id, session.user_id)
+    if (ok) {
+      onRefresh()
     } else {
-      await confirmWorkPlanZamporab(plan.id, session.user_id)
+      setConfirmError('Ошибка при подтверждении. Попробуйте ещё раз.')
+      setConfirming(false)
     }
-    onRefresh()
   }
 
   const handleReturn = async () => {
@@ -165,7 +170,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
       </div>
 
       {/* Action buttons bar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-white/[0.02] flex-wrap">
         <button
           onClick={handleConfirm}
           disabled={confirming}
@@ -173,6 +178,9 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
         >
           {confirming ? '...' : '✓ Подтвердить'}
         </button>
+        {confirmError && (
+          <span className="text-xs text-red-400">{confirmError}</span>
+        )}
         {!isDirect && (
           <button
             onClick={() => { setShowReturnForm(f => !f); setReturnNotes('') }}
