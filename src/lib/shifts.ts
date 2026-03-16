@@ -132,9 +132,13 @@ export function getShiftNumberForDate(date: Date): 1 | 2 | 3 | 4 {
  * Rules:
  *   1/3, сутки/3 — only when their shift (shift_num) is on duty
  *   5/2           — weekday AND their shift is on duty
- *   3/3           — rolling 6-day cycle (no shift constraint)
- *   6/6           — rolling 12-day cycle (no shift constraint)
+ *   2/2           — rolling 4-day cycle; if active_phase provided, uses its anchor_date
+ *   3/3           — rolling 6-day cycle; if active_phase provided, uses its anchor_date
+ *   6/6           — rolling 12-day cycle; if active_phase provided, uses its anchor_date
  *   15/15         — calendar half: rotation_group '1' → 1–15, '2' → 16–end
+ *
+ * active_phase is optional: when provided (Variant 2), its anchor_date takes precedence
+ * over shift_reference_date for cyclic schedules. Existing call sites need no changes.
  */
 export function isWorkerOnDuty(
   assignment: {
@@ -142,13 +146,14 @@ export function isWorkerOnDuty(
     schedule_code: string
     shift_reference_date: string | null
     rotation_group: string | null
+    active_phase?: { anchor_date: string } | null
   },
   date: Date
 ): boolean {
   const target = new Date(date)
   target.setHours(0, 0, 0, 0)
 
-  const { shift_num, schedule_code, shift_reference_date, rotation_group } = assignment
+  const { shift_num, schedule_code, shift_reference_date, rotation_group, active_phase } = assignment
   const code = schedule_code
 
   if (code === '1/3' || code === 'сутки/3') {
@@ -163,16 +168,26 @@ export function isWorkerOnDuty(
     return isWeekday && getShiftNumberForDate(target) === shift_num
   }
 
+  // Resolve anchor: prefer active_phase.anchor_date over shift_reference_date
+  const anchorStr = active_phase?.anchor_date ?? shift_reference_date
+
+  if (code === '2/2') {
+    if (!anchorStr) return false
+    const ref = new Date(anchorStr); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    return ((days % 4) + 4) % 4 < 2
+  }
+
   if (code === '3/3') {
-    if (!shift_reference_date) return false
-    const ref = new Date(shift_reference_date); ref.setHours(0, 0, 0, 0)
+    if (!anchorStr) return false
+    const ref = new Date(anchorStr); ref.setHours(0, 0, 0, 0)
     const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
     return ((days % 6) + 6) % 6 < 3
   }
 
   if (code === '6/6') {
-    if (!shift_reference_date) return false
-    const ref = new Date(shift_reference_date); ref.setHours(0, 0, 0, 0)
+    if (!anchorStr) return false
+    const ref = new Date(anchorStr); ref.setHours(0, 0, 0, 0)
     const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
     return ((days % 12) + 12) % 12 < 6
   }
@@ -183,6 +198,112 @@ export function isWorkerOnDuty(
   }
 
   return false
+}
+
+// ============================================
+// Variant 2: Phase-aware shift resolution
+// ============================================
+
+// Schedule codes that use shift_phases for day/night determination
+export const PHASE_SCHEDULE_CODES = ['2/2', '3/3', '6/6', '15/15'] as const
+export type PhaseScheduleCode = typeof PHASE_SCHEDULE_CODES[number]
+
+export function isPhaseSchedule(code: string): code is PhaseScheduleCode {
+  return PHASE_SCHEDULE_CODES.includes(code as PhaseScheduleCode)
+}
+
+// Shift times per phase
+const SHIFT_TIMES = {
+  day:   { start: '07:45', end: '19:45' },
+  night: { start: '19:45', end: '07:45' },  // end = next calendar day
+} as const
+
+/**
+ * Resolve full shift status for an employee on a given date.
+ *
+ * For shift-based schedules (сутки/3, 1/3): phase is always 'night' (24h duty),
+ * shift_start and shift_end are '07:30' (handover times).
+ *
+ * For cyclic schedules (2/2, 3/3, 6/6, 15/15): requires an active ShiftPhase
+ * record to determine day/night. Without it returns working=false as a safe
+ * fallback (prevents phantom shifts from old shift_reference_date logic).
+ *
+ * Drops the old resolveShiftForDate() in favor of this unified function.
+ */
+export function resolveShiftStatus(
+  assignment: {
+    schedule_code: string
+    shift_num: number | null
+    rotation_group: string | null
+    shift_reference_date: string | null
+    active_phase?: { phase: 'day' | 'night'; anchor_date: string; schedule_code: string } | null
+  },
+  date: Date
+): import('@/types').ShiftStatus {
+  const target = new Date(date)
+  target.setHours(0, 0, 0, 0)
+
+  const { schedule_code, shift_num, rotation_group, active_phase } = assignment
+
+  // --- Суточный: 24h shift-based ---
+  if (schedule_code === 'сутки/3' || schedule_code === '1/3') {
+    const working = !!shift_num && getShiftNumberForDate(target) === shift_num
+    return {
+      working,
+      phase: working ? 'night' : null,
+      shift_start: working ? '07:30' : null,
+      shift_end:   working ? '07:30' : null,  // next day
+    }
+  }
+
+  // --- Пятидневка ---
+  if (schedule_code === '5/2') {
+    const dow = target.getDay()
+    const working = !!shift_num && dow !== 0 && dow !== 6 && getShiftNumberForDate(target) === shift_num
+    return {
+      working,
+      phase: working ? 'day' : null,
+      shift_start: working ? '08:00' : null,
+      shift_end:   working ? '17:00' : null,
+    }
+  }
+
+  // --- Cyclic schedules: require active_phase ---
+  if (!active_phase) {
+    return { working: false, phase: null, shift_start: null, shift_end: null }
+  }
+
+  const anchor = new Date(active_phase.anchor_date)
+  anchor.setHours(0, 0, 0, 0)
+  const daysElapsed = Math.floor((target.getTime() - anchor.getTime()) / 86400000)
+  const phase = active_phase.phase
+  const times = SHIFT_TIMES[phase]
+
+  if (schedule_code === '2/2') {
+    const pos = ((daysElapsed % 4) + 4) % 4
+    const working = pos < 2
+    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+  }
+
+  if (schedule_code === '3/3') {
+    const pos = ((daysElapsed % 6) + 6) % 6
+    const working = pos < 3
+    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+  }
+
+  if (schedule_code === '6/6') {
+    const pos = ((daysElapsed % 12) + 12) % 12
+    const working = pos < 6
+    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+  }
+
+  if (schedule_code === '15/15') {
+    const day = target.getDate()
+    const working = rotation_group === '2' ? day >= 16 : day <= 15
+    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+  }
+
+  return { working: false, phase: null, shift_start: null, shift_end: null }
 }
 
 // ============================================

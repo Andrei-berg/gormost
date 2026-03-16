@@ -4,9 +4,11 @@ import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssign
 import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules } from '@/lib/api'
 import { getShiftForDate } from '@/lib/shifts'
 import ShiftRoster from '@/components/ShiftRoster'
+import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
 
 const SHIFT_LABELS = ['', 'Смена 1', 'Смена 2', 'Смена 3', 'Смена 4']
 const SHIFT_COLORS = ['', 'text-blue-400', 'text-green-400', 'text-amber-400', 'text-purple-400']
+type SubTab = 'assignments' | 'phases'
 
 interface Props { session: AuthSession }
 
@@ -18,6 +20,7 @@ export default function ShiftTab({ session }: Props) {
   const [filterService, setFilterService] = useState<string>('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [subTab, setSubTab] = useState<SubTab>('assignments')
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date(); return d.toISOString().split('T')[0]
   })
@@ -48,6 +51,26 @@ export default function ShiftTab({ session }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Sub-tab switcher */}
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
+        {([['assignments', 'Назначения'], ['phases', 'Фазы смен']] as [SubTab, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSubTab(key)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              subTab === key ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/60'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'phases' && (
+        <ShiftPhaseManager users={users} session={session} onRefresh={load} />
+      )}
+
+      {subTab === 'assignments' && <>
       {/* Shift overview cards */}
       <div className="grid grid-cols-5 gap-3">
         {byShift.map(s => (
@@ -144,6 +167,7 @@ export default function ShiftTab({ session }: Props) {
           />
         </div>
       </div>
+      </>}
     </div>
   )
 }

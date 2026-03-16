@@ -373,10 +373,36 @@ export interface WorkAssignmentWithUser extends WorkAssignment {
   user: Pick<User, 'user_id' | 'full_name' | 'position' | 'tab_number'>
 }
 
-// EmployeeAssignment extended with joined schedule fields
+// ============================================
+// Shift Phases (Variant 2) — explicit day/night phase records
+// ============================================
+
+export interface ShiftPhase {
+  id: string
+  employee_id: string
+  valid_from: string       // ISO date 'YYYY-MM-DD'
+  valid_to: string | null  // ISO date or null (still active)
+  phase: 'day' | 'night'
+  anchor_date: string      // ISO date — first workday of this phase block
+  schedule_code: string    // '2/2' | '3/3' | '6/6' | '15/15'
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+// Resolved shift status for a specific date
+export interface ShiftStatus {
+  working: boolean
+  phase: 'day' | 'night' | null
+  shift_start: string | null   // 'HH:MM', null when not working
+  shift_end: string | null     // 'HH:MM', null when not working
+}
+
+// EmployeeAssignment extended with joined schedule fields + active phase
 export interface EmployeeAssignmentWithScheduleCode extends EmployeeAssignment {
   schedule_code?: string
   schedule_name?: string
+  active_phase?: Pick<ShiftPhase, 'id' | 'phase' | 'anchor_date' | 'valid_from' | 'schedule_code'> | null
 }
 
 export interface UserWithAssignment extends User {
