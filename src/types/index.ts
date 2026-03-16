@@ -3,7 +3,7 @@
 // Matches real Supabase schema
 // ============================================
 
-export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR'
+export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR' | 'DRIVER'
 export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 export type Urgency = 'NORMAL' | 'URGENT' | 'EMERGENCY'
@@ -256,6 +256,13 @@ export const PANELS: PanelConfig[] = [
     roles: ['ZAMPORAB', 'HEAD', 'ADMIN', 'BOSS', 'HR'],
     color: 'from-teal-600/40 to-teal-800/40 border-teal-500/30',
     roleLabel: 'Кадровый учёт',
+  },
+  {
+    id: 'driver', path: '/driver', title: 'Мой транспорт',
+    subtitle: 'Моё авто · Задания на сегодня', emoji: '🚌',
+    roles: ['DRIVER'],
+    color: 'from-blue-600/40 to-blue-800/40 border-blue-500/30',
+    roleLabel: 'Водитель',
   },
 ]
 

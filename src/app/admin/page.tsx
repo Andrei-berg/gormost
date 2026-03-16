@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import {
-  fetchUsers, createUser, updateUser, deleteUser,
+  fetchUsersWithAssignments, createUser, updateUser, deleteUser,
   fetchServices, createService, updateService, deleteService,
   fetchCategories, createCategory, updateCategory, deleteCategory,
   fetchObjects, createObject, updateObject, deleteObject,
@@ -11,7 +11,7 @@ import {
   fetchWorkTypes, createWorkType, updateWorkType, deleteWorkType,
   fetchChangelog
 } from '@/lib/api'
-import type { User, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
+import type { UserWithAssignment, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 import ShiftTab from '@/components/admin/ShiftTab'
 
 const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
@@ -27,6 +27,7 @@ const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'HR',              label: 'Кадровик (HR)',       defaultPosition: 'Специалист по кадрам' },
   { value: 'SPECIALIST',      label: 'Специалист (ИТР)',    defaultPosition: 'Специалист' },
   { value: 'WORKER',          label: 'Рабочий',            defaultPosition: '' },
+  { value: 'DRIVER',          label: 'Водитель',           defaultPosition: 'Водитель' },
 ]
 
 type Tab = 'users' | 'shifts' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'changelog'
@@ -171,25 +172,27 @@ function InlineSelect({ value, options, emptyLabel, displayValue, onSave }: {
 
 // ==================== USERS ====================
 function UsersTab({ session }: { session: AuthSession }) {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserWithAssignment[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ tab_number: '', full_name: '', position: '', role_level: 'WORKER' as RoleLevel, service_id: '', pin_code: '' })
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'' | 'active' | 'inactive'>('')
+  const [filterShift, setFilterShift] = useState<'' | 'assigned' | 'none'>('')
+  const [filterService, setFilterService] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
-    const [u, s] = await Promise.all([fetchUsers(false), fetchServices()])
+    const [u, s] = await Promise.all([fetchUsersWithAssignments(), fetchServices()])
     setUsers(u); setServices(s)
   }, [])
   useEffect(() => { load() }, [load])
 
   const resetForm = () => setForm({ tab_number: '', full_name: '', position: '', role_level: 'WORKER', service_id: '', pin_code: '' })
 
-  // Save a single field for an existing user inline
-  const handleInlineSave = async (userId: string, patch: Partial<User>) => {
+  const handleInlineSave = async (userId: string, patch: Partial<UserWithAssignment>) => {
     setRowError(prev => ({ ...prev, [userId]: '' }))
     const { data: updated, errorMsg } = await updateUser(userId, patch)
     if (!updated) {
@@ -199,7 +202,6 @@ function UsersTab({ session }: { session: AuthSession }) {
     setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, ...patch } : u))
   }
 
-  // Create new user
   const handleCreate = async () => {
     if (!form.tab_number || !form.full_name) return
     setSaveError(null)
@@ -212,7 +214,7 @@ function UsersTab({ session }: { session: AuthSession }) {
     setShowForm(false); resetForm(); load()
   }
 
-  const handleDelete = async (u: User) => {
+  const handleDelete = async (u: UserWithAssignment) => {
     if (!confirm(`Деактивировать ${u.full_name}?`)) return
     await deleteUser(u.user_id); load()
   }
@@ -223,8 +225,14 @@ function UsersTab({ session }: { session: AuthSession }) {
     const q = search.toLowerCase()
     const matchSearch = !q || u.full_name.toLowerCase().includes(q) || (u.tab_number || '').includes(q)
     const matchRole = !filterRole || u.role_level === filterRole
-    return matchSearch && matchRole
+    const matchStatus = !filterStatus || (filterStatus === 'active' ? u.is_active : !u.is_active)
+    const matchShift = !filterShift || (filterShift === 'assigned' ? !!u.assignment : !u.assignment)
+    const matchService = !filterService || u.service_id === filterService
+    return matchSearch && matchRole && matchStatus && matchShift && matchService
   })
+
+  const SHIFT_LABELS = ['', 'Смена 1', 'Смена 2', 'Смена 3', 'Смена 4']
+  const SHIFT_COLORS = ['', 'text-blue-400', 'text-green-400', 'text-amber-400', 'text-purple-400']
 
   return (
     <div>
@@ -236,13 +244,13 @@ function UsersTab({ session }: { session: AuthSession }) {
         </button>
       </div>
 
-      {/* Search + filter */}
-      <div className="flex gap-2 mb-4">
+      {/* Search + filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Поиск по ФИО или таб.№..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+          className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50"
         />
         <select
           value={filterRole}
@@ -252,6 +260,32 @@ function UsersTab({ session }: { session: AuthSession }) {
           <option value="">Все роли</option>
           {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
+        <select
+          value={filterService}
+          onChange={e => setFilterService(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+        >
+          <option value="">Все службы</option>
+          {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}
+        </select>
+        {/* Status toggle */}
+        <div className="flex gap-1">
+          {([['', 'Все'], ['active', 'Активен'], ['inactive', 'Неактивен']] as ['' | 'active' | 'inactive', string][]).map(([v, label]) => (
+            <button key={v} onClick={() => setFilterStatus(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterStatus === v ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* Shift assigned toggle */}
+        <div className="flex gap-1">
+          {([['', 'Все'], ['assigned', 'Со сменой'], ['none', 'Без смены']] as ['' | 'assigned' | 'none', string][]).map(([v, label]) => (
+            <button key={v} onClick={() => setFilterShift(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterShift === v ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Add new user form */}
@@ -323,6 +357,7 @@ function UsersTab({ session }: { session: AuthSession }) {
               <th className="px-3 py-2 text-left text-xs text-white/40">Должность</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Роль</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Служба</th>
+              <th className="px-3 py-2 text-left text-xs text-white/40">Смена</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">PIN</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Статус</th>
               <th className="px-3 py-2 text-xs text-white/40"></th>
@@ -368,6 +403,12 @@ function UsersTab({ session }: { session: AuthSession }) {
                     onSave={v => handleInlineSave(u.user_id, { service_id: v })}
                   />
                 </td>
+                <td className="px-3 py-2 text-xs">
+                  {u.assignment?.shift_num
+                    ? <span className={SHIFT_COLORS[u.assignment.shift_num]}>{SHIFT_LABELS[u.assignment.shift_num]}{u.assignment.schedule_code ? ` / ${u.assignment.schedule_code}` : ''}{u.assignment.is_driver ? ' 🚗' : ''}</span>
+                    : <span className="text-white/20">—</span>
+                  }
+                </td>
                 <td className="px-3 py-2">
                   <InlineText
                     value={u.pin_code || ''}
@@ -396,7 +437,7 @@ function UsersTab({ session }: { session: AuthSession }) {
               </tr>
             ))}
             {filteredUsers.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-12 text-center text-white/20">Нет пользователей</td></tr>
+              <tr><td colSpan={9} className="px-3 py-12 text-center text-white/20">Нет пользователей</td></tr>
             )}
           </tbody>
         </table>

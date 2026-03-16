@@ -18,6 +18,7 @@ export default function ShiftTab({ session }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [filterShift, setFilterShift] = useState<string>('')
   const [filterService, setFilterService] = useState<string>('')
+  const [searchName, setSearchName] = useState<string>('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [subTab, setSubTab] = useState<SubTab>('assignments')
@@ -39,7 +40,8 @@ export default function ShiftTab({ session }: Props) {
   const filtered = users.filter(u => {
     const matchShift = !filterShift || String(u.assignment?.shift_num) === filterShift
     const matchSvc = !filterService || u.service_id === filterService
-    return matchShift && matchSvc
+    const matchName = !searchName || u.full_name.toLowerCase().includes(searchName.toLowerCase())
+    return matchShift && matchSvc && matchName
   })
 
   // Group by shift for overview
@@ -98,10 +100,16 @@ export default function ShiftTab({ session }: Props) {
         <div className="col-span-2">
           <div className="flex items-center gap-2 mb-3">
             <h3 className="text-sm font-bold text-white">Назначение по сменам</h3>
+            <input
+              value={searchName}
+              onChange={e => setSearchName(e.target.value)}
+              placeholder="Поиск по ФИО..."
+              className="ml-auto bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 placeholder-white/30 focus:outline-none focus:border-blue-500/50 w-40"
+            />
             <select
               value={filterService}
               onChange={e => setFilterService(e.target.value)}
-              className="ml-auto bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
             >
               <option value="">Все службы</option>
               {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}

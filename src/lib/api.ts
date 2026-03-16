@@ -848,6 +848,42 @@ export async function fetchVehiclesWithDayAssignments(date: string): Promise<Veh
   }))
 }
 
+export async function fetchVehicleByDriver(userId: string, date: string): Promise<VehicleWithAssignments | null> {
+  const { data: vehicleData } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('assigned_driver_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .single()
+  if (!vehicleData) return null
+  const vehicle = vehicleData as Vehicle
+
+  // Load today's plan items and assignments for this vehicle
+  const { data: plans } = await supabase
+    .from('work_plans').select('id').eq('plan_date', date)
+  const planIds = (plans || []).map((p: { id: string }) => p.id)
+
+  let assignments: Array<VehicleAssignment & { plan_item: WorkPlanItem }> = []
+  if (planIds.length > 0) {
+    const { data: itemsData } = await supabase
+      .from('work_plan_items').select('*').in('plan_id', planIds)
+    const items = (itemsData || []) as WorkPlanItem[]
+    const itemIds = items.map(i => i.id)
+    if (itemIds.length > 0) {
+      const { data: assignmentsData } = await supabase
+        .from('vehicle_assignments').select('*')
+        .eq('vehicle_id', vehicle.id).in('plan_item_id', itemIds)
+      assignments = ((assignmentsData || []) as VehicleAssignment[]).map(a => ({
+        ...a,
+        plan_item: items.find(i => i.id === a.plan_item_id) as WorkPlanItem,
+      }))
+    }
+  }
+
+  return { ...vehicle, assignments }
+}
+
 export async function assignVehicle(
   vehicleId: string,
   planItemId: string,
