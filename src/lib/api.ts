@@ -1394,6 +1394,16 @@ export async function fetchWorkAssignments(planItemId: string): Promise<WorkAssi
   return (data || []) as WorkAssignmentWithUser[]
 }
 
+export async function fetchWorkAssignmentsForItems(itemIds: string[]): Promise<WorkAssignmentWithUser[]> {
+  if (itemIds.length === 0) return []
+  const { data } = await supabase
+    .from('work_assignments')
+    .select('*, user:users(user_id, full_name, position, tab_number)')
+    .in('plan_item_id', itemIds)
+    .order('assigned_at')
+  return (data || []) as WorkAssignmentWithUser[]
+}
+
 /**
  * Assign an employee to a work plan item.
  */

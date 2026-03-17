@@ -1,19 +1,17 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import type { WorkPlanWithItems, WorkPlanItem, UserWithAssignment, WorkAssignmentWithUser, WorkAssignmentRole, Service, AuthSession } from '@/types'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import type {
+  WorkPlanWithItems, WorkPlanItem, UserWithAssignment,
+  WorkAssignmentWithUser, WorkAssignmentRole, Service, AuthSession,
+} from '@/types'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems,
-  fetchWorkAssignments, createWorkAssignment, deleteWorkAssignment,
+  fetchWorkAssignmentsForItems, createWorkAssignment, deleteWorkAssignment,
   markWorkPlanAssigned, startWorkPlan,
   fetchUsersWithAssignments,
 } from '@/lib/api'
 import { isWorkerOnDuty, getShiftForDate } from '@/lib/shifts'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
-
-interface Props {
-  session: AuthSession
-  services: Service[]
-}
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
@@ -29,10 +27,17 @@ const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
   DRIVER: 'bg-green-500/20 text-green-300 border-green-500/30',
 }
 
+interface Props {
+  session: AuthSession
+  services: Service[]
+}
+
 export default function BrigadeAssigner({ session, services }: Props) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [onDutyWorkers, setOnDutyWorkers] = useState<UserWithAssignment[]>([])
+  const [allAssignments, setAllAssignments] = useState<WorkAssignmentWithUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [workerFilter, setWorkerFilter] = useState<'all' | 'free'>('all')
 
   const today = new Date()
   const shiftInfo = getShiftForDate(today)
@@ -51,9 +56,9 @@ export default function BrigadeAssigner({ session, services }: Props) {
     ])
 
     const full = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(full.filter(Boolean) as WorkPlanWithItems[])
+    const validPlans = full.filter(Boolean) as WorkPlanWithItems[]
+    setPlans(validPlans)
 
-    // Workers on duty today
     const onDuty = allUsers.filter(u => {
       if (!u.assignment) return false
       return isWorkerOnDuty({
@@ -64,33 +69,98 @@ export default function BrigadeAssigner({ session, services }: Props) {
       }, today)
     })
     setOnDutyWorkers(onDuty)
+
+    // Load all assignments for all items in one query
+    const allItemIds = validPlans.flatMap(p => p.items.map(i => i.id))
+    const assignments = await fetchWorkAssignmentsForItems(allItemIds)
+    setAllAssignments(assignments)
+
     setLoading(false)
   }, [session.service_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
+  // Map: itemId → assignments for that item
+  const itemAssignmentsMap = useMemo(() => {
+    const map = new Map<string, WorkAssignmentWithUser[]>()
+    for (const a of allAssignments) {
+      if (!map.has(a.plan_item_id)) map.set(a.plan_item_id, [])
+      map.get(a.plan_item_id)!.push(a)
+    }
+    return map
+  }, [allAssignments])
+
+  // Map: userId → locations where this worker is assigned (across all plans today)
+  const workerBusyMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const plan of plans) {
+      for (const item of plan.items) {
+        const assignments = itemAssignmentsMap.get(item.id) ?? []
+        for (const a of assignments) {
+          if (!map.has(a.user_id)) map.set(a.user_id, [])
+          map.get(a.user_id)!.push(item.location)
+        }
+      }
+    }
+    return map
+  }, [plans, itemAssignmentsMap])
+
+  // Workers in this service (or all if no service filter)
+  const serviceWorkers = useMemo(
+    () => onDutyWorkers.filter(u => !session.service_id || u.service_id === session.service_id),
+    [onDutyWorkers, session.service_id]
+  )
+
+  const assignedInServiceIds = useMemo(
+    () => new Set(allAssignments.filter(a => serviceWorkers.some(w => w.user_id === a.user_id)).map(a => a.user_id)),
+    [allAssignments, serviceWorkers]
+  )
+
+  const freeCount = serviceWorkers.filter(u => !assignedInServiceIds.has(u.user_id)).length
+  const assignedCount = serviceWorkers.filter(u => assignedInServiceIds.has(u.user_id)).length
+
   const toAssign = plans.filter(p => p.status === 'BOSS_CONFIRMED')
-  const assigned = plans.filter(p => p.status === 'ASSIGNED' || p.status === 'IN_PROGRESS' || p.status === 'DONE')
+  const inWork = plans.filter(p => ['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(p.status))
 
   if (loading) return <div className="text-center text-white/30 py-12">Загрузка...</div>
 
   return (
     <div className="space-y-6">
-      {/* Shift header */}
+
+      {/* Shift stats — interactive filter panel */}
       <div className="glass rounded-xl p-4 border border-cyan-500/20">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">👥</span>
-          <div>
-            <div className="text-white font-bold">Смена №{shiftInfo.shiftNumber} · Назначение бригад</div>
-            <div className="text-xs text-white/40">
-              На смене сегодня: <span className="text-cyan-400 font-medium">{onDutyWorkers.length} чел.</span>
-              {session.service_id && (
-                <span className="ml-2 text-white/30">
-                  · в вашей службе: {onDutyWorkers.filter(u => u.service_id === session.service_id).length}
-                </span>
-              )}
-            </div>
+        <div className="text-sm font-bold text-white mb-3">
+          Смена №{shiftInfo.shiftNumber} · Ваша служба
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setWorkerFilter('all')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+              workerFilter === 'all'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                : 'bg-white/5 text-white/50 border-white/10 hover:border-white/20'
+            }`}
+          >
+            👥 Все на смене: <strong className="ml-1">{serviceWorkers.length}</strong>
+          </button>
+          <button
+            onClick={() => setWorkerFilter('free')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+              workerFilter === 'free'
+                ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                : 'bg-white/5 text-white/50 border-white/10 hover:border-white/20'
+            }`}
+          >
+            ✓ Свободны: <strong className={`ml-1 ${freeCount > 0 ? 'text-green-400' : 'text-white/30'}`}>{freeCount}</strong>
+          </button>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 text-white/50">
+            📋 Назначены: <strong className="ml-1 text-amber-400">{assignedCount}</strong>
           </div>
+          {workerFilter === 'free' && (
+            <span className="flex items-center text-xs text-green-400/70 ml-1">
+              ← фильтр в пикере включён
+            </span>
+          )}
         </div>
       </div>
 
@@ -106,7 +176,10 @@ export default function BrigadeAssigner({ session, services }: Props) {
                 key={plan.id}
                 plan={plan}
                 services={services}
-                onDutyWorkers={onDutyWorkers}
+                serviceWorkers={serviceWorkers}
+                itemAssignmentsMap={itemAssignmentsMap}
+                workerBusyMap={workerBusyMap}
+                workerFilter={workerFilter}
                 session={session}
                 onRefresh={load}
               />
@@ -115,19 +188,22 @@ export default function BrigadeAssigner({ session, services }: Props) {
         </div>
       )}
 
-      {/* Assigned / in progress plans */}
-      {assigned.length > 0 && (
+      {/* Assigned / in progress / done plans */}
+      {inWork.length > 0 && (
         <div>
           <h3 className="text-sm font-bold text-white/40 uppercase tracking-wider mb-3">
-            Назначены / В работе ({assigned.length})
+            Назначены / В работе ({inWork.length})
           </h3>
           <div className="space-y-3">
-            {assigned.map(plan => (
+            {inWork.map(plan => (
               <PlanAssignCard
                 key={plan.id}
                 plan={plan}
                 services={services}
-                onDutyWorkers={onDutyWorkers}
+                serviceWorkers={serviceWorkers}
+                itemAssignmentsMap={itemAssignmentsMap}
+                workerBusyMap={workerBusyMap}
+                workerFilter={workerFilter}
                 session={session}
                 onRefresh={load}
                 compact
@@ -147,10 +223,18 @@ export default function BrigadeAssigner({ session, services }: Props) {
   )
 }
 
-function PlanAssignCard({ plan, services, onDutyWorkers, session, onRefresh, compact = false }: {
+// ─── Plan card ────────────────────────────────────────────────────────────────
+
+function PlanAssignCard({
+  plan, services, serviceWorkers, itemAssignmentsMap, workerBusyMap,
+  workerFilter, session, onRefresh, compact = false,
+}: {
   plan: WorkPlanWithItems
   services: Service[]
-  onDutyWorkers: UserWithAssignment[]
+  serviceWorkers: UserWithAssignment[]
+  itemAssignmentsMap: Map<string, WorkAssignmentWithUser[]>
+  workerBusyMap: Map<string, string[]>
+  workerFilter: 'all' | 'free'
   session: AuthSession
   onRefresh: () => void
   compact?: boolean
@@ -159,29 +243,55 @@ function PlanAssignCard({ plan, services, onDutyWorkers, session, onRefresh, com
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
   const canAssign = plan.status === 'BOSS_CONFIRMED' || plan.status === 'ASSIGNED'
-  const [markingDone, setMarkingDone] = useState(false)
+  const [acting, setActing] = useState(false)
+
+  // Plan-level progress: sum of required vs assigned across all items
+  const planStats = useMemo(() => {
+    let totalReqWorkers = 0
+    let totalReqForemen = 0
+    let assignedWorkers = 0
+    let assignedForemen = 0
+
+    for (const item of plan.items) {
+      totalReqWorkers += item.required_workers || 0
+      totalReqForemen += item.required_foremen || 0
+      const assignments = itemAssignmentsMap.get(item.id) ?? []
+      for (const a of assignments) {
+        if (a.role === 'WORKER' || a.role === 'DRIVER') assignedWorkers++
+        else assignedForemen++
+      }
+    }
+
+    const totalRequired = totalReqWorkers + totalReqForemen
+    const totalAssigned = assignedWorkers + assignedForemen
+    const deficit = Math.max(0, totalRequired - totalAssigned)
+    const pct = totalRequired > 0 ? Math.min(100, Math.round(totalAssigned / totalRequired * 100)) : 100
+
+    return { totalRequired, totalAssigned, deficit, pct, totalReqWorkers, totalReqForemen, assignedWorkers, assignedForemen }
+  }, [plan.items, itemAssignmentsMap])
 
   const handleMarkAssigned = async () => {
-    setMarkingDone(true)
+    setActing(true)
     await markWorkPlanAssigned(plan.id, session.user_id)
-    setMarkingDone(false)
+    setActing(false)
     onRefresh()
   }
 
   const handleStart = async () => {
-    setMarkingDone(true)
+    setActing(true)
     await startWorkPlan(plan.id, session.user_id)
-    setMarkingDone(false)
+    setActing(false)
     onRefresh()
   }
 
   return (
     <div className={`glass rounded-xl overflow-hidden border ${
-      plan.status === 'BOSS_CONFIRMED' ? 'border-cyan-500/20' :
+      plan.status === 'BOSS_CONFIRMED' ? 'border-cyan-500/30' :
       plan.status === 'ASSIGNED' ? 'border-blue-500/20' :
       plan.status === 'IN_PROGRESS' ? 'border-violet-500/20' :
       'border-green-500/10 opacity-70'
     }`}>
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div>
@@ -189,29 +299,68 @@ function PlanAssignCard({ plan, services, onDutyWorkers, session, onRefresh, com
           <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`}
+            style={{ color: statusCfg.color }}
+          >
             {statusCfg.label}
           </span>
           {plan.status === 'BOSS_CONFIRMED' && (
             <button
               onClick={handleMarkAssigned}
-              disabled={markingDone}
+              disabled={acting}
               className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium"
             >
-              {markingDone ? '...' : '✓ Люди назначены'}
+              {acting ? '...' : '✓ Люди назначены'}
             </button>
           )}
           {plan.status === 'ASSIGNED' && (
             <button
               onClick={handleStart}
-              disabled={markingDone}
+              disabled={acting}
               className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium"
             >
-              {markingDone ? '...' : '▶ В работу'}
+              {acting ? '...' : '▶ В работу'}
             </button>
           )}
         </div>
       </div>
+
+      {/* Plan-level progress summary (only when requirements are set and not compact) */}
+      {!compact && planStats.totalRequired > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              {planStats.totalReqWorkers > 0 && (
+                <span className={planStats.assignedWorkers >= planStats.totalReqWorkers ? 'text-green-400' : 'text-amber-400'}>
+                  👷 {planStats.assignedWorkers}/{planStats.totalReqWorkers}
+                </span>
+              )}
+              {planStats.totalReqForemen > 0 && (
+                <span className={planStats.assignedForemen >= planStats.totalReqForemen ? 'text-green-400' : 'text-amber-400'}>
+                  🦺 {planStats.assignedForemen}/{planStats.totalReqForemen}
+                </span>
+              )}
+            </div>
+            <span className={`text-xs font-bold ${planStats.pct >= 100 ? 'text-green-400' : 'text-amber-400'}`}>
+              {planStats.pct}%
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${planStats.pct >= 100 ? 'bg-green-500' : 'bg-amber-500'}`}
+              style={{ width: `${planStats.pct}%` }}
+            />
+          </div>
+          {/* Deficit warning */}
+          {planStats.deficit > 0 && (
+            <div className="mt-2 text-xs text-amber-400/80 flex items-center gap-1">
+              ⚠ Не хватает {planStats.deficit} чел.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Items */}
       <div className={`${compact ? 'px-3 py-2' : 'p-4'} space-y-3`}>
@@ -219,7 +368,10 @@ function PlanAssignCard({ plan, services, onDutyWorkers, session, onRefresh, com
           <PlanItemAssigner
             key={item.id}
             item={item}
-            onDutyWorkers={onDutyWorkers}
+            assignments={itemAssignmentsMap.get(item.id) ?? []}
+            serviceWorkers={serviceWorkers}
+            workerBusyMap={workerBusyMap}
+            workerFilter={workerFilter}
             session={session}
             canAssign={canAssign}
             onRefresh={onRefresh}
@@ -234,49 +386,75 @@ function PlanAssignCard({ plan, services, onDutyWorkers, session, onRefresh, com
   )
 }
 
-function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, compact }: {
+// ─── Plan item assigner ───────────────────────────────────────────────────────
+
+function PlanItemAssigner({
+  item, assignments, serviceWorkers, workerBusyMap,
+  workerFilter, session, canAssign, onRefresh, compact,
+}: {
   item: WorkPlanItem
-  onDutyWorkers: UserWithAssignment[]
+  assignments: WorkAssignmentWithUser[]
+  serviceWorkers: UserWithAssignment[]
+  workerBusyMap: Map<string, string[]>
+  workerFilter: 'all' | 'free'
   session: AuthSession
   canAssign: boolean
   onRefresh: () => void
   compact: boolean
 }) {
-  const [assignments, setAssignments] = useState<WorkAssignmentWithUser[]>([])
   const [showPicker, setShowPicker] = useState(false)
   const [pickerRole, setPickerRole] = useState<WorkAssignmentRole>('WORKER')
+  const [pickerSearch, setPickerSearch] = useState('')
   const [removing, setRemoving] = useState<string | null>(null)
+  const [adding, setAdding] = useState<string | null>(null)
 
-  const loadAssignments = useCallback(async () => {
-    const data = await fetchWorkAssignments(item.id)
-    setAssignments(data)
-  }, [item.id])
-
-  useEffect(() => { loadAssignments() }, [loadAssignments])
+  const assignedInItemIds = new Set(assignments.map(a => a.user_id))
 
   const handleAdd = async (userId: string, role: WorkAssignmentRole) => {
+    setAdding(userId)
     await createWorkAssignment(item.id, userId, role, session.user_id)
-    await loadAssignments()
+    setAdding(null)
     setShowPicker(false)
+    setPickerSearch('')
     onRefresh()
   }
 
   const handleRemove = async (assignmentId: string) => {
     setRemoving(assignmentId)
     await deleteWorkAssignment(assignmentId)
-    await loadAssignments()
     setRemoving(null)
+    onRefresh()
   }
 
-  const assignedUserIds = new Set(assignments.map(a => a.user_id))
-  const available = onDutyWorkers.filter(u => !assignedUserIds.has(u.user_id))
+  // Workers to show in picker
+  const pickerWorkers = useMemo(() => {
+    let workers = serviceWorkers
+
+    // If "free" filter is active, show only workers not assigned anywhere
+    if (workerFilter === 'free') {
+      workers = workers.filter(u => !workerBusyMap.has(u.user_id))
+    }
+
+    // Apply search
+    if (pickerSearch.trim()) {
+      const q = pickerSearch.toLowerCase()
+      workers = workers.filter(u => u.full_name.toLowerCase().includes(q))
+    }
+
+    // Sort: free first, then busy
+    return [...workers].sort((a, b) => {
+      const aBusy = workerBusyMap.has(a.user_id) ? 1 : 0
+      const bBusy = workerBusyMap.has(b.user_id) ? 1 : 0
+      return aBusy - bBusy
+    })
+  }, [serviceWorkers, workerFilter, workerBusyMap, pickerSearch])
 
   const reqWorkers = item.required_workers || 0
   const reqForemen = item.required_foremen || 0
   const reqVehicles = item.required_vehicles || 0
   const hasRequirements = reqWorkers > 0 || reqForemen > 0 || reqVehicles > 0
 
-  const workerCount = assignments.filter(a => a.role === 'WORKER').length
+  const workerCount = assignments.filter(a => a.role === 'WORKER' || a.role === 'DRIVER').length
   const foremanCount = assignments.filter(a => a.role === 'BRIGADIER' || a.role === 'MASTER').length
 
   return (
@@ -317,7 +495,7 @@ function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, 
             key={a.id}
             className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
           >
-            <span>{ROLE_LABELS[a.role][0]}</span>
+            <span className="opacity-60">{ROLE_LABELS[a.role][0]}</span>
             <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
             {canAssign && (
               <button
@@ -330,7 +508,7 @@ function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, 
             )}
           </span>
         ))}
-        {assignments.length === 0 && (
+        {assignments.length === 0 && !showPicker && (
           <span className="text-[10px] text-white/20 italic">Никто не назначен</span>
         )}
         {canAssign && (
@@ -338,7 +516,7 @@ function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, 
             onClick={() => setShowPicker(!showPicker)}
             className="text-[10px] px-2 py-0.5 rounded-full border border-dashed border-white/20 text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
           >
-            + добавить
+            {showPicker ? '✕ закрыть' : '+ добавить'}
           </button>
         )}
       </div>
@@ -346,7 +524,8 @@ function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, 
       {/* Worker picker */}
       {showPicker && (
         <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
-          <div className="flex items-center gap-2">
+          {/* Role selector */}
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-white/40">Роль:</span>
             {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
               <button
@@ -359,21 +538,63 @@ function PlanItemAssigner({ item, onDutyWorkers, session, canAssign, onRefresh, 
                 {ROLE_LABELS[role]}
               </button>
             ))}
-            <button onClick={() => setShowPicker(false)} className="ml-auto text-white/30 hover:text-white/50 text-xs">✕</button>
           </div>
-          <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
-            {available.map(u => (
-              <button
-                key={u.user_id}
-                onClick={() => handleAdd(u.user_id, pickerRole)}
-                className="text-left text-xs px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-              >
-                <div className="font-medium">{u.full_name}</div>
-                <div className="text-[10px] text-white/30">{u.assignment?.schedule_code ?? '—'}</div>
-              </button>
-            ))}
-            {available.length === 0 && (
-              <div className="col-span-2 text-xs text-white/20 italic py-2">Все на смене уже назначены</div>
+
+          {/* Search */}
+          <input
+            type="text"
+            value={pickerSearch}
+            onChange={e => setPickerSearch(e.target.value)}
+            placeholder="Поиск по имени..."
+            className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-cyan-500/40"
+          />
+
+          {/* Worker list */}
+          <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
+            {pickerWorkers.map(u => {
+              const isAlreadyInItem = assignedInItemIds.has(u.user_id)
+              const busyLocations = workerBusyMap.get(u.user_id)
+              const isBusy = !!busyLocations && !isAlreadyInItem
+              const isAdding = adding === u.user_id
+
+              return (
+                <button
+                  key={u.user_id}
+                  onClick={() => !isAlreadyInItem && handleAdd(u.user_id, pickerRole)}
+                  disabled={isAlreadyInItem || isAdding}
+                  className={`text-left text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                    isAlreadyInItem
+                      ? 'bg-white/3 text-white/20 cursor-default'
+                      : isBusy
+                        ? 'bg-amber-500/5 hover:bg-amber-500/10 text-white/60 hover:text-white/80 border border-amber-500/10'
+                        : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white'
+                  }`}
+                >
+                  {isAdding ? (
+                    <div className="text-cyan-400">добавляю...</div>
+                  ) : (
+                    <>
+                      <div className="font-medium truncate">
+                        {isAlreadyInItem && <span className="mr-1 text-green-400">✓</span>}
+                        {u.full_name}
+                      </div>
+                      {busyLocations && !isAlreadyInItem && (
+                        <div className="text-[10px] text-amber-400/70 truncate">
+                          занят: {busyLocations[0]}{busyLocations.length > 1 ? ` +${busyLocations.length - 1}` : ''}
+                        </div>
+                      )}
+                      {!busyLocations && (
+                        <div className="text-[10px] text-white/25">{u.assignment?.schedule_code ?? '—'}</div>
+                      )}
+                    </>
+                  )}
+                </button>
+              )
+            })}
+            {pickerWorkers.length === 0 && (
+              <div className="col-span-2 text-xs text-white/20 italic py-2">
+                {workerFilter === 'free' ? 'Нет свободных сотрудников' : 'Нет сотрудников на смене'}
+              </div>
             )}
           </div>
         </div>
