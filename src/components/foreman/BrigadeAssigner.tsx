@@ -299,10 +299,25 @@ function PlanAssignCard({
   onRefresh: () => void
   compact?: boolean
 }) {
+  // Split-view for BOSS_CONFIRMED — full interactive layout
+  if (plan.status === 'BOSS_CONFIRMED') {
+    return (
+      <SplitViewPlanCard
+        plan={plan}
+        services={services}
+        serviceWorkers={serviceWorkers}
+        itemAssignmentsMap={itemAssignmentsMap}
+        workerBusyMap={workerBusyMap}
+        workerFilter={workerFilter}
+        session={session}
+        onRefresh={onRefresh}
+      />
+    )
+  }
   const svc = services.find(s => s.service_id === plan.service_id)
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
-  const canAssign = plan.status === 'BOSS_CONFIRMED' || plan.status === 'ASSIGNED'
+  const canAssign = plan.status === 'ASSIGNED'
   const [acting, setActing] = useState(false)
 
   // Plan-level progress: sum of required vs assigned across all items
@@ -346,7 +361,6 @@ function PlanAssignCard({
 
   return (
     <div className={`glass rounded-xl overflow-hidden border ${
-      plan.status === 'BOSS_CONFIRMED' ? 'border-cyan-500/30' :
       plan.status === 'ASSIGNED' ? 'border-blue-500/20' :
       plan.status === 'IN_PROGRESS' ? 'border-violet-500/20' :
       'border-green-500/10 opacity-70'
@@ -365,15 +379,6 @@ function PlanAssignCard({
           >
             {statusCfg.label}
           </span>
-          {plan.status === 'BOSS_CONFIRMED' && (
-            <button
-              onClick={handleMarkAssigned}
-              disabled={acting}
-              className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium"
-            >
-              {acting ? '...' : '✓ Люди назначены'}
-            </button>
-          )}
           {plan.status === 'ASSIGNED' && (
             <button
               onClick={handleStart}
@@ -446,7 +451,320 @@ function PlanAssignCard({
   )
 }
 
-// ─── Plan item assigner ───────────────────────────────────────────────────────
+// ─── Split-view plan card (BOSS_CONFIRMED) ────────────────────────────────────
+
+function SplitViewPlanCard({
+  plan, services, serviceWorkers, itemAssignmentsMap, workerBusyMap,
+  workerFilter, session, onRefresh,
+}: {
+  plan: WorkPlanWithItems
+  services: Service[]
+  serviceWorkers: UserWithAssignment[]
+  itemAssignmentsMap: Map<string, WorkAssignmentWithUser[]>
+  workerBusyMap: Map<string, string[]>
+  workerFilter: 'all' | 'free'
+  session: AuthSession
+  onRefresh: () => void
+}) {
+  const svc = services.find(s => s.service_id === plan.service_id)
+  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
+  const [activeItemId, setActiveItemId] = useState<string | null>(null)
+  const [pickerRole, setPickerRole] = useState<WorkAssignmentRole>('WORKER')
+  const [search, setSearch] = useState('')
+  const [acting, setActing] = useState(false)
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [adding, setAdding] = useState<string | null>(null)
+
+  const activeItem = plan.items.find(i => i.id === activeItemId)
+  const activeAssignments = itemAssignmentsMap.get(activeItemId ?? '') ?? []
+  const activeAssignedIds = new Set(activeAssignments.map(a => a.user_id))
+
+  // Plan-level stats
+  const totalItems = plan.items.length
+  const itemsWithWorkers = plan.items.filter(i => (itemAssignmentsMap.get(i.id)?.length ?? 0) > 0).length
+  const totalAssigned = plan.items.reduce((s, i) => s + (itemAssignmentsMap.get(i.id)?.length ?? 0), 0)
+  const totalRequired = plan.items.reduce((s, i) => s + (i.required_workers || 0) + (i.required_foremen || 0), 0)
+  const allFilled = totalRequired > 0 && totalAssigned >= totalRequired
+
+  // Workers shown in right panel (filtered by search + workerFilter)
+  const panelWorkers = useMemo(() => {
+    let list = serviceWorkers
+    if (workerFilter === 'free') list = list.filter(u => !workerBusyMap.has(u.user_id))
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(u => u.full_name.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      const aInItem = activeAssignedIds.has(a.user_id) ? -1 : 0
+      const bInItem = activeAssignedIds.has(b.user_id) ? -1 : 0
+      if (aInItem !== bInItem) return aInItem - bInItem
+      const aBusy = workerBusyMap.has(a.user_id) ? 1 : 0
+      const bBusy = workerBusyMap.has(b.user_id) ? 1 : 0
+      return aBusy - bBusy
+    })
+  }, [serviceWorkers, workerFilter, workerBusyMap, search, activeAssignedIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdd = async (userId: string) => {
+    if (!activeItemId || activeAssignedIds.has(userId)) return
+    setAdding(userId)
+    await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
+    setAdding(null)
+    onRefresh()
+  }
+
+  const handleRemove = async (assignmentId: string) => {
+    setRemoving(assignmentId)
+    await deleteWorkAssignment(assignmentId)
+    setRemoving(null)
+    onRefresh()
+  }
+
+  const handleMarkAssigned = async () => {
+    setActing(true)
+    await markWorkPlanAssigned(plan.id, session.user_id)
+    setActing(false)
+    onRefresh()
+  }
+
+  return (
+    <div className="glass rounded-xl overflow-hidden border border-cyan-500/30">
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div>
+          <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
+          <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
+        </div>
+        <span className="text-[10px] px-2 py-0.5 rounded-full border border-cyan-500/30 text-cyan-400">
+          Ожидает назначения
+        </span>
+      </div>
+
+      {/* Split view */}
+      <div className="grid grid-cols-2 divide-x divide-white/10 min-h-[240px]">
+
+        {/* LEFT: tasks */}
+        <div className="p-4 space-y-2 overflow-y-auto max-h-[420px]">
+          <div className="text-[10px] text-white/30 uppercase tracking-wider mb-3">
+            Задачи плана
+          </div>
+          {plan.items.length === 0 && (
+            <div className="text-xs text-white/20 italic">Нет позиций в плане</div>
+          )}
+          {plan.items.map(item => {
+            const itemAssignments = itemAssignmentsMap.get(item.id) ?? []
+            const isActive = activeItemId === item.id
+            const wCount = itemAssignments.filter(a => a.role === 'WORKER' || a.role === 'DRIVER').length
+            const fCount = itemAssignments.filter(a => a.role === 'BRIGADIER' || a.role === 'MASTER').length
+            const rw = item.required_workers || 0
+            const rf = item.required_foremen || 0
+            const itemDone = (rw === 0 || wCount >= rw) && (rf === 0 || fCount >= rf)
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => setActiveItemId(isActive ? null : item.id)}
+                className={`p-2.5 rounded-lg cursor-pointer transition-all border ${
+                  isActive
+                    ? 'bg-cyan-500/10 border-cyan-500/30'
+                    : itemDone && itemAssignments.length > 0
+                      ? 'bg-green-500/5 border-green-500/15 hover:bg-green-500/8'
+                      : 'bg-white/3 border-transparent hover:bg-white/5 hover:border-white/10'
+                }`}
+              >
+                {/* Location + time */}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  {item.time_start && (
+                    <span className="text-[10px] font-mono text-cyan-400 shrink-0">{item.time_start}</span>
+                  )}
+                  <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-white/80'}`}>
+                    {item.location}
+                  </span>
+                  {itemDone && itemAssignments.length > 0 && (
+                    <span className="ml-auto text-green-400 text-[10px]">✓</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-white/40 mb-1.5 truncate">{item.work_description}</div>
+
+                {/* Requirements */}
+                {(rw > 0 || rf > 0) && (
+                  <div className="flex gap-2 text-[10px] mb-1.5">
+                    {rw > 0 && (
+                      <span className={wCount >= rw ? 'text-green-400' : 'text-amber-400'}>
+                        👷 {wCount}/{rw}
+                      </span>
+                    )}
+                    {rf > 0 && (
+                      <span className={fCount >= rf ? 'text-green-400' : 'text-amber-400'}>
+                        🦺 {fCount}/{rf}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Assigned workers chips */}
+                {itemAssignments.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {itemAssignments.map(a => (
+                      <span
+                        key={a.id}
+                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
+                      >
+                        <span className="opacity-50">{ROLE_LABELS[a.role][0]}</span>
+                        <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleRemove(a.id) }}
+                          disabled={removing === a.id}
+                          className="ml-0.5 hover:text-red-400"
+                        >
+                          {removing === a.id ? '…' : '×'}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {isActive && (
+                  <div className="mt-1.5 text-[10px] text-cyan-400/70 italic">
+                    ← выберите сотрудника справа
+                  </div>
+                )}
+                {!isActive && itemAssignments.length === 0 && (
+                  <div className="text-[10px] text-white/20 italic">нажмите чтобы назначить</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* RIGHT: workers panel */}
+        <div className="p-4 flex flex-col gap-3">
+          <div className="text-[10px] text-white/30 uppercase tracking-wider">
+            Люди на смене
+          </div>
+
+          {/* Active item indicator */}
+          {activeItem ? (
+            <div className="text-xs text-cyan-400 bg-cyan-500/10 rounded-lg px-2.5 py-1.5 border border-cyan-500/20">
+              → {activeItem.location}
+            </div>
+          ) : (
+            <div className="text-xs text-white/20 italic">← Выберите задачу слева</div>
+          )}
+
+          {/* Role selector */}
+          {activeItem && (
+            <div className="flex flex-wrap gap-1">
+              {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
+                <button
+                  key={role}
+                  onClick={() => setPickerRole(role)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                    pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
+                  }`}
+                >
+                  {ROLE_LABELS[role]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Search */}
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Поиск по имени..."
+            className="text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-cyan-500/40"
+          />
+
+          {/* Workers list */}
+          <div className="space-y-1 overflow-y-auto max-h-[280px] flex-1">
+            {panelWorkers.map(u => {
+              const busyLocations = workerBusyMap.get(u.user_id)
+              const isInItem = activeAssignedIds.has(u.user_id)
+              const isAdding = adding === u.user_id
+              const noActive = !activeItemId
+
+              return (
+                <button
+                  key={u.user_id}
+                  onClick={() => handleAdd(u.user_id)}
+                  disabled={noActive || isInItem || isAdding}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors text-xs border ${
+                    isInItem
+                      ? 'bg-green-500/10 border-green-500/20 text-green-300 cursor-default'
+                      : noActive
+                        ? 'bg-white/3 border-transparent text-white/30 cursor-default'
+                        : busyLocations
+                          ? 'bg-amber-500/5 border-amber-500/10 hover:bg-amber-500/10 text-white/60 hover:text-white/80'
+                          : 'bg-white/5 border-transparent hover:bg-white/10 text-white/70 hover:text-white'
+                  }`}
+                >
+                  {isAdding ? (
+                    <span className="text-cyan-400">добавляю...</span>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {isInItem && <span className="mr-1">✓</span>}
+                          {u.full_name}
+                        </div>
+                        {busyLocations && !isInItem && (
+                          <div className="text-[10px] text-amber-400/70 truncate">
+                            занят: {busyLocations[0]}{busyLocations.length > 1 ? ` +${busyLocations.length - 1}` : ''}
+                          </div>
+                        )}
+                        {!busyLocations && !isInItem && (
+                          <div className="text-[10px] text-white/25">{u.assignment?.schedule_code ?? '—'}</div>
+                        )}
+                      </div>
+                      <span className={`text-[9px] shrink-0 mt-0.5 ${
+                        isInItem ? 'text-green-400' : busyLocations ? 'text-amber-400/70' : 'text-green-400/50'
+                      }`}>
+                        {isInItem ? 'в задаче' : busyLocations ? '● занят' : '○ своб.'}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+            {panelWorkers.length === 0 && (
+              <div className="text-xs text-white/20 italic py-2">
+                {workerFilter === 'free' ? 'Нет свободных сотрудников' : 'Нет сотрудников на смене'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Finalization block */}
+      <div className="border-t border-white/10 px-4 py-3 flex items-center justify-between gap-4">
+        <div className="text-xs text-white/50">
+          {allFilled ? (
+            <span className="text-green-400 font-medium">✓ Все позиции закрыты</span>
+          ) : (
+            <span>
+              Задач: <span className="text-white/70">{itemsWithWorkers}/{totalItems}</span>
+              {totalRequired > 0 && (
+                <span> · Людей: <span className={totalAssigned >= totalRequired ? 'text-green-400' : 'text-amber-400'}>{totalAssigned}/{totalRequired}</span></span>
+              )}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleMarkAssigned}
+          disabled={acting}
+          className="shrink-0 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+        >
+          {acting ? '...' : '✓ Отметить «НАЗНАЧЕН»'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Plan item assigner (for non-BOSS_CONFIRMED plans) ───────────────────────
 
 function PlanItemAssigner({
   item, assignments, serviceWorkers, workerBusyMap,
