@@ -17,6 +17,7 @@ import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
 import EmptyState from '@/components/EmptyState'
+import AlertBanner from '@/components/AlertBanner'
 // HEAD components
 import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
@@ -119,6 +120,7 @@ function Content({ session }: { session: AuthSession }) {
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
 
+      <AlertBanner session={session} />
       <PlanStats requests={requests} services={services} pendingApproval={unapproved} />
 
       {/* Tabs */}

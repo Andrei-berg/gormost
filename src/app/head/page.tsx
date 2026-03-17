@@ -9,6 +9,7 @@ import PlanList from '@/components/head/PlanList'
 import WorkPlanModal from '@/components/head/WorkPlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
+import AlertBanner from '@/components/AlertBanner'
 
 export default function HeadPage() {
   return (
@@ -67,6 +68,7 @@ function Content({ session }: { session: AuthSession }) {
         mode="PLANNING"
         showTimer={timerLabel ?? undefined}
       />
+      <AlertBanner session={session} />
       <ServiceStats plans={plans} />
 
       {/* Tabs */}

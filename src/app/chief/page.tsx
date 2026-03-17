@@ -7,6 +7,7 @@ import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
 import LiveBoard from '@/components/chief/LiveBoard'
+import AlertBanner from '@/components/AlertBanner'
 
 export default function ChiefPage() {
   return (
@@ -60,6 +61,7 @@ function Content({ session }: { session: AuthSession }) {
     <div className="min-h-screen p-4 max-w-[1400px] mx-auto">
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
 
+      <AlertBanner session={session} />
       <ChiefStats plans={plans} />
 
       {/* Main tab switcher */}

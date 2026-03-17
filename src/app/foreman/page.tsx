@@ -12,6 +12,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import AlertBanner from '@/components/AlertBanner'
 
 export default function ForemanPage() {
   return (
@@ -89,6 +90,8 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 max-w-5xl mx-auto">
       <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" lastUpdated={lastUpdated} />
+
+      <AlertBanner session={session} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">

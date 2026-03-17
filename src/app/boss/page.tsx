@@ -8,6 +8,7 @@ import ShiftRoster from '@/components/ShiftRoster'
 import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchChangelog, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api'
 import type { Request, Service, ChangelogEntry, AuthSession, UserWithAssignment } from '@/types'
 import EmptyState from '@/components/EmptyState'
+import AlertBanner from '@/components/AlertBanner'
 
 export default function BossPage() {
   return (
@@ -52,6 +53,8 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Начальник участка" emoji="🏠" mode="REVIEW" />
+
+      <AlertBanner session={session} />
 
       {/* KPI */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
