@@ -1412,15 +1412,19 @@ export async function createWorkAssignment(
   userId: string,
   role: WorkAssignment['role'],
   assignedBy: string
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase.from('work_assignments').insert({
     plan_item_id: planItemId,
     user_id: userId,
     role,
     assigned_by: assignedBy,
   })
-  if (!error) await logAction(assignedBy, 'ASSIGN_WORKER', 'work_assignment', planItemId, { userId, role })
-  return !error
+  if (error) {
+    console.error('createWorkAssignment failed:', error)
+    return { ok: false, error: error.message }
+  }
+  await logAction(assignedBy, 'ASSIGN_WORKER', 'work_assignment', planItemId, { userId, role })
+  return { ok: true }
 }
 
 /**

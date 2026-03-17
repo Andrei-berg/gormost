@@ -514,10 +514,10 @@ function SplitViewPlanCard({
     if (!activeItemId || activeAssignedIds.has(userId)) return
     setAdding(userId)
     setAddError(null)
-    const ok = await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
+    const result = await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
     setAdding(null)
-    if (!ok) {
-      setAddError('Не удалось добавить сотрудника. Проверьте что таблица work_assignments создана в Supabase (migration 012).')
+    if (!result.ok) {
+      setAddError(result.error ?? 'Неизвестная ошибка')
       return
     }
     onRefresh()
