@@ -1396,11 +1396,12 @@ export async function fetchWorkAssignments(planItemId: string): Promise<WorkAssi
 
 export async function fetchWorkAssignmentsForItems(itemIds: string[]): Promise<WorkAssignmentWithUser[]> {
   if (itemIds.length === 0) return []
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('work_assignments')
     .select('*, user:users(user_id, full_name, position, tab_number)')
     .in('plan_item_id', itemIds)
     .order('assigned_at')
+  if (error) console.error('fetchWorkAssignmentsForItems error:', error)
   return (data || []) as WorkAssignmentWithUser[]
 }
 
