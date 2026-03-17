@@ -365,7 +365,7 @@ export interface WorkPlanItem {
 }
 
 // Work assignment — employee assigned to a specific work plan item (brigade)
-export type WorkAssignmentRole = 'WORKER' | 'BRIGADIER' | 'MASTER' | 'DRIVER'
+export type WorkAssignmentRole = 'WORKER' | 'BRIGADIER' | 'MASTER' | 'ITR'
 
 export interface WorkAssignment {
   id: string

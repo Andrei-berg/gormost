@@ -17,21 +17,21 @@ const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
   BRIGADIER: 'Бригадир',
   MASTER: 'Мастер',
-  DRIVER: 'Водитель',
+  ITR: 'ИТР',
 }
 
 const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
   WORKER: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   BRIGADIER: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   MASTER: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  DRIVER: 'bg-green-500/20 text-green-300 border-green-500/30',
+  ITR: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
 }
 
 const ROLE_ICONS: Record<WorkAssignmentRole, string> = {
   WORKER: '👷',
   BRIGADIER: '⭐',
   MASTER: '🦺',
-  DRIVER: '🚛',
+  ITR: '📋',
 }
 
 interface Props {
@@ -301,7 +301,7 @@ function PlanAssignCard({
   workerBusyMap: Map<string, string[]>
   workerFilter: 'all' | 'free'
   session: AuthSession
-  onRefresh: () => void
+  onRefresh: () => Promise<void>
   compact?: boolean
 }) {
   // Split-view for BOSS_CONFIRMED — full interactive layout
@@ -337,7 +337,7 @@ function PlanAssignCard({
       totalReqForemen += item.required_foremen || 0
       const assignments = itemAssignmentsMap.get(item.id) ?? []
       for (const a of assignments) {
-        if (a.role === 'WORKER' || a.role === 'DRIVER') assignedWorkers++
+        if (a.role === 'WORKER' || a.role === 'ITR') assignedWorkers++
         else assignedForemen++
       }
     }
@@ -469,7 +469,7 @@ function SplitViewPlanCard({
   workerBusyMap: Map<string, string[]>
   workerFilter: 'all' | 'free'
   session: AuthSession
-  onRefresh: () => void
+  onRefresh: () => Promise<void>
 }) {
   const svc = services.find(s => s.service_id === plan.service_id)
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
@@ -515,19 +515,24 @@ function SplitViewPlanCard({
     setAdding(userId)
     setAddError(null)
     const result = await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
-    setAdding(null)
     if (!result.ok) {
-      setAddError(result.error ?? 'Неизвестная ошибка')
+      setAdding(null)
+      if (result.error?.includes('duplicate key') || result.error?.includes('unique')) {
+        setAddError('Этот сотрудник уже назначен на данную задачу')
+      } else {
+        setAddError(result.error ?? 'Неизвестная ошибка')
+      }
       return
     }
-    onRefresh()
+    await onRefresh()
+    setAdding(null)
   }
 
   const handleRemove = async (assignmentId: string) => {
     setRemoving(assignmentId)
     await deleteWorkAssignment(assignmentId)
+    await onRefresh()
     setRemoving(null)
-    onRefresh()
   }
 
   const handleMarkAssigned = async () => {
@@ -585,7 +590,7 @@ function SplitViewPlanCard({
           {plan.items.map(item => {
             const itemAssignments = itemAssignmentsMap.get(item.id) ?? []
             const isActive = activeItemId === item.id
-            const wCount = itemAssignments.filter(a => a.role === 'WORKER' || a.role === 'DRIVER').length
+            const wCount = itemAssignments.filter(a => a.role === 'WORKER' || a.role === 'ITR').length
             const fCount = itemAssignments.filter(a => a.role === 'BRIGADIER' || a.role === 'MASTER').length
             const rw = item.required_workers || 0
             const rf = item.required_foremen || 0
@@ -677,7 +682,7 @@ function SplitViewPlanCard({
           {/* Role selector */}
           {activeItem && (
             <div className="flex flex-wrap gap-1">
-              {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
+              {(['WORKER', 'BRIGADIER', 'MASTER', 'ITR'] as WorkAssignmentRole[]).map(role => (
                 <button
                   key={role}
                   type="button"
@@ -821,7 +826,7 @@ function PlanItemAssigner({
   workerFilter: 'all' | 'free'
   session: AuthSession
   canAssign: boolean
-  onRefresh: () => void
+  onRefresh: () => Promise<void>
   compact: boolean
 }) {
   const [showPicker, setShowPicker] = useState(false)
@@ -835,17 +840,17 @@ function PlanItemAssigner({
   const handleAdd = async (userId: string, role: WorkAssignmentRole) => {
     setAdding(userId)
     await createWorkAssignment(item.id, userId, role, session.user_id)
+    await onRefresh()
     setAdding(null)
     setShowPicker(false)
     setPickerSearch('')
-    onRefresh()
   }
 
   const handleRemove = async (assignmentId: string) => {
     setRemoving(assignmentId)
     await deleteWorkAssignment(assignmentId)
+    await onRefresh()
     setRemoving(null)
-    onRefresh()
   }
 
   // Workers to show in picker
@@ -876,7 +881,7 @@ function PlanItemAssigner({
   const reqVehicles = item.required_vehicles || 0
   const hasRequirements = reqWorkers > 0 || reqForemen > 0 || reqVehicles > 0
 
-  const workerCount = assignments.filter(a => a.role === 'WORKER' || a.role === 'DRIVER').length
+  const workerCount = assignments.filter(a => a.role === 'WORKER' || a.role === 'ITR').length
   const foremanCount = assignments.filter(a => a.role === 'BRIGADIER' || a.role === 'MASTER').length
 
   return (
@@ -949,7 +954,7 @@ function PlanItemAssigner({
           {/* Role selector */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-white/40">Роль:</span>
-            {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
+            {(['WORKER', 'BRIGADIER', 'MASTER', 'ITR'] as WorkAssignmentRole[]).map(role => (
               <button
                 key={role}
                 onClick={() => setPickerRole(role)}
