@@ -51,7 +51,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
       fetchWorkPlans({
         serviceId: session.service_id ?? undefined,
         planDate,
-        statuses: ['BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'DONE'],
+        statuses: ['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'DONE'],
       }),
       fetchUsersWithAssignments(),
     ])
@@ -120,7 +120,8 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const freeCount = serviceWorkers.filter(u => !assignedInServiceIds.has(u.user_id)).length
   const assignedCount = serviceWorkers.filter(u => assignedInServiceIds.has(u.user_id)).length
 
-  const toAssign = plans.filter(p => p.status === 'BOSS_CONFIRMED')
+  const ASSIGNABLE_STATUSES = ['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED']
+  const toAssign = plans.filter(p => ASSIGNABLE_STATUSES.includes(p.status))
   const inWork = plans.filter(p => ['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(p.status))
 
   if (loading) return <div className="text-center text-white/30 py-12">Загрузка...</div>
@@ -300,7 +301,7 @@ function PlanAssignCard({
   compact?: boolean
 }) {
   // Split-view for BOSS_CONFIRMED — full interactive layout
-  if (plan.status === 'BOSS_CONFIRMED') {
+  if (['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)) {
     return (
       <SplitViewPlanCard
         plan={plan}
@@ -535,8 +536,8 @@ function SplitViewPlanCard({
           <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
           <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full border border-cyan-500/30 text-cyan-400">
-          Ожидает назначения
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${WORK_PLAN_STATUS_CONFIG[plan.status].bg}`} style={{ color: WORK_PLAN_STATUS_CONFIG[plan.status].color }}>
+          {WORK_PLAN_STATUS_CONFIG[plan.status].label}
         </span>
       </div>
 
@@ -750,16 +751,26 @@ function SplitViewPlanCard({
               {totalRequired > 0 && (
                 <span> · Людей: <span className={totalAssigned >= totalRequired ? 'text-green-400' : 'text-amber-400'}>{totalAssigned}/{totalRequired}</span></span>
               )}
+              {totalRequired === 0 && totalAssigned > 0 && (
+                <span className="ml-2 text-white/40">назначено {totalAssigned} чел.</span>
+              )}
             </span>
           )}
         </div>
-        <button
-          onClick={handleMarkAssigned}
-          disabled={acting}
-          className="shrink-0 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
-        >
-          {acting ? '...' : '✓ Отметить «НАЗНАЧЕН»'}
-        </button>
+        {plan.status === 'BOSS_CONFIRMED' && (
+          <button
+            onClick={handleMarkAssigned}
+            disabled={acting}
+            className="shrink-0 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+          >
+            {acting ? '...' : '✓ Отметить «НАЗНАЧЕН»'}
+          </button>
+        )}
+        {plan.status !== 'BOSS_CONFIRMED' && (
+          <span className="text-[10px] text-white/25 italic">
+            Назначение будет доступно после утверждения на совещании
+          </span>
+        )}
       </div>
     </div>
   )
