@@ -52,12 +52,9 @@ export default function BrigadeAssigner({ session, services }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const planDate = today.toISOString().split('T')[0]
-
     const [rawPlans, allUsers] = await Promise.all([
       fetchWorkPlans({
         serviceId: session.service_id ?? undefined,
-        planDate,
         statuses: ['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'DONE'],
       }),
       fetchUsersWithAssignments(),
