@@ -51,7 +51,8 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const shiftInfo = getShiftForDate(today)
 
   const load = useCallback(async () => {
-    setLoading(true)
+    // Do NOT setLoading(true) here — that unmounts child components and resets their
+    // local state (activeItemId, pickerRole). Loading spinner only shows on first mount.
     const [rawPlans, allUsers] = await Promise.all([
       fetchWorkPlans({
         serviceId: session.service_id ?? undefined,
