@@ -474,16 +474,12 @@ function SplitViewPlanCard({
   const svc = services.find(s => s.service_id === plan.service_id)
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
-  const [itemRoleMap, setItemRoleMap] = useState<Map<string, WorkAssignmentRole>>(new Map())
-
-  const getItemRole = (itemId: string | null): WorkAssignmentRole =>
-    itemId ? (itemRoleMap.get(itemId) ?? 'WORKER') : 'WORKER'
-  const setItemRole = (itemId: string, role: WorkAssignmentRole) =>
-    setItemRoleMap(prev => new Map(prev).set(itemId, role))
+  const [pickerRole, setPickerRole] = useState<WorkAssignmentRole>('WORKER')
   const [search, setSearch] = useState('')
   const [acting, setActing] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
 
   const activeItem = plan.items.find(i => i.id === activeItemId)
   const activeAssignments = itemAssignmentsMap.get(activeItemId ?? '') ?? []
@@ -517,8 +513,13 @@ function SplitViewPlanCard({
   const handleAdd = async (userId: string) => {
     if (!activeItemId || activeAssignedIds.has(userId)) return
     setAdding(userId)
-    await createWorkAssignment(activeItemId, userId, getItemRole(activeItemId), session.user_id)
+    setAddError(null)
+    const ok = await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
     setAdding(null)
+    if (!ok) {
+      setAddError('Не удалось добавить сотрудника. Проверьте что таблица work_assignments создана в Supabase (migration 012).')
+      return
+    }
     onRefresh()
   }
 
@@ -679,14 +680,22 @@ function SplitViewPlanCard({
               {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
                 <button
                   key={role}
-                  onClick={() => setItemRole(activeItem.id, role)}
+                  type="button"
+                  onClick={() => setPickerRole(role)}
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
-                    getItemRole(activeItemId) === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
+                    pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
                   }`}
                 >
                   {ROLE_ICONS[role]} {ROLE_LABELS[role]}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Error message */}
+          {addError && (
+            <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {addError}
             </div>
           )}
 
