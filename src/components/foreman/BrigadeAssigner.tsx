@@ -38,6 +38,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const [allAssignments, setAllAssignments] = useState<WorkAssignmentWithUser[]>([])
   const [loading, setLoading] = useState(true)
   const [workerFilter, setWorkerFilter] = useState<'all' | 'free'>('all')
+  const [rosterPanel, setRosterPanel] = useState<'free' | 'assigned' | null>(null)
 
   const today = new Date()
   const shiftInfo = getShiftForDate(today)
@@ -127,41 +128,100 @@ export default function BrigadeAssigner({ session, services }: Props) {
   return (
     <div className="space-y-6">
 
-      {/* Shift stats — interactive filter panel */}
-      <div className="glass rounded-xl p-4 border border-cyan-500/20">
-        <div className="text-sm font-bold text-white mb-3">
-          Смена №{shiftInfo.shiftNumber} · Ваша служба
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setWorkerFilter('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-              workerFilter === 'all'
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
-                : 'bg-white/5 text-white/50 border-white/10 hover:border-white/20'
-            }`}
-          >
-            👥 Все на смене: <strong className="ml-1">{serviceWorkers.length}</strong>
-          </button>
-          <button
-            onClick={() => setWorkerFilter('free')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-              workerFilter === 'free'
-                ? 'bg-green-500/20 text-green-300 border-green-500/30'
-                : 'bg-white/5 text-white/50 border-white/10 hover:border-white/20'
-            }`}
-          >
-            ✓ Свободны: <strong className={`ml-1 ${freeCount > 0 ? 'text-green-400' : 'text-white/30'}`}>{freeCount}</strong>
-          </button>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 text-white/50">
-            📋 Назначены: <strong className="ml-1 text-amber-400">{assignedCount}</strong>
+      {/* Shift stats — interactive roster panel */}
+      <div className="glass rounded-xl border border-cyan-500/20 overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="text-sm font-bold text-white">
+            Смена №{shiftInfo.shiftNumber} · Ваша служба
           </div>
-          {workerFilter === 'free' && (
-            <span className="flex items-center text-xs text-green-400/70 ml-1">
-              ← фильтр в пикере включён
-            </span>
-          )}
+          <div className="text-xs text-white/30">{serviceWorkers.length} чел. на смене</div>
         </div>
+
+        {/* Clickable stat buttons */}
+        <div className="flex border-t border-white/5">
+          <button
+            onClick={() => {
+              const next = rosterPanel === 'free' ? null : 'free'
+              setRosterPanel(next)
+              setWorkerFilter(next === 'free' ? 'free' : 'all')
+            }}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 border-r border-white/5 transition-colors ${
+              rosterPanel === 'free' ? 'bg-green-500/10' : 'hover:bg-white/3'
+            }`}
+          >
+            <span className={`text-xl font-bold font-mono ${freeCount > 0 ? 'text-green-400' : 'text-white/20'}`}>
+              {freeCount}
+            </span>
+            <span className="text-[10px] text-white/40">Свободны</span>
+          </button>
+
+          <button
+            onClick={() => setRosterPanel(rosterPanel === 'assigned' ? null : 'assigned')}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${
+              rosterPanel === 'assigned' ? 'bg-amber-500/10' : 'hover:bg-white/3'
+            }`}
+          >
+            <span className={`text-xl font-bold font-mono ${assignedCount > 0 ? 'text-amber-400' : 'text-white/20'}`}>
+              {assignedCount}
+            </span>
+            <span className="text-[10px] text-white/40">Назначены</span>
+          </button>
+        </div>
+
+        {/* Roster: free workers */}
+        {rosterPanel === 'free' && (
+          <div className="border-t border-white/5 p-3">
+            <div className="text-[10px] text-green-400/60 uppercase tracking-wider mb-2">Свободные сотрудники</div>
+            {serviceWorkers.filter(u => !assignedInServiceIds.has(u.user_id)).length === 0 ? (
+              <div className="text-xs text-white/20 italic py-1">Все назначены</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1">
+                {serviceWorkers
+                  .filter(u => !assignedInServiceIds.has(u.user_id))
+                  .map(u => (
+                    <div key={u.user_id} className="text-xs px-2 py-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
+                      <div className="text-white/80 font-medium truncate">{u.full_name}</div>
+                      <div className="text-[10px] text-white/30">{u.position ?? u.assignment?.schedule_code ?? '—'}</div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Roster: assigned workers */}
+        {rosterPanel === 'assigned' && (
+          <div className="border-t border-white/5 p-3">
+            <div className="text-[10px] text-amber-400/60 uppercase tracking-wider mb-2">Назначенные сотрудники</div>
+            {serviceWorkers.filter(u => assignedInServiceIds.has(u.user_id)).length === 0 ? (
+              <div className="text-xs text-white/20 italic py-1">Никто ещё не назначен</div>
+            ) : (
+              <div className="space-y-1">
+                {serviceWorkers
+                  .filter(u => assignedInServiceIds.has(u.user_id))
+                  .map(u => {
+                    const locations = workerBusyMap.get(u.user_id) ?? []
+                    return (
+                      <div key={u.user_id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                        <div className="text-white/80 font-medium truncate min-w-0 flex-1">{u.full_name}</div>
+                        <div className="text-[10px] text-amber-400/70 truncate shrink-0 max-w-[40%]">
+                          {locations[0]}{locations.length > 1 ? ` +${locations.length - 1}` : ''}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filter hint when picker filter active */}
+        {workerFilter === 'free' && (
+          <div className="border-t border-white/5 px-4 py-2 flex items-center justify-between">
+            <span className="text-[10px] text-green-400/60">Пикер показывает только свободных</span>
+            <button onClick={() => setWorkerFilter('all')} className="text-[10px] text-white/30 hover:text-white/60">сбросить ×</button>
+          </div>
+        )}
       </div>
 
       {/* Plans awaiting brigade assignment */}
