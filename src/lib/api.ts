@@ -1388,7 +1388,7 @@ export async function deleteShiftPhase(id: string, deletedBy: string): Promise<b
 export async function fetchWorkAssignments(planItemId: string): Promise<WorkAssignmentWithUser[]> {
   const { data } = await supabase
     .from('work_assignments')
-    .select('*, user:users(user_id, full_name, position, tab_number)')
+    .select('*, user:users!work_assignments_user_id_fkey(user_id, full_name, position, tab_number)')
     .eq('plan_item_id', planItemId)
     .order('assigned_at')
   return (data || []) as WorkAssignmentWithUser[]
@@ -1398,7 +1398,7 @@ export async function fetchWorkAssignmentsForItems(itemIds: string[]): Promise<W
   if (itemIds.length === 0) return []
   const { data, error } = await supabase
     .from('work_assignments')
-    .select('*, user:users(user_id, full_name, position, tab_number)')
+    .select('*, user:users!work_assignments_user_id_fkey(user_id, full_name, position, tab_number)')
     .in('plan_item_id', itemIds)
     .order('assigned_at')
   if (error) console.error('fetchWorkAssignmentsForItems error:', error)
