@@ -27,6 +27,13 @@ const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
   DRIVER: 'bg-green-500/20 text-green-300 border-green-500/30',
 }
 
+const ROLE_ICONS: Record<WorkAssignmentRole, string> = {
+  WORKER: '👷',
+  BRIGADIER: '⭐',
+  MASTER: '🦺',
+  DRIVER: '🚛',
+}
+
 interface Props {
   session: AuthSession
   services: Service[]
@@ -470,7 +477,12 @@ function SplitViewPlanCard({
   const svc = services.find(s => s.service_id === plan.service_id)
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
-  const [pickerRole, setPickerRole] = useState<WorkAssignmentRole>('WORKER')
+  const [itemRoleMap, setItemRoleMap] = useState<Map<string, WorkAssignmentRole>>(new Map())
+
+  const getItemRole = (itemId: string | null): WorkAssignmentRole =>
+    itemId ? (itemRoleMap.get(itemId) ?? 'WORKER') : 'WORKER'
+  const setItemRole = (itemId: string, role: WorkAssignmentRole) =>
+    setItemRoleMap(prev => new Map(prev).set(itemId, role))
   const [search, setSearch] = useState('')
   const [acting, setActing] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
@@ -508,7 +520,7 @@ function SplitViewPlanCard({
   const handleAdd = async (userId: string) => {
     if (!activeItemId || activeAssignedIds.has(userId)) return
     setAdding(userId)
-    await createWorkAssignment(activeItemId, userId, pickerRole, session.user_id)
+    await createWorkAssignment(activeItemId, userId, getItemRole(activeItemId), session.user_id)
     setAdding(null)
     onRefresh()
   }
@@ -531,7 +543,7 @@ function SplitViewPlanCard({
     <div className="glass rounded-xl overflow-hidden border border-cyan-500/30">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div>
           <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
           <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
@@ -539,6 +551,25 @@ function SplitViewPlanCard({
         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${WORK_PLAN_STATUS_CONFIG[plan.status].bg}`} style={{ color: WORK_PLAN_STATUS_CONFIG[plan.status].color }}>
           {WORK_PLAN_STATUS_CONFIG[plan.status].label}
         </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="px-4 py-2 border-b border-white/5 flex items-center gap-3">
+        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${allFilled ? 'bg-green-500' : 'bg-cyan-500/60'}`}
+            style={{ width: `${totalRequired > 0 ? Math.min(100, Math.round(totalAssigned / totalRequired * 100)) : (totalAssigned > 0 ? 100 : 0)}%` }}
+          />
+        </div>
+        {totalRequired > 0 ? (
+          <span className={`text-[10px] font-mono shrink-0 ${allFilled ? 'text-green-400' : 'text-white/40'}`}>
+            {totalAssigned}/{totalRequired} чел.
+          </span>
+        ) : (
+          <span className="text-[10px] text-white/30 shrink-0">
+            {totalAssigned > 0 ? `${totalAssigned} назначено` : `${totalItems} задач`}
+          </span>
+        )}
       </div>
 
       {/* Split view */}
@@ -612,7 +643,7 @@ function SplitViewPlanCard({
                         key={a.id}
                         className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
                       >
-                        <span className="opacity-50">{ROLE_LABELS[a.role][0]}</span>
+                        <span>{ROLE_ICONS[a.role]}</span>
                         <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
                         <button
                           onClick={e => { e.stopPropagation(); handleRemove(a.id) }}
@@ -626,11 +657,6 @@ function SplitViewPlanCard({
                   </div>
                 )}
 
-                {isActive && (
-                  <div className="mt-1.5 text-[10px] text-cyan-400 font-medium">
-                    → теперь нажмите сотрудника справа
-                  </div>
-                )}
                 {!isActive && itemAssignments.length === 0 && (
                   <div className="text-[10px] text-white/30">нажмите чтобы открыть</div>
                 )}
@@ -656,12 +682,12 @@ function SplitViewPlanCard({
               {(['WORKER', 'BRIGADIER', 'MASTER', 'DRIVER'] as WorkAssignmentRole[]).map(role => (
                 <button
                   key={role}
-                  onClick={() => setPickerRole(role)}
+                  onClick={() => setItemRole(activeItem.id, role)}
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
-                    pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
+                    getItemRole(activeItemId) === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
                   }`}
                 >
-                  {ROLE_LABELS[role]}
+                  {ROLE_ICONS[role]} {ROLE_LABELS[role]}
                 </button>
               ))}
             </div>
@@ -885,7 +911,7 @@ function PlanItemAssigner({
             key={a.id}
             className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
           >
-            <span className="opacity-60">{ROLE_LABELS[a.role][0]}</span>
+            <span>{ROLE_ICONS[a.role]}</span>
             <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
             {canAssign && (
               <button
