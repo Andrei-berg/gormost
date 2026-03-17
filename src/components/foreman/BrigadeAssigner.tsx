@@ -493,10 +493,23 @@ function SplitViewPlanCard({
   const totalRequired = plan.items.reduce((s, i) => s + (i.required_workers || 0) + (i.required_foremen || 0), 0)
   const allFilled = totalRequired > 0 && totalAssigned >= totalRequired
 
-  // Workers shown in right panel (filtered by search + workerFilter)
+  // Which role_levels correspond to each assignment role
+  const ROLE_LEVEL_FILTER: Record<WorkAssignmentRole, string[]> = {
+    WORKER:    ['WORKER', 'DRIVER'],
+    BRIGADIER: ['FOREMAN'],
+    MASTER:    ['FOREMAN', 'HEAD'],
+    ITR:       ['SPECIALIST', 'CHIEF_ENGINEER', 'HEAD', 'ZAMPORAB', 'DISPATCHER', 'HR'],
+  }
+
+  // Workers shown in right panel (filtered by search + workerFilter + pickerRole)
   const panelWorkers = useMemo(() => {
     let list = serviceWorkers
     if (workerFilter === 'free') list = list.filter(u => !workerBusyMap.has(u.user_id))
+    // Filter by role type when item is active
+    if (activeItemId) {
+      const allowed = ROLE_LEVEL_FILTER[pickerRole]
+      list = list.filter(u => allowed.includes(u.role_level))
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(u => u.full_name.toLowerCase().includes(q))
@@ -509,7 +522,7 @@ function SplitViewPlanCard({
       const bBusy = workerBusyMap.has(b.user_id) ? 1 : 0
       return aBusy - bBusy
     })
-  }, [serviceWorkers, workerFilter, workerBusyMap, search, activeAssignedIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [serviceWorkers, workerFilter, workerBusyMap, search, activeAssignedIds, pickerRole, activeItemId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAdd = async (userId: string) => {
     if (!activeItemId || activeAssignedIds.has(userId)) return
