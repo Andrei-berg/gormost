@@ -545,8 +545,9 @@ function SplitViewPlanCard({
 
         {/* LEFT: tasks */}
         <div className="p-4 space-y-2 overflow-y-auto max-h-[420px]">
-          <div className="text-[10px] text-white/30 uppercase tracking-wider mb-3">
-            Задачи плана
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+            <span className="text-xs text-white/50">Выберите задачу</span>
           </div>
           {plan.items.length === 0 && (
             <div className="text-xs text-white/20 italic">Нет позиций в плане</div>
@@ -625,12 +626,12 @@ function SplitViewPlanCard({
                 )}
 
                 {isActive && (
-                  <div className="mt-1.5 text-[10px] text-cyan-400/70 italic">
-                    ← выберите сотрудника справа
+                  <div className="mt-1.5 text-[10px] text-cyan-400 font-medium">
+                    → теперь нажмите сотрудника справа
                   </div>
                 )}
                 {!isActive && itemAssignments.length === 0 && (
-                  <div className="text-[10px] text-white/20 italic">нажмите чтобы назначить</div>
+                  <div className="text-[10px] text-white/30">нажмите чтобы открыть</div>
                 )}
               </div>
             )
@@ -639,18 +640,14 @@ function SplitViewPlanCard({
 
         {/* RIGHT: workers panel */}
         <div className="p-4 flex flex-col gap-3">
-          <div className="text-[10px] text-white/30 uppercase tracking-wider">
-            Люди на смене
+          <div className="flex items-center gap-2">
+            <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${
+              activeItem ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/10 text-white/30'
+            }`}>2</span>
+            <span className={`text-xs transition-colors ${activeItem ? 'text-white/50' : 'text-white/25'}`}>
+              {activeItem ? `Добавить в: ${activeItem.location}` : 'Нажмите задачу слева'}
+            </span>
           </div>
-
-          {/* Active item indicator */}
-          {activeItem ? (
-            <div className="text-xs text-cyan-400 bg-cyan-500/10 rounded-lg px-2.5 py-1.5 border border-cyan-500/20">
-              → {activeItem.location}
-            </div>
-          ) : (
-            <div className="text-xs text-white/20 italic">← Выберите задачу слева</div>
-          )}
 
           {/* Role selector */}
           {activeItem && (
@@ -702,28 +699,32 @@ function SplitViewPlanCard({
                   }`}
                 >
                   {isAdding ? (
-                    <span className="text-cyan-400">добавляю...</span>
+                    <div className="flex items-center gap-2 text-cyan-400">
+                      <span className="animate-pulse">●</span> добавляю...
+                    </div>
                   ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">
-                          {isInItem && <span className="mr-1">✓</span>}
-                          {u.full_name}
+                    <div className="flex items-center gap-2">
+                      {/* Status dot */}
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        isInItem ? 'bg-green-400' : busyLocations ? 'bg-amber-400' : 'bg-green-400/40'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{u.full_name}</div>
+                        <div className={`text-[10px] truncate ${busyLocations && !isInItem ? 'text-amber-400/70' : 'text-white/25'}`}>
+                          {isInItem ? 'уже в этой задаче' : busyLocations ? `занят: ${busyLocations[0]}` : (u.assignment?.schedule_code ?? '—')}
                         </div>
-                        {busyLocations && !isInItem && (
-                          <div className="text-[10px] text-amber-400/70 truncate">
-                            занят: {busyLocations[0]}{busyLocations.length > 1 ? ` +${busyLocations.length - 1}` : ''}
-                          </div>
-                        )}
-                        {!busyLocations && !isInItem && (
-                          <div className="text-[10px] text-white/25">{u.assignment?.schedule_code ?? '—'}</div>
-                        )}
                       </div>
-                      <span className={`text-[9px] shrink-0 mt-0.5 ${
-                        isInItem ? 'text-green-400' : busyLocations ? 'text-amber-400/70' : 'text-green-400/50'
-                      }`}>
-                        {isInItem ? 'в задаче' : busyLocations ? '● занят' : '○ своб.'}
-                      </span>
+                      {/* Action badge */}
+                      {!isInItem && !noActive && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+                          busyLocations ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'
+                        }`}>
+                          + добавить
+                        </span>
+                      )}
+                      {isInItem && (
+                        <span className="text-green-400 text-xs shrink-0">✓</span>
+                      )}
                     </div>
                   )}
                 </button>
