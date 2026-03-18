@@ -91,7 +91,7 @@ export default function ShiftMonitorTab({ users, services, session, onRefreshUse
 
     const code = assignment.schedule_code ?? ''
 
-    if ((code === '1/3' || code === '5/2') && !assignment.shift_num) {
+    if (code === '1/3' && !assignment.shift_num) {
       issues.push({ code: 'MISSING_SHIFT_NUM', severity: 'error', userId: u.user_id, userName: u.full_name, message: `График ${code} — не указана смена (1–4)` })
     }
 
@@ -579,7 +579,7 @@ function InlineAssignmentForm({
     setShiftNum(''); setRotationGroup(''); setRefDate('')
   }
 
-  const needsShift   = scheduleCode === '1/3' || scheduleCode === '5/2'
+  const needsShift   = scheduleCode === '1/3'
   const needsRefDate = ['2/2', '3/3', '6/6'].includes(scheduleCode)
   const needsHalf    = scheduleCode === '15/15'
 
