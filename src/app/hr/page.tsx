@@ -11,10 +11,12 @@ import TransferModal from '@/components/hr/TransferModal'
 import { fetchAllCurrentStatuses, fetchServices, fetchUsers, fetchUsersWithAssignments } from '@/lib/api'
 import type { AuthSession, EnrichedEmployee, Service, User, UserWithAssignment } from '@/types'
 
-type HRTab = 'employees' | 'monitor'
 import HRToolbar from '@/components/hr/HRToolbar'
 import HRTableView from '@/components/hr/HRTableView'
 import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
+import ShiftTab from '@/components/admin/ShiftTab'
+
+type HRTab = 'employees' | 'monitor' | 'shifts'
 
 export default function HRPage() {
   return (
@@ -102,7 +104,7 @@ function Content({ session }: { session: AuthSession }) {
 
       {/* Top-level tab switcher */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit mb-4">
-        {([['employees', '👥 Сотрудники'], ['monitor', '📅 Мониторинг сменности']] as [HRTab, string][]).map(([id, label]) => (
+        {([['employees', '👥 Сотрудники'], ['shifts', '🔄 Смены'], ['monitor', '📅 Мониторинг']] as [HRTab, string][]).map(([id, label]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -114,6 +116,9 @@ function Content({ session }: { session: AuthSession }) {
           </button>
         ))}
       </div>
+
+      {/* Shifts tab — full schedule assignment + phase management */}
+      {tab === 'shifts' && <ShiftTab session={session} />}
 
       {/* Monitor tab */}
       {tab === 'monitor' && !loading && (
