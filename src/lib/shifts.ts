@@ -162,10 +162,8 @@ export function isWorkerOnDuty(
   }
 
   if (code === '5/2') {
-    if (!shift_num) return false
     const dow = target.getDay()
-    const isWeekday = dow !== 0 && dow !== 6
-    return isWeekday && getShiftNumberForDate(target) === shift_num
+    return dow !== 0 && dow !== 6
   }
 
   // Resolve anchor: prefer active_phase.anchor_date over shift_reference_date
@@ -259,7 +257,7 @@ export function resolveShiftStatus(
   // --- Пятидневка ---
   if (schedule_code === '5/2') {
     const dow = target.getDay()
-    const working = !!shift_num && dow !== 0 && dow !== 6 && getShiftNumberForDate(target) === shift_num
+    const working = dow !== 0 && dow !== 6
     return {
       working,
       phase: working ? 'day' : null,
