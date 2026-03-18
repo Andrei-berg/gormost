@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests } from '@/lib/api'
@@ -96,7 +97,13 @@ function Content({ session }: { session: AuthSession }) {
             </span>
           )}
         </button>
-        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <Link
+          href="/hr-tools"
+          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-sm font-medium"
+        >
+          📊 Кадровая аналитика →
+        </Link>
+        <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
       {tab === 'plans' && (
