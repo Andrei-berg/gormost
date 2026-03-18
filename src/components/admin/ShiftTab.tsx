@@ -5,10 +5,11 @@ import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fet
 import { getShiftForDate } from '@/lib/shifts'
 import ShiftRoster from '@/components/ShiftRoster'
 import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
+import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
 
 const SHIFT_LABELS = ['', 'Смена 1', 'Смена 2', 'Смена 3', 'Смена 4']
 const SHIFT_COLORS = ['', 'text-blue-400', 'text-green-400', 'text-amber-400', 'text-purple-400']
-type SubTab = 'assignments' | 'phases'
+type SubTab = 'assignments' | 'phases' | 'monitor'
 
 interface Props { session: AuthSession }
 
@@ -55,7 +56,7 @@ export default function ShiftTab({ session }: Props) {
     <div className="space-y-6">
       {/* Sub-tab switcher */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
-        {([['assignments', 'Назначения'], ['phases', 'Фазы смен']] as [SubTab, string][]).map(([key, label]) => (
+        {([['assignments', 'Назначения'], ['phases', 'Фазы смен'], ['monitor', '🔍 Мониторинг']] as [SubTab, string][]).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setSubTab(key)}
@@ -70,6 +71,10 @@ export default function ShiftTab({ session }: Props) {
 
       {subTab === 'phases' && (
         <ShiftPhaseManager users={users} session={session} onRefresh={load} />
+      )}
+
+      {subTab === 'monitor' && (
+        <ShiftMonitorTab users={users} services={services} />
       )}
 
       {subTab === 'assignments' && <>

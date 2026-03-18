@@ -10,8 +10,11 @@ import DismissModal from '@/components/hr/DismissModal'
 import TransferModal from '@/components/hr/TransferModal'
 import { fetchAllCurrentStatuses, fetchServices, fetchUsers, fetchUsersWithAssignments } from '@/lib/api'
 import type { AuthSession, EnrichedEmployee, Service, User, UserWithAssignment } from '@/types'
+
+type HRTab = 'employees' | 'monitor'
 import HRToolbar from '@/components/hr/HRToolbar'
 import HRTableView from '@/components/hr/HRTableView'
+import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
 
 export default function HRPage() {
   return (
@@ -22,10 +25,12 @@ export default function HRPage() {
 }
 
 function Content({ session }: { session: AuthSession }) {
+  const [tab, setTab] = useState<HRTab>('employees')
   const [employees, setEmployees] = useState<EnrichedEmployee[]>([])
   const [dismissedUsers, setDismissedUsers] = useState<User[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [assignmentMap, setAssignmentMap] = useState<Map<string, UserWithAssignment['assignment']>>(new Map())
+  const [usersWithSchedule, setUsersWithSchedule] = useState<UserWithAssignment[]>([])
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDismissed, setShowDismissed] = useState(false)
@@ -51,6 +56,7 @@ function Content({ session }: { session: AuthSession }) {
     setEmployees(emps.filter(e => e.user.service_id !== null))
     setServices(svcs)
     setDismissedUsers(allUsers.filter(u => !u.is_active))
+    setUsersWithSchedule(usersWithAssign)
     const aMap = new Map<string, UserWithAssignment['assignment']>()
     usersWithAssign.forEach(u => aMap.set(u.user_id, u.assignment))
     setAssignmentMap(aMap)
@@ -93,9 +99,36 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Кадры" emoji="👥" mode="LIVE" lastUpdated={lastUpdated} />
-      {loading ? (
+
+      {/* Top-level tab switcher */}
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit mb-4">
+        {([['employees', '👥 Сотрудники'], ['monitor', '📅 Мониторинг сменности']] as [HRTab, string][]).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              tab === id ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/60'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Monitor tab */}
+      {tab === 'monitor' && !loading && (
+        <ShiftMonitorTab
+          users={usersWithSchedule}
+          services={services}
+          session={session}
+          onRefreshUsers={loadData}
+        />
+      )}
+
+      {/* Employees tab */}
+      {tab === 'employees' && loading ? (
         <div className="text-center text-white/40 py-12">Загрузка...</div>
-      ) : (
+      ) : tab === 'employees' && (
         <>
           <SummaryPanel employees={visibleEmployees} services={services} assignmentMap={assignmentMap} />
 
