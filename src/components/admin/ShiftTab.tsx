@@ -230,7 +230,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
 
   const svcName = services.find(s => s.service_id === user.service_id)?.service_name
 
-  const requiresShift = scheduleCode === '1/3' || scheduleCode === '5/2'
+  const requiresShift = scheduleCode === '1/3'
   const needsRefDate = scheduleCode === '2/2' || scheduleCode === '3/3' || scheduleCode === '6/6'
   const needsHalf = scheduleCode === '15/15'
   // shift_num is required for 1/3 and 5/2, optional for others (organizational grouping)
