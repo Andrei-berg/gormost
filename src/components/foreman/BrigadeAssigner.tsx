@@ -46,6 +46,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const [loading, setLoading] = useState(true)
   const [workerFilter, setWorkerFilter] = useState<'all' | 'free'>('all')
   const [rosterPanel, setRosterPanel] = useState<'free' | 'assigned' | null>(null)
+  const [overdueOpen, setOverdueOpen] = useState(false)
 
   const today = new Date()
   const shiftInfo = getShiftForDate(today)
@@ -125,9 +126,12 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const freeCount = serviceWorkers.filter(u => !assignedInServiceIds.has(u.user_id)).length
   const assignedCount = serviceWorkers.filter(u => assignedInServiceIds.has(u.user_id)).length
 
+  const todayStr = today.toISOString().split('T')[0]
+
   const ASSIGNABLE_STATUSES = ['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED']
-  const toAssign = plans.filter(p => ASSIGNABLE_STATUSES.includes(p.status))
-  const inWork = plans.filter(p => ['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(p.status))
+  const toAssign = plans.filter(p => ASSIGNABLE_STATUSES.includes(p.status) && p.plan_date >= todayStr)
+  const inWork   = plans.filter(p => ['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(p.status) && p.plan_date >= todayStr)
+  const overdue  = plans.filter(p => p.plan_date < todayStr)
 
   if (loading) return <div className="text-center text-white/30 py-12">Загрузка...</div>
 
@@ -276,6 +280,49 @@ export default function BrigadeAssigner({ session, services }: Props) {
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Overdue plans — collapsed accordion, read-only */}
+      {overdue.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setOverdueOpen(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/3 hover:bg-white/5 border border-white/5 transition-colors"
+          >
+            <span className="text-xs text-white/30 font-medium">
+              ⏰ Просроченные планы ({overdue.length})
+            </span>
+            <span className="text-white/20 text-xs">{overdueOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {overdueOpen && (
+            <div className="mt-2 space-y-2">
+              {overdue.map(plan => {
+                const svc = services.find(s => s.service_id === plan.service_id)
+                const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
+                const itemCount = plan.items.length
+                const assignedCount = plan.items.reduce((s, i) => s + (itemAssignmentsMap.get(i.id)?.length ?? 0), 0)
+                return (
+                  <div key={plan.id} className="glass rounded-xl border border-white/5 opacity-50 pointer-events-none">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="text-sm text-white/60">{svc?.service_name ?? plan.service_id}</div>
+                        <div className="text-xs text-white/30">{plan.plan_date} · {plan.shift_type === 'DAY' ? '☀️' : '🌙'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-white/30">{assignedCount} назн. / {itemCount} задач</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
