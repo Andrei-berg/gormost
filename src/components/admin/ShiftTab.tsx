@@ -230,9 +230,11 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
 
   const svcName = services.find(s => s.service_id === user.service_id)?.service_name
 
-  const needsShift = scheduleCode === '1/3' || scheduleCode === '5/2'
-  const needsRefDate = scheduleCode === '3/3' || scheduleCode === '6/6'
+  const requiresShift = scheduleCode === '1/3' || scheduleCode === '5/2'
+  const needsRefDate = scheduleCode === '2/2' || scheduleCode === '3/3' || scheduleCode === '6/6'
   const needsHalf = scheduleCode === '15/15'
+  // shift_num is required for 1/3 and 5/2, optional for others (organizational grouping)
+  const canSelectShift = !!scheduleCode
 
   if (!isEditing) {
     const a = user.assignment
@@ -267,8 +269,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     <tr className="border-b border-blue-500/20 bg-blue-500/5">
       <td className="px-3 py-2 text-white/80 text-sm" colSpan={2}>{user.full_name}</td>
       <td className="px-3 py-2">
-        <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className={sel} disabled={!needsShift}>
-          <option value="">—</option>
+        <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className={sel} disabled={!canSelectShift}>
+          <option value="">{requiresShift ? '— обязательно —' : '— опц. —'}</option>
           {[1,2,3,4].map(n => <option key={n} value={n}>Смена {n}</option>)}
         </select>
       </td>
