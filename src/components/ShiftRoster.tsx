@@ -91,17 +91,18 @@ export default function ShiftRoster({ users, services, date, compact = false }: 
       </div>
 
       {/* By service */}
-      <div className="p-4 space-y-4">
+      <div className="divide-y divide-white/5 pb-2">
         {services.map(svc => {
           const workers = byService.get(svc.service_id) ?? []
           if (workers.length === 0) return null
           return (
-            <div key={svc.service_id}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">{svc.service_name}</span>
-                <span className="text-[10px] bg-white/5 text-white/30 px-1.5 py-0.5 rounded-full">{workers.length}</span>
+            <div key={svc.service_id} className="p-4">
+              <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/8">
+                <span className="w-1 h-3.5 rounded-full bg-white/20 shrink-0" />
+                <span className="text-xs font-bold text-white/70 uppercase tracking-wider">{svc.service_name}</span>
+                <span className="text-[10px] bg-white/8 text-white/40 px-1.5 py-0.5 rounded-full ml-auto">{workers.length}</span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {workers.map(u => (
                   <WorkerRow key={u.user_id} user={u} />
                 ))}
@@ -112,9 +113,12 @@ export default function ShiftRoster({ users, services, date, compact = false }: 
 
         {/* Without service */}
         {(byService.get('__none__') ?? []).length > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-2">Без службы</div>
-            <div className="space-y-1">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/8">
+              <span className="w-1 h-3.5 rounded-full bg-white/10 shrink-0" />
+              <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Без службы</span>
+            </div>
+            <div className="space-y-0.5">
               {(byService.get('__none__') ?? []).map(u => (
                 <WorkerRow key={u.user_id} user={u} />
               ))}
@@ -123,7 +127,7 @@ export default function ShiftRoster({ users, services, date, compact = false }: 
         )}
 
         {onDuty.length === 0 && (
-          <div className="text-center text-white/20 text-sm py-4">Нет данных о составе смены</div>
+          <div className="text-center text-white/20 text-sm py-8">Нет данных о составе смены</div>
         )}
       </div>
     </div>
