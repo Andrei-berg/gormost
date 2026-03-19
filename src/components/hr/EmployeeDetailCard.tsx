@@ -8,6 +8,7 @@ interface Props {
   userId: string
   currentUserId: string
   canAdmin: boolean
+  initialEditMode?: boolean
   onClose: () => void
   onDismiss: (userId: string) => void
   onTransfer: (userId: string) => void
@@ -37,6 +38,7 @@ export default function EmployeeDetailCard({
   userId,
   currentUserId,
   canAdmin,
+  initialEditMode,
   onClose,
   onDismiss,
   onTransfer,
@@ -44,7 +46,7 @@ export default function EmployeeDetailCard({
   const [detail, setDetail] = useState<EmployeeDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
-  const [editMode, setEditMode] = useState(false)
+  const [editMode, setEditMode] = useState(initialEditMode ?? false)
   const [services, setServices] = useState<Service[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [saving, setSaving] = useState(false)

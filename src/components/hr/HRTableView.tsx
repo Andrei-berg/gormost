@@ -40,6 +40,7 @@ interface Props {
   canAdmin?: boolean
   currentUserId: string
   onNameClick: (userId: string) => void
+  onNameDoubleClick?: (userId: string) => void
   onRefresh: () => void
   services: Service[]
   assignmentMap?: Map<string, UserWithAssignment['assignment']>
@@ -51,12 +52,13 @@ interface RowProps {
   canAdmin?: boolean
   currentUserId: string
   onNameClick: (userId: string) => void
+  onNameDoubleClick?: (userId: string) => void
   onRefresh: () => void
   services: Service[]
   assignment: UserWithAssignment['assignment'] | null
 }
 
-function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, onRefresh, services, assignment }: RowProps) {
+function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, onNameDoubleClick, onRefresh, services, assignment }: RowProps) {
   const today = new Date().toISOString().split('T')[0]
 
   const [localStatus, setLocalStatus] = useState<EmployeeStatusType>(employee.currentStatus)
@@ -169,6 +171,8 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
       <td className="px-4 py-2.5">
         <button
           onClick={() => onNameClick(user.user_id)}
+          onDoubleClick={() => onNameDoubleClick?.(user.user_id)}
+          title="Двойной клик — открыть в режиме редактирования"
           className="text-sm text-white/80 hover:text-teal-300 transition-colors text-left truncate block max-w-[180px] font-medium"
         >
           {user.full_name}
@@ -399,7 +403,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
   )
 }
 
-export default function HRTableView({ employees, canEdit, canAdmin, currentUserId, onNameClick, onRefresh, services, assignmentMap }: Props) {
+export default function HRTableView({ employees, canEdit, canAdmin, currentUserId, onNameClick, onNameDoubleClick, onRefresh, services, assignmentMap }: Props) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <table className="w-full text-sm">
@@ -430,6 +434,7 @@ export default function HRTableView({ employees, canEdit, canAdmin, currentUserI
                 canAdmin={canAdmin}
                 currentUserId={currentUserId}
                 onNameClick={onNameClick}
+                onNameDoubleClick={onNameDoubleClick}
                 onRefresh={onRefresh}
                 services={services}
                 assignment={assignmentMap?.get(emp.user.user_id) ?? null}

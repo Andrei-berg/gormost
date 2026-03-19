@@ -70,6 +70,8 @@ function Content({ session }: { session: AuthSession }) {
   const [filterService, setFilterService] = useState('')
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [selectedEditMode, setSelectedEditMode] = useState(false)
+  const [selectedEditKey, setSelectedEditKey] = useState(0)
   const [showHireModal, setShowHireModal] = useState(false)
   const [dismissTarget, setDismissTarget] = useState<{ userId: string; name: string } | null>(null)
   const [transferTarget, setTransferTarget] = useState<{ userId: string; name: string } | null>(null)
@@ -247,7 +249,8 @@ function Content({ session }: { session: AuthSession }) {
                   canEdit={canEdit}
                   canAdmin={canAdmin}
                   currentUserId={session.user_id}
-                  onNameClick={(uid) => setSelectedUserId(uid)}
+                  onNameClick={(uid) => { setSelectedEditMode(false); setSelectedUserId(uid) }}
+                  onNameDoubleClick={(uid) => { setSelectedEditMode(true); setSelectedEditKey(k => k + 1); setSelectedUserId(uid) }}
                   onRefresh={loadData}
                   services={services}
                   assignmentMap={assignmentMap}
@@ -332,9 +335,11 @@ function Content({ session }: { session: AuthSession }) {
       {/* Modals */}
       {selectedUserId && (
         <EmployeeDetailCard
+          key={`${selectedUserId}-${selectedEditKey}`}
           userId={selectedUserId}
           currentUserId={session.user_id}
           canAdmin={canAdmin}
+          initialEditMode={selectedEditMode}
           onClose={() => setSelectedUserId(null)}
           onDismiss={(uid) => {
             const emp = findEmployee(uid)

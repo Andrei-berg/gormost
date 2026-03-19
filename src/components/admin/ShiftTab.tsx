@@ -239,7 +239,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
   if (!isEditing) {
     const a = user.assignment
     return (
-      <tr className="border-b border-white/5 hover:bg-white/3 group">
+      <tr className="border-b border-white/5 hover:bg-white/3 group cursor-pointer" onDoubleClick={onEdit} title="Двойной клик — редактировать">
         <td className="px-3 py-2 text-white/80">{user.full_name}</td>
         <td className="px-3 py-2 text-white/40 text-xs">{svcName ?? '—'}</td>
         <td className="px-3 py-2">
