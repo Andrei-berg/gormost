@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import SummaryPanel from '@/components/hr/SummaryPanel'
@@ -102,8 +103,9 @@ function Content({ session }: { session: AuthSession }) {
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Кадры" emoji="👥" mode="LIVE" lastUpdated={lastUpdated} />
 
-      {/* Top-level tab switcher */}
-      <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit mb-4">
+      {/* Top-level tab switcher + analytics link */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
         {([['employees', '👥 Сотрудники'], ['shifts', '🔄 Смены'], ['monitor', '📅 Мониторинг']] as [HRTab, string][]).map(([id, label]) => (
           <button
             key={id}
@@ -115,6 +117,13 @@ function Content({ session }: { session: AuthSession }) {
             {label}
           </button>
         ))}
+      </div>
+      <Link
+        href="/hr-tools"
+        className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-xs font-medium"
+      >
+        📊 Кадровая аналитика →
+      </Link>
       </div>
 
       {/* Shifts tab — full schedule assignment + phase management */}
