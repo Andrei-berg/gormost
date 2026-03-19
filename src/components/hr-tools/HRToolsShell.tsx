@@ -5,6 +5,7 @@ import { fetchUsersWithAssignments, fetchServices, fetchSchedules, fetchAllShift
 import RosterTable from './RosterTable'
 import TabeTable from './TabeTable'
 import CoverageTable from './CoverageTable'
+import PrintPanel from './PrintPanel'
 
 export type ViewMode = 'roster' | 'tabel' | 'coverage'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
@@ -131,7 +132,17 @@ export default function HRToolsShell({ session }: Props) {
               </button>
             ))}
           </div>
-          <button onClick={load} className="ml-auto px-3 py-1.5 text-xs rounded-lg bg-white/5 text-white/40 hover:bg-white/10">↻</button>
+          <div className="ml-auto flex items-center gap-2">
+            <PrintPanel
+              users={filtered}
+              phases={data.phases}
+              period={period}
+              services={data.services}
+              schedules={data.schedules}
+              session={session}
+            />
+            <button onClick={load} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 text-white/40 hover:bg-white/10">↻</button>
+          </div>
         </div>
 
         {/* Filters */}
