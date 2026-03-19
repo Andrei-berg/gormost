@@ -82,7 +82,9 @@ export default function ShiftPhaseManager({ users, session, onRefresh }: Props) 
             className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
           >
             <option value="">Все графики</option>
-            {uniqueCodes.map(c => <option key={c} value={c}>{c}</option>)}
+            {(['2/2', '3/3', '6/6', '15/15'] as const).map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
           <button
             onClick={() => { load(); onRefresh() }}

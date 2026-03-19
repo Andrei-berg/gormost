@@ -4,7 +4,8 @@ import type { UserWithAssignment, Service } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
 
 const COLUMNS = [
-  { key: 'name',         label: 'ФИО',          always: true  },
+  { key: 'tab_number',   label: 'Таб. №',        always: false },
+  { key: 'name',         label: 'ФИО',           always: true  },
   { key: 'position',     label: 'Должность',     always: false },
   { key: 'service',      label: 'Служба',        always: false },
   { key: 'schedule',     label: 'График',        always: false },
@@ -19,7 +20,7 @@ type SortDir = 'asc' | 'desc'
 type GroupBy = 'none' | 'schedule' | 'shift' | 'position'
 
 const SHIFT_COLORS = ['', 'text-blue-400', 'text-green-400', 'text-amber-400', 'text-purple-400']
-const DEFAULT_COLS: ColKey[] = ['name', 'position', 'schedule', 'shift', 'status_today']
+const DEFAULT_COLS: ColKey[] = ['tab_number', 'name', 'position', 'schedule', 'shift', 'status_today']
 
 interface Props {
   users: UserWithAssignment[]
@@ -54,6 +55,7 @@ export default function RosterTable({ users, services, showService }: Props) {
   const getCellStr = useMemo(() => (u: UserWithAssignment, col: ColKey): string => {
     const a = u.assignment
     switch (col) {
+      case 'tab_number': return u.tab_number ?? ''
       case 'name':     return u.full_name
       case 'position': return u.position ?? ''
       case 'service':  return svcMap[u.service_id ?? ''] ?? ''
@@ -232,6 +234,9 @@ function UserRow({ user: u, visibleDefs, svcMap, today }: {
     <tr className="border-b border-white/5 hover:bg-white/3">
       {visibleDefs.map(c => (
         <td key={c.key} className="px-3 py-2">
+          {c.key === 'tab_number' && (
+            <span className="text-xs font-mono text-white/40">{u.tab_number ?? '—'}</span>
+          )}
           {c.key === 'name' && (
             <span className="text-white/80">{u.full_name}</span>
           )}
