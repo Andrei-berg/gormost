@@ -1241,11 +1241,11 @@ export async function fetchUsersWithAssignments(): Promise<UserWithAssignment[]>
   const rawAssigns = (assignRes.data || []) as Array<EmployeeAssignmentWithScheduleCode & { schedules?: { code: string; name: string } }>
 
   // Build phase map: employee_id → most recent active phase record
-  const phaseMap = new Map<string, Pick<ShiftPhase, 'id' | 'phase' | 'anchor_date' | 'valid_from' | 'schedule_code'>>()
-  const rawPhases = (phasesRes.data || []) as Array<Pick<ShiftPhase, 'id' | 'employee_id' | 'phase' | 'anchor_date' | 'valid_from' | 'valid_to' | 'schedule_code'>>
+  const phaseMap = new Map<string, Pick<ShiftPhase, 'id' | 'phase' | 'anchor_date' | 'valid_from' | 'schedule_code' | 'is_alternating'>>()
+  const rawPhases = (phasesRes.data || []) as Array<Pick<ShiftPhase, 'id' | 'employee_id' | 'phase' | 'anchor_date' | 'valid_from' | 'valid_to' | 'schedule_code' | 'is_alternating'>>
   for (const p of rawPhases) {
     if (!phaseMap.has(p.employee_id)) {
-      phaseMap.set(p.employee_id, { id: p.id, phase: p.phase, anchor_date: p.anchor_date, valid_from: p.valid_from, schedule_code: p.schedule_code })
+      phaseMap.set(p.employee_id, { id: p.id, phase: p.phase, anchor_date: p.anchor_date, valid_from: p.valid_from, schedule_code: p.schedule_code, is_alternating: p.is_alternating ?? false })
     }
   }
 
@@ -1339,13 +1339,14 @@ export async function openShiftPhase(
   employeeId: string,
   data: {
     phase: 'day' | 'night'
-    anchor_date: string   // ISO date — first workday of this phase block
+    anchor_date: string   // ISO date — first workday of this phase block (or anchor month for 15/15-alt)
     valid_from: string    // ISO date — when this phase starts
     schedule_code: string
+    is_alternating?: boolean
     notes?: string
   },
   createdBy: string
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   // Close previous open phase one day before the new one starts
   const prevDay = new Date(data.valid_from)
   prevDay.setDate(prevDay.getDate() - 1)
@@ -1366,12 +1367,17 @@ export async function openShiftPhase(
       valid_from: data.valid_from,
       valid_to: null,
       schedule_code: data.schedule_code,
+      is_alternating: data.is_alternating ?? false,
       notes: data.notes ?? null,
       created_by: createdBy,
     })
 
-  if (!error) await logAction(createdBy, 'OPEN_SHIFT_PHASE', 'user', employeeId, data as Record<string, unknown>)
-  return !error
+  if (error) {
+    console.error('openShiftPhase error:', error)
+    return { ok: false, error: error.message ?? 'Supabase insert failed' }
+  }
+  await logAction(createdBy, 'OPEN_SHIFT_PHASE', 'user', employeeId, data as Record<string, unknown>)
+  return { ok: true }
 }
 
 /**

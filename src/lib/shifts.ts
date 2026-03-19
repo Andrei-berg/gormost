@@ -234,7 +234,7 @@ export function resolveShiftStatus(
     shift_num: number | null
     rotation_group: string | null
     shift_reference_date: string | null
-    active_phase?: { phase: 'day' | 'night'; anchor_date: string; schedule_code: string } | null
+    active_phase?: { phase: 'day' | 'night'; anchor_date: string; schedule_code: string; is_alternating?: boolean } | null
   },
   date: Date
 ): import('@/types').ShiftStatus {
@@ -298,7 +298,15 @@ export function resolveShiftStatus(
   if (schedule_code === '15/15') {
     const day = target.getDate()
     const working = rotation_group === '2' ? day >= 16 : day <= 15
-    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+    // Auto-alternating: flip phase each calendar month from the anchor month
+    let effectivePhase = phase
+    if (active_phase.is_alternating) {
+      const anchor = new Date(active_phase.anchor_date + 'T12:00:00')
+      const monthsElapsed = (target.getFullYear() - anchor.getFullYear()) * 12 + (target.getMonth() - anchor.getMonth())
+      if (monthsElapsed % 2 !== 0) effectivePhase = phase === 'day' ? 'night' : 'day'
+    }
+    const effectiveTimes = SHIFT_TIMES[effectivePhase]
+    return { working, phase: working ? effectivePhase : null, shift_start: working ? effectiveTimes.start : null, shift_end: working ? effectiveTimes.end : null }
   }
 
   return { working: false, phase: null, shift_start: null, shift_end: null }

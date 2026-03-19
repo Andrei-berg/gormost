@@ -405,8 +405,9 @@ export interface ShiftPhase {
   valid_from: string       // ISO date 'YYYY-MM-DD'
   valid_to: string | null  // ISO date or null (still active)
   phase: 'day' | 'night'
-  anchor_date: string      // ISO date — first workday of this phase block
+  anchor_date: string      // ISO date — first workday of this phase block (or first month for 15/15-alt)
   schedule_code: string    // '2/2' | '3/3' | '6/6' | '15/15'
+  is_alternating: boolean  // 15/15 only: auto-alternate phase each calendar month from anchor_date
   notes: string | null
   created_by: string | null
   created_at: string
@@ -424,7 +425,7 @@ export interface ShiftStatus {
 export interface EmployeeAssignmentWithScheduleCode extends EmployeeAssignment {
   schedule_code?: string
   schedule_name?: string
-  active_phase?: Pick<ShiftPhase, 'id' | 'phase' | 'anchor_date' | 'valid_from' | 'schedule_code'> | null
+  active_phase?: Pick<ShiftPhase, 'id' | 'phase' | 'anchor_date' | 'valid_from' | 'schedule_code' | 'is_alternating'> | null
 }
 
 export interface UserWithAssignment extends User {

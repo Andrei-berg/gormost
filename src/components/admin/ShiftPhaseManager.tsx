@@ -240,20 +240,28 @@ function NewPhaseForm({
   const [error, setError] = useState<string | null>(null)
 
   const scheduleCode = user.assignment?.schedule_code ?? ''
+  const is1515 = scheduleCode === '15/15'
+  const [isAlternating, setIsAlternating] = useState(false)
 
   const handleSave = async () => {
-    if (!validFrom || !anchorDate) { setError('Заполните все поля'); return }
-    if (anchorDate > validFrom) { setError('Якорная дата не может быть позже начала фазы'); return }
-    setSaving(true)
-    setError(null)
-    const ok = await openShiftPhase(
+    if (!validFrom) { setError('Укажите дату начала фазы'); return }
+    if (!is1515 && anchorDate > validFrom) { setError('Якорная дата не может быть позже начала фазы'); return }
+    setSaving(true); setError(null)
+    const result = await openShiftPhase(
       user.user_id,
-      { phase, anchor_date: anchorDate, valid_from: validFrom, schedule_code: scheduleCode, notes: notes || undefined },
+      {
+        phase,
+        anchor_date: is1515 ? validFrom : anchorDate,
+        valid_from: validFrom,
+        schedule_code: scheduleCode,
+        is_alternating: is1515 ? isAlternating : false,
+        notes: notes || undefined,
+      },
       session.user_id
     )
     setSaving(false)
-    if (ok) onSaved()
-    else setError('Ошибка сохранения. Проверьте консоль.')
+    if (result.ok) onSaved()
+    else setError(`Ошибка: ${result.error ?? 'см. консоль'}`)
   }
 
   const inp = 'bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50 w-full'
@@ -262,66 +270,56 @@ function NewPhaseForm({
     <div className="border-t border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-3">
       <div className="text-xs text-blue-300/70 font-medium">Новая фаза для {user.full_name}</div>
 
-      <div className="grid grid-cols-4 gap-3">
-        {/* Phase toggle */}
+      <div className={`grid gap-3 ${is1515 ? 'grid-cols-3' : 'grid-cols-4'}`}>
         <div>
-          <label className="block text-[10px] text-white/30 mb-1">Фаза</label>
+          <label className="block text-[10px] text-white/30 mb-1">{is1515 && isAlternating ? 'Стартовая фаза' : 'Фаза'}</label>
           <div className="flex gap-1">
             {(['day', 'night'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPhase(p)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                  phase === p ? PHASE_COLOR[p] : 'bg-white/5 border-white/10 text-white/30'
-                }`}
-              >
+              <button key={p} onClick={() => setPhase(p)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${phase === p ? PHASE_COLOR[p] : 'bg-white/5 border-white/10 text-white/30'}`}>
                 {PHASE_LABEL[p]}
               </button>
             ))}
           </div>
         </div>
-
-        {/* Valid from */}
         <div>
           <label className="block text-[10px] text-white/30 mb-1">Начало фазы</label>
           <input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} className={inp} />
         </div>
-
-        {/* Anchor date */}
-        <div>
-          <label className="block text-[10px] text-white/30 mb-1">
-            Якорная дата
-            <span className="ml-1 text-white/20">(1-й рабочий день блока)</span>
-          </label>
-          <input type="date" value={anchorDate} onChange={e => setAnchorDate(e.target.value)} className={inp} />
-        </div>
-
-        {/* Notes */}
+        {!is1515 && (
+          <div>
+            <label className="block text-[10px] text-white/30 mb-1">Якорная дата <span className="text-white/20">(1-й рабочий день)</span></label>
+            <input type="date" value={anchorDate} onChange={e => setAnchorDate(e.target.value)} className={inp} />
+          </div>
+        )}
         <div>
           <label className="block text-[10px] text-white/30 mb-1">Заметки</label>
-          <input
-            type="text"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="необязательно"
-            className={inp}
-          />
+          <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="необязательно" className={inp} />
         </div>
       </div>
 
-      {error && <div className="text-xs text-red-400">{error}</div>}
+      {is1515 && (
+        <div className={`rounded-xl px-3 py-2.5 border ${isAlternating ? 'border-amber-500/30 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isAlternating} onChange={e => setIsAlternating(e.target.checked)} className="accent-amber-500" />
+            <span className="text-xs text-white/70 font-medium">Чередовать фазы каждый месяц</span>
+          </label>
+          <div className="mt-1 text-[10px] text-white/40">
+            {isAlternating
+              ? `${validFrom.slice(0,7)}: ${PHASE_LABEL[phase]} → следующий месяц: ${PHASE_LABEL[phase === 'day' ? 'night' : 'day']} → и т.д. Одна запись на весь период.`
+              : `Фиксированная фаза «${PHASE_LABEL[phase]}» — одна и та же каждую вахту`}
+          </div>
+        </div>
+      )}
+
+      {error && <div className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</div>}
 
       <div className="flex gap-2">
-        <button
-          disabled={saving}
-          onClick={handleSave}
-          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-medium transition-colors"
-        >
+        <button disabled={saving} onClick={handleSave}
+          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-medium transition-colors">
           {saving ? 'Сохраняю...' : 'Сохранить фазу'}
         </button>
-        <button onClick={onCancel} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs">
-          Отмена
-        </button>
+        <button onClick={onCancel} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs">Отмена</button>
       </div>
     </div>
   )
