@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchEmployeeDetail, updateUser, fetchServices, fetchSchedules, upsertEmployeeAssignment } from '@/lib/api'
+import { fetchEmployeeDetail, updateUser, fetchServices, fetchSchedules, upsertEmployeeAssignment, openShiftPhase } from '@/lib/api'
+import { isPhaseSchedule } from '@/lib/shifts'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { EmployeeDetail, Service, Schedule } from '@/types'
 
@@ -67,6 +68,10 @@ export default function EmployeeDetailCard({
   const [editIsDriver, setEditIsDriver] = useState(false)
   const [editRotationGroup, setEditRotationGroup] = useState('')
   const [editRefDate, setEditRefDate] = useState('')
+  // Phase fields for cyclic schedules
+  const [editCreatePhase, setEditCreatePhase] = useState(false)
+  const [editPhaseVal, setEditPhaseVal] = useState<'day' | 'night'>('day')
+  const [editPhaseFrom, setEditPhaseFrom] = useState(new Date().toISOString().split('T')[0])
 
   const load = async () => {
     setLoading(true)
@@ -140,6 +145,22 @@ export default function EmployeeDetailCard({
         setSaveError('Ошибка при сохранении графика')
         setSaving(false)
         return
+      }
+      // Auto-create phase for cyclic schedules if requested
+      const selectedSched = schedules.find(s => s.id === editScheduleId)
+      if (editCreatePhase && selectedSched && isPhaseSchedule(selectedSched.code)) {
+        const { ok: phOk } = await openShiftPhase(userId, {
+          phase: editPhaseVal,
+          anchor_date: editPhaseFrom,
+          valid_from: editPhaseFrom,
+          schedule_code: selectedSched.code,
+          is_alternating: selectedSched.code === '15/15',
+        }, currentUserId)
+        if (!phOk) {
+          setSaveError('Ошибка при создании фазы')
+          setSaving(false)
+          return
+        }
       }
     }
 
@@ -308,14 +329,32 @@ export default function EmployeeDetailCard({
                 )}
               </div>
               <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editIsDriver}
-                  onChange={e => setEditIsDriver(e.target.checked)}
-                  className="w-4 h-4 rounded accent-blue-500"
-                />
+                <input type="checkbox" checked={editIsDriver} onChange={e => setEditIsDriver(e.target.checked)} className="w-4 h-4 rounded accent-blue-500" />
                 <span className="text-sm text-white/70">Является водителем (виден в транспортной панели)</span>
               </label>
+              {selectedSchedule && isPhaseSchedule(selectedSchedule.code) && (
+                <div className="mt-3 border-t border-white/10 pt-3 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={editCreatePhase} onChange={e => setEditCreatePhase(e.target.checked)} className="accent-indigo-500" />
+                    <span className="text-xs text-white/60">Открыть/обновить фазу смены</span>
+                  </label>
+                  {editCreatePhase && (
+                    <div className="flex gap-3 flex-wrap">
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Фаза</label>
+                        <select value={editPhaseVal} onChange={e => setEditPhaseVal(e.target.value as 'day' | 'night')} className="form-select text-sm px-3 py-2">
+                          <option value="day">☀ День</option>
+                          <option value="night">🌙 Ночь</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Начало фазы</label>
+                        <input type="date" value={editPhaseFrom} onChange={e => setEditPhaseFrom(e.target.value)} className="form-input text-sm px-3 py-2" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {saveError && (

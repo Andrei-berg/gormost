@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssignmentWithScheduleCode } from '@/types'
-import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules } from '@/lib/api'
-import { getShiftForDate } from '@/lib/shifts'
+import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api'
+import { getShiftForDate, isPhaseSchedule } from '@/lib/shifts'
 import ShiftRoster from '@/components/ShiftRoster'
 import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
 import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
@@ -145,9 +145,12 @@ export default function ShiftTab({ session }: Props) {
                     saving={saving}
                     onEdit={() => setEditingId(u.user_id)}
                     onCancel={() => setEditingId(null)}
-                    onSave={async (data) => {
+                    onSave={async (data, phaseData) => {
                       setSaving(true)
                       await upsertEmployeeAssignment(u.user_id, data, session.user_id)
+                      if (phaseData) {
+                        await openShiftPhase(u.user_id, phaseData, session.user_id)
+                      }
                       setSaving(false)
                       setEditingId(null)
                       load()
@@ -201,14 +204,20 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     rotation_group: string | null
     shift_reference_date: string | null
     is_driver: boolean
-  }) => Promise<void>
+  }, phaseData: { phase: 'day' | 'night'; anchor_date: string; valid_from: string; schedule_code: string; is_alternating: boolean } | null) => Promise<void>
 }) {
+  const today = new Date().toISOString().split('T')[0]
   const [scheduleCode, setScheduleCode] = useState(user.assignment?.schedule_code ?? '')
   const [shiftNum, setShiftNum] = useState<string>(String(user.assignment?.shift_num ?? ''))
   const [rotationGroup, setRotationGroup] = useState(user.assignment?.rotation_group ?? '')
   const [refDate, setRefDate] = useState(user.assignment?.shift_reference_date ?? '')
   const [isDriver, setIsDriver] = useState(user.assignment?.is_driver ?? false)
   const [scheduleId, setScheduleId] = useState(user.assignment?.schedule_id ?? '')
+  // Phase state for cyclic schedules
+  const [phaseVal, setPhaseVal] = useState<'day' | 'night'>(user.assignment?.active_phase?.phase ?? 'day')
+  const [phaseFrom, setPhaseFrom] = useState(today)
+  const [phaseAlt, setPhaseAlt] = useState(false)
+  const [createPhase, setCreatePhase] = useState(false)
 
   // Derive scheduleId from code selection
   const handleScheduleChange = (code: string) => {
@@ -216,6 +225,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     const found = schedules.find(s => s.code === code)
     setScheduleId(found?.id ?? '')
     setShiftNum(''); setRotationGroup(''); setRefDate('')
+    setCreatePhase(isPhaseSchedule(code))
   }
 
   // Keep local state in sync when user changes (e.g., after refresh)
@@ -299,6 +309,31 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             </select>
           )}
 
+          {isPhaseSchedule(scheduleCode) && (
+            <>
+              <span className="text-white/20 text-xs mx-1">|</span>
+              <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer">
+                <input type="checkbox" checked={createPhase} onChange={e => setCreatePhase(e.target.checked)} className="accent-indigo-400" />
+                Фаза
+              </label>
+              {createPhase && (
+                <>
+                  <select value={phaseVal} onChange={e => setPhaseVal(e.target.value as 'day' | 'night')} className={sel}>
+                    <option value="day">☀ День</option>
+                    <option value="night">🌙 Ночь</option>
+                  </select>
+                  <input type="date" value={phaseFrom} onChange={e => setPhaseFrom(e.target.value)} className={inp} title="Начало фазы" />
+                  {scheduleCode === '15/15' && (
+                    <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer">
+                      <input type="checkbox" checked={phaseAlt} onChange={e => setPhaseAlt(e.target.checked)} className="accent-indigo-400" />
+                      alt
+                    </label>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
           <button
             disabled={saving || !scheduleId}
             onClick={() => onSave({
@@ -307,7 +342,13 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
               rotation_group: rotationGroup || null,
               shift_reference_date: refDate || null,
               is_driver: isDriver,
-            })}
+            }, createPhase && isPhaseSchedule(scheduleCode) ? {
+              phase: phaseVal,
+              anchor_date: phaseFrom,
+              valid_from: phaseFrom,
+              schedule_code: scheduleCode,
+              is_alternating: phaseAlt,
+            } : null)}
             className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-medium"
           >
             Сохранить
