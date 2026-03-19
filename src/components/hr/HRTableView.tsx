@@ -264,13 +264,13 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
 
           {/* Status popup */}
           {popupOpen && (
-            <div className="absolute z-50 top-full right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl"
+            <div className="absolute z-50 top-full right-0 mt-1 glass-popup rounded-xl"
               style={{ width: pendingStatus ? '300px' : '208px' }}
             >
               {pendingStatus === null ? (
                 /* Step 1: choose status */
                 <div className="p-2 space-y-0.5">
-                  <div className="text-xs text-white/30 px-2 py-1">Ежедневные</div>
+                  <div className="text-xs text-white/55 px-2 py-1 font-medium">Ежедневные</div>
                   {DAILY_STATUSES.map(status => {
                     const scfg = EMPLOYEE_STATUS_CONFIG[status]
                     const isActive = localStatus === status
@@ -284,7 +284,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
                     )
                   })}
                   <div className="border-t border-white/10 my-1" />
-                  <div className="text-xs text-white/30 px-2 py-1">Расширенные</div>
+                  <div className="text-xs text-white/55 px-2 py-1 font-medium">Расширенные</div>
                   {EXTENDED_STATUSES.map(status => {
                     const scfg = EMPLOYEE_STATUS_CONFIG[status]
                     const isActive = localStatus === status
@@ -317,7 +317,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
 
                   {/* Period */}
                   <div>
-                    <div className="text-[10px] text-white/40 mb-1">Период</div>
+                    <div className="text-[10px] text-white/60 mb-1">Период</div>
                     <div className="flex gap-1.5 items-center">
                       <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
                       {!openEnded && (

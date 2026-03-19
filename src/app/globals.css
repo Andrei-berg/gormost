@@ -39,25 +39,67 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Glassmorphism эффект */
+/* ── Glassmorphism ────────────────────────────────────────────────
+   .glass        — карточки и контейнеры (лёгкая прозрачность)
+   .glass-strong — панели с акцентом (чуть плотнее)
+   .glass-popup  — выпадающие меню, попапы, тултипы (тёмный opaque)
+   ───────────────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.20);
 }
 
-/* Force dark color-scheme for all native form controls so
-   select options, date pickers, etc. render dark bg + light text */
+/* Для плавающих элементов: dropdown, popup, tooltip, context menu */
+.glass-popup {
+  background: rgba(8, 12, 28, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Form controls ────────────────────────────────────────────────
+   Глобальный стиль для select/input — тёмный фон + читаемый текст.
+   Tailwind-классы bg-white/5 на input переопределяют это,
+   поэтому здесь только color-scheme и базовый цвет текста.
+   ───────────────────────────────────────────────────────────────── */
 select,
 input[type="date"],
-input[type="time"] {
+input[type="time"],
+input[type="number"] {
   color-scheme: dark;
+}
+
+/* Когда select/input используют класс .form-select или .form-input
+   (для консистентных стилей без дублирования в каждом компоненте) */
+.form-select,
+.form-input {
+  background: rgba(10, 16, 38, 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.15s;
+}
+
+.form-select:focus,
+.form-input:focus {
+  border-color: rgba(99, 102, 241, 0.55);
+}
+
+.form-select option {
+  background: #0d1424;
+  color: rgba(255, 255, 255, 0.85);
 }

@@ -124,7 +124,7 @@ export default function RosterTable({ users, services, showService }: Props) {
             ⚙ Колонки
           </button>
           {showColPicker && (
-            <div className="absolute top-full mt-1 left-0 z-20 glass rounded-xl p-3 space-y-1.5 min-w-[160px] border border-white/10 shadow-xl">
+            <div className="absolute top-full mt-1 left-0 z-20 glass-popup rounded-xl p-3 space-y-1.5 min-w-[160px]">
               {COLUMNS.filter(c => !c.always && !(c.key === 'service' && !showService)).map(c => (
                 <label key={c.key} className="flex items-center gap-2 cursor-pointer group">
                   <input

@@ -109,12 +109,12 @@ export default function ShiftTab({ session }: Props) {
               value={searchName}
               onChange={e => setSearchName(e.target.value)}
               placeholder="Поиск по ФИО..."
-              className="ml-auto bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 placeholder-white/30 focus:outline-none focus:border-blue-500/50 w-40"
+              className="form-input ml-auto w-40 placeholder-white/30"
             />
             <select
               value={filterService}
               onChange={e => setFilterService(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
+              className="form-select"
             >
               <option value="">Все службы</option>
               {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}
@@ -170,7 +170,7 @@ export default function ShiftTab({ session }: Props) {
               type="date"
               value={viewDate}
               onChange={e => setViewDate(e.target.value)}
-              className="ml-auto bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
+              className="form-input ml-auto"
             />
           </div>
           <ShiftRoster

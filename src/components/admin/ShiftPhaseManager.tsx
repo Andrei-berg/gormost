@@ -79,7 +79,7 @@ export default function ShiftPhaseManager({ users, session, onRefresh }: Props) 
           <select
             value={filterCode}
             onChange={e => setFilterCode(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none"
+            className="form-select"
           >
             <option value="">Все графики</option>
             {(['2/2', '3/3', '6/6', '15/15'] as const).map(c => (

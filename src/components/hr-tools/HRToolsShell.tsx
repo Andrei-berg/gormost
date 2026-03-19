@@ -111,7 +111,7 @@ export default function HRToolsShell({ session }: Props) {
   const showService = !isHead || session.role_level === 'ADMIN' || session.role_level === 'BOSS'
   const scheduleCodes = [...new Set(data.schedules.map(s => s.code))]
 
-  const selCls = 'bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none'
+  const selCls = 'form-select'
 
   return (
     <div className="space-y-4">
