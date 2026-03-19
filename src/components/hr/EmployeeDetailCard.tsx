@@ -154,7 +154,7 @@ export default function EmployeeDetailCard({
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-slate-800 rounded-xl p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl">
+      <div className="glass-popup rounded-xl p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
         {/* Header row */}
         <div className="flex items-start justify-between gap-4 mb-5">
           <div className="min-w-0">
@@ -225,7 +225,7 @@ export default function EmployeeDetailCard({
                 <select
                   value={editCategory}
                   onChange={e => setEditCategory(e.target.value)}
-                  className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  className="form-select w-full text-sm px-3 py-2"
                 >
                   <option value="">—</option>
                   <option value="ИТР">ИТР</option>
@@ -241,7 +241,7 @@ export default function EmployeeDetailCard({
                 <select
                   value={editServiceId}
                   onChange={e => setEditServiceId(e.target.value)}
-                  className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  className="form-select w-full text-sm px-3 py-2"
                 >
                   <option value="">— без службы —</option>
                   {services.map(s => (
@@ -254,7 +254,7 @@ export default function EmployeeDetailCard({
                 <select
                   value={editRoleLevel}
                   onChange={e => setEditRoleLevel(e.target.value)}
-                  className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  className="form-select w-full text-sm px-3 py-2"
                 >
                   {ROLE_OPTIONS.map(r => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -272,7 +272,7 @@ export default function EmployeeDetailCard({
                   <select
                     value={editScheduleId}
                     onChange={e => setEditScheduleId(e.target.value)}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                    className="form-select w-full text-sm px-3 py-2"
                   >
                     <option value="">— не назначен —</option>
                     {schedules.map(s => (
@@ -286,7 +286,7 @@ export default function EmployeeDetailCard({
                     <select
                       value={editShiftNum}
                       onChange={e => setEditShiftNum(e.target.value)}
-                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                      className="form-select w-full text-sm px-3 py-2"
                     >
                       <option value="">—</option>
                       {[1, 2, 3, 4].map(n => <option key={n} value={n}>Смена {n}</option>)}
@@ -300,7 +300,7 @@ export default function EmployeeDetailCard({
                       type="date"
                       value={editRefDate}
                       onChange={e => setEditRefDate(e.target.value)}
-                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                      className="form-input w-full text-sm px-3 py-2"
                     />
                   </div>
                 )}
@@ -511,7 +511,7 @@ function EditField({
         value={value}
         onChange={e => onChange(e.target.value)}
         required={required}
-        className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 placeholder-white/20"
+        className="form-input w-full text-sm px-3 py-2 placeholder-white/20"
       />
     </div>
   )

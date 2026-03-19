@@ -58,7 +58,8 @@ export default function TransferModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-sm focus:outline-none focus:border-blue-500/50"
+  const inputClass = "form-input w-full text-sm px-3 py-2"
+  const selClass   = "form-select w-full text-sm px-3 py-2"
   const labelClass = "block text-xs text-white/40 mb-1"
 
   return (
@@ -66,7 +67,7 @@ export default function TransferModal({
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-slate-800 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+      <div className="glass-popup rounded-xl p-6 max-w-lg w-full">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-blue-400">Перевод сотрудника</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/80 text-xl leading-none transition-colors">✕</button>
@@ -82,7 +83,7 @@ export default function TransferModal({
             <div>
               <label className={labelClass}>Новая должность *</label>
               <select
-                className={inputClass}
+                className={selClass}
                 value={professionId}
                 onChange={e => setProfessionId(e.target.value)}
               >
@@ -98,7 +99,7 @@ export default function TransferModal({
             <div>
               <label className={labelClass}>Основание *</label>
               <select
-                className={inputClass}
+                className={selClass}
                 value={changeReason}
                 onChange={e => setChangeReason(e.target.value)}
               >

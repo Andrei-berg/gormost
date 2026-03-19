@@ -262,8 +262,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     )
   }
 
-  const sel = 'bg-gray-900 border border-blue-500/40 rounded px-1.5 py-1 text-white text-xs focus:outline-none'
-  const inp = 'bg-gray-900 border border-blue-500/40 rounded px-1.5 py-1 text-white text-xs focus:outline-none'
+  const sel = 'form-select text-xs px-1.5 py-1'
+  const inp = 'form-input text-xs px-1.5 py-1'
 
   return (
     <tr className="border-b border-blue-500/20 bg-blue-500/5">

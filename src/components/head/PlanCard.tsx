@@ -341,7 +341,7 @@ function PlanItemForm({ initial, onSave, onCancel }: {
     })
   }
 
-  const inp = 'w-full px-2.5 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50'
+  const inp = 'form-input w-full text-sm px-2.5 py-1.5 placeholder-white/30'
   const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
 
   return (
@@ -360,11 +360,11 @@ function PlanItemForm({ initial, onSave, onCancel }: {
       <div className="flex flex-wrap gap-2 items-end">
         <div>
           <label className={lbl}>С</label>
-          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className="px-2 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className="form-input text-sm px-2 py-1.5" />
         </div>
         <div>
           <label className={lbl}>До</label>
-          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="px-2 py-1.5 rounded-lg bg-slate-700/80 border border-white/15 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="form-input text-sm px-2 py-1.5" />
         </div>
         <div className="flex items-end gap-2 ml-2 flex-wrap">
           <MiniStepper label="👷" value={reqWorkers}    onChange={setReqWorkers} />
