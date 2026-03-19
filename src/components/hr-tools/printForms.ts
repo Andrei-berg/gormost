@@ -4,7 +4,7 @@
  * that is opened in a new window and printed.
  */
 
-import type { UserWithAssignment, ShiftPhase, Schedule } from '@/types'
+import type { UserWithAssignment, ShiftPhase, Schedule, Service, EnrichedEmployee } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
 
 export interface PrintOptions {
@@ -397,4 +397,244 @@ export function printCoverage(
   ${signatureBlock(opts)}`
 
   return baseHtml('Отчёт о покрытии', body)
+}
+
+// ─── Form 4: Строевая записка ──────────────────────────────────────────────
+
+export interface StroevayaOptions {
+  orgName: string
+  dateStr: string              // 'YYYY-MM-DD' — date for the report (default: today)
+  showItrBreakdown: boolean    // show штат ИТР / Рабочие columns
+  showParkovschiki: boolean    // show Парковщики column (role_level === 'DRIVER')
+  showSvoSplit: boolean        // split СВО into Москва / Регионы by svo_type
+  showTrudSvo: boolean         // show Труд.СВО column
+  showUvolenySvo: boolean      // show Уволены СВО column
+  showShiftTotals: boolean     // show ИТОГО День / Ночь columns
+  showSignatureLines: boolean
+  showDate: boolean
+}
+
+interface StroevayaRow {
+  serviceId: string
+  serviceName: string
+  total: number
+  itr: number
+  workers: number
+  parkovschiki: number
+  bolnichniy: number
+  otgul: number
+  otpusk: number
+  uchebniy: number
+  dekret: number
+  komandirovka: number
+  svoMoscow: number
+  svoRegion: number
+  mobilizovan: number
+  trudSvo: number
+  uvolenySvo: number
+  vacancies: number
+  day: number
+  night: number
+}
+
+export function printStroevaiya(
+  enrichedUsers: EnrichedEmployee[],
+  usersWithAssignment: UserWithAssignment[],
+  phases: ShiftPhase[],
+  services: Service[],
+  opts: StroevayaOptions,
+): string {
+  const date = new Date(opts.dateStr + 'T12:00:00')
+  const assignmentMap = new Map(usersWithAssignment.map(u => [u.user_id, u.assignment]))
+
+  const emptyRow = (serviceId: string, serviceName: string): StroevayaRow => ({
+    serviceId, serviceName,
+    total: 0, itr: 0, workers: 0, parkovschiki: 0,
+    bolnichniy: 0, otgul: 0, otpusk: 0, uchebniy: 0, dekret: 0, komandirovka: 0,
+    svoMoscow: 0, svoRegion: 0, mobilizovan: 0, trudSvo: 0, uvolenySvo: 0,
+    vacancies: 0, day: 0, night: 0,
+  })
+
+  const rowMap = new Map<string, StroevayaRow>()
+  for (const svc of services) rowMap.set(svc.service_id, emptyRow(svc.service_id, svc.service_name))
+
+  for (const eu of enrichedUsers) {
+    const { user, currentStatus } = eu
+    const svcId = user.service_id ?? '__other__'
+    if (!rowMap.has(svcId)) rowMap.set(svcId, emptyRow(svcId, 'Прочие'))
+    const r = rowMap.get(svcId)!
+
+    r.total++
+    if (user.category === 'ИТР') r.itr++
+    else r.workers++
+    if (user.role_level === 'DRIVER') r.parkovschiki++
+
+    switch (currentStatus) {
+      case 'Bolnichniy':           r.bolnichniy++; break
+      case 'Otgul':                r.otgul++; break
+      case 'Otpusk':               r.otpusk++; break
+      case 'Uchebniy_otpusk':      r.uchebniy++; break
+      case 'Dekret':               r.dekret++; break
+      case 'Komandirovka':         r.komandirovka++; break
+      case 'Mobilizovan':          r.mobilizovan++; break
+      case 'Troydoustroyen_s_SVO': r.trudSvo++; break
+      case 'SVO':
+        if (opts.showSvoSplit && user.svo_type === 'через_регион') r.svoRegion++
+        else r.svoMoscow++
+        break
+    }
+
+    // Shift calculation
+    const assignment = assignmentMap.get(user.user_id)
+    if (assignment) {
+      const phase = getPhaseForDate(phases, user.user_id, opts.dateStr)
+      const st = resolveShiftStatus({
+        schedule_code: assignment.schedule_code ?? '',
+        shift_num: assignment.shift_num,
+        rotation_group: assignment.rotation_group,
+        shift_reference_date: assignment.shift_reference_date,
+        active_phase: phase ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code } : null,
+      }, date)
+      if (st.working) {
+        if (st.phase === 'day') r.day++
+        else r.night++
+      }
+    }
+  }
+
+  const rows = [...rowMap.values()].filter(r => r.total > 0)
+
+  // Totals row
+  const totals = emptyRow('ИТОГО', 'ИТОГО:')
+  for (const r of rows) {
+    totals.total       += r.total
+    totals.itr         += r.itr
+    totals.workers     += r.workers
+    totals.parkovschiki+= r.parkovschiki
+    totals.bolnichniy  += r.bolnichniy
+    totals.otgul       += r.otgul
+    totals.otpusk      += r.otpusk
+    totals.uchebniy    += r.uchebniy
+    totals.dekret      += r.dekret
+    totals.komandirovka+= r.komandirovka
+    totals.svoMoscow   += r.svoMoscow
+    totals.svoRegion   += r.svoRegion
+    totals.mobilizovan += r.mobilizovan
+    totals.trudSvo     += r.trudSvo
+    totals.day         += r.day
+    totals.night       += r.night
+  }
+
+  // Column definitions
+  type Col = { label: string; get: (r: StroevayaRow) => number }
+  const cols: Col[] = [
+    { label: 'Штат',        get: r => r.total    },
+    ...(opts.showItrBreakdown ? [
+      { label: 'ИТР',       get: (r: StroevayaRow) => r.itr     },
+      { label: 'Рабочие',   get: (r: StroevayaRow) => r.workers  },
+    ] : []),
+    { label: 'По списку',   get: r => r.total    },
+    ...(opts.showItrBreakdown ? [
+      { label: 'ИТР',       get: (r: StroevayaRow) => r.itr     },
+      { label: 'Рабочие',   get: (r: StroevayaRow) => r.workers  },
+    ] : []),
+    ...(opts.showParkovschiki ? [
+      { label: 'Паркинг',   get: (r: StroevayaRow) => r.parkovschiki },
+    ] : []),
+    { label: 'Больн.<br>Лист',     get: r => r.bolnichniy   },
+    { label: 'Отс.по<br>Акту',     get: r => r.otgul        },
+    { label: 'Отпуск',             get: r => r.otpusk       },
+    { label: 'Учеб.<br>отпуск',    get: r => r.uchebniy     },
+    { label: 'Декр.<br>Отпуск',    get: r => r.dekret       },
+    { label: 'Командиров',         get: r => r.komandirovka },
+    ...(opts.showSvoSplit ? [
+      { label: 'СВО<br>Москва',    get: (r: StroevayaRow) => r.svoMoscow },
+      { label: 'СВО<br>Регионы',   get: (r: StroevayaRow) => r.svoRegion },
+    ] : [
+      { label: 'СВО',              get: (r: StroevayaRow) => r.svoMoscow },
+    ]),
+    { label: 'Мобили-<br>зов',     get: r => r.mobilizovan  },
+    ...(opts.showTrudSvo ? [
+      { label: 'Труд.<br>СВО',     get: (r: StroevayaRow) => r.trudSvo   },
+    ] : []),
+    ...(opts.showUvolenySvo ? [
+      { label: 'Уволены<br>СВО',   get: (r: StroevayaRow) => r.uvolenySvo },
+    ] : []),
+    { label: 'Вакансии',           get: r => r.vacancies    },
+    ...(opts.showShiftTotals ? [
+      { label: 'ИТОГО<br>День',    get: (r: StroevayaRow) => r.day   },
+      { label: 'ИТОГО<br>Ночь',    get: (r: StroevayaRow) => r.night },
+    ] : []),
+  ]
+
+  const dateFormatted = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const thead = `<tr>
+    <th style="min-width:140px;text-align:left;padding:4px 6px">Участки</th>
+    ${cols.map(c => `<th>${c.label}</th>`).join('')}
+  </tr>`
+
+  const renderRow = (r: StroevayaRow, isTotals = false): string =>
+    `<tr${isTotals ? ' class="totals-row"' : ''}>
+      <td style="text-align:left;padding:3px 6px">${r.serviceName}</td>
+      ${cols.map(c => `<td class="center">${c.get(r) || '—'}</td>`).join('')}
+    </tr>`
+
+  const tbody = rows.map(r => renderRow(r)).join('')
+  const tfoot = renderRow(totals, true)
+
+  const sig = opts.showSignatureLines
+    ? `<div class="sig-block">
+        <div class="sig-item">Составил ___________________ / _________________ /</div>
+        <div class="sig-item">Проверил ___________________ / _________________ /</div>
+        <div class="sig-item">Утверждаю ___________________ / _________________ /</div>
+       </div>`
+    : ''
+  const printDt = opts.showDate
+    ? `<div class="print-date">Распечатано: ${new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>`
+    : ''
+
+  const css = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 9pt; color: #000; background: #fff; }
+    h1 { font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 4px; }
+    .org { font-size: 9pt; text-align: center; }
+    .subtitle { font-size: 10pt; text-align: center; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th, td { border: 1px solid #555; padding: 3px 4px; vertical-align: middle; font-size: 8pt; }
+    th { background: #e8e8e8; font-weight: bold; text-align: center; }
+    td { text-align: center; }
+    td.center { text-align: center; }
+    .totals-row { background: #f0f0f0; font-weight: bold; }
+    .page-header { margin-bottom: 12px; }
+    .sig-block { margin-top: 24px; display: flex; justify-content: space-between; gap: 40px; }
+    .sig-item { flex: 1; border-top: 1px solid #000; padding-top: 4px; font-size: 9pt; text-align: center; }
+    .print-date { font-size: 8pt; color: #666; text-align: right; margin-top: 8px; }
+    @media print {
+      @page { size: A4 landscape; margin: 8mm 10mm; }
+      body { font-size: 8pt; }
+      .no-print { display: none !important; }
+    }
+  `
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Строевая записка — ${dateFormatted}</title>
+  <style>${css}</style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="org">${opts.orgName}</div>
+    <h1>СТРОЕВАЯ ЗАПИСКА</h1>
+    <div class="subtitle">${dateFormatted}</div>
+  </div>
+  <table>
+    <thead>${thead}</thead>
+    <tbody>${tbody}${tfoot}</tbody>
+  </table>
+  ${sig}${printDt}
+</body>
+</html>`
 }

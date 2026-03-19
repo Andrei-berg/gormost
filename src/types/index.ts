@@ -292,7 +292,22 @@ export interface EmployeeStatus {
   reason: string | null
   created_by: string
   created_at: string
+  // Departure / return tracking (migration 024)
+  planned_departure: string | null   // when the employee is planned to leave
+  planned_return:    string | null   // when the employee is planned to return
+  actual_departure:  string | null   // when the employee actually left
+  actual_return:     string | null   // when the employee actually returned
 }
+
+// Statuses for which departure/return date fields are meaningful
+export const STATUSES_WITH_DATES: EmployeeStatusType[] = [
+  'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka', 'Uchebniy_otpusk',
+  'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+]
+// Statuses that are typically open-ended (no fixed return date at the start)
+export const OPEN_ENDED_STATUSES: EmployeeStatusType[] = [
+  'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+]
 
 export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
   label: string

@@ -1,10 +1,11 @@
 'use client'
-import { useState, useMemo } from 'react'
-import type { UserWithAssignment, ShiftPhase, Schedule, Service, AuthSession } from '@/types'
+import { useState, useMemo, useEffect } from 'react'
+import type { UserWithAssignment, ShiftPhase, Schedule, Service, AuthSession, EnrichedEmployee } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
-import { printRoster, printTabel, printCoverage } from './printForms'
+import { fetchAllCurrentStatuses } from '@/lib/api'
+import { printRoster, printTabel, printCoverage, printStroevaiya } from './printForms'
 
-type PrintFormType = 'roster' | 'tabel' | 'coverage'
+type PrintFormType = 'roster' | 'tabel' | 'coverage' | 'stroevaya'
 
 interface Props {
   users: UserWithAssignment[]
@@ -16,20 +17,21 @@ interface Props {
 }
 
 const FORM_OPTIONS: { key: PrintFormType; label: string; desc: string }[] = [
-  { key: 'roster',   label: 'Список сотрудников',            desc: 'ФИО, должность, график, смена' },
-  { key: 'tabel',    label: 'Табель рабочего времени',        desc: 'Сетка сотрудник × дата (Д/Н/–)' },
-  { key: 'coverage', label: 'Отчёт о покрытии',              desc: 'Кол-во сотрудников по дням' },
+  { key: 'roster',    label: 'Список сотрудников',   desc: 'ФИО, должность, график, смена' },
+  { key: 'tabel',     label: 'Табель рабочего времени', desc: 'Сетка сотрудник × дата (Д/Н/–)' },
+  { key: 'coverage',  label: 'Отчёт о покрытии',     desc: 'Кол-во сотрудников по дням' },
+  { key: 'stroevaya', label: 'Строевая записка',      desc: 'Сводная таблица по участкам: штат / статусы / смены' },
 ]
 
 // Roster column options
 const ROSTER_COLS = [
-  { key: 'num',      label: '№'          },
-  { key: 'name',     label: 'ФИО'        },
-  { key: 'position', label: 'Должность'  },
-  { key: 'schedule', label: 'График'     },
-  { key: 'shift',    label: 'Смена'      },
-  { key: 'phone',    label: 'Телефон'    },
-  { key: 'status',   label: 'Сегодня'   },
+  { key: 'num',      label: '№'         },
+  { key: 'name',     label: 'ФИО'       },
+  { key: 'position', label: 'Должность' },
+  { key: 'schedule', label: 'График'    },
+  { key: 'shift',    label: 'Смена'     },
+  { key: 'phone',    label: 'Телефон'   },
+  { key: 'status',   label: 'Сегодня'  },
 ]
 
 export default function PrintPanel({ users, phases, period, services, schedules, session }: Props) {
@@ -42,7 +44,31 @@ export default function PrintPanel({ users, phases, period, services, schedules,
     new Set(['num', 'name', 'position', 'schedule', 'shift'])
   )
 
-  // Derive service name from filtered users (reflects active filter, not just session)
+  // Строевая записка — options
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [stroDate, setStroDate]               = useState(todayStr)
+  const [stroItrBreakdown, setStroItrBreakdown] = useState(true)
+  const [stroParkovschiki, setStroParkovschiki] = useState(true)
+  const [stroSvoSplit, setStroSvoSplit]         = useState(false)
+  const [stroTrudSvo, setStroTrudSvo]           = useState(true)
+  const [stroUvolenySvo, setStroUvolenySvo]     = useState(false)
+  const [stroShiftTotals, setStroShiftTotals]   = useState(true)
+
+  // Enriched users (with today's statuses) — fetched lazily for строевая
+  const [enrichedUsers, setEnrichedUsers]   = useState<EnrichedEmployee[] | null>(null)
+  const [loadingEnriched, setLoadingEnriched] = useState(false)
+
+  useEffect(() => {
+    if (formType === 'stroevaya' && !enrichedUsers && !loadingEnriched) {
+      setLoadingEnriched(true)
+      fetchAllCurrentStatuses().then(eu => {
+        setEnrichedUsers(eu)
+        setLoadingEnriched(false)
+      })
+    }
+  }, [formType, enrichedUsers, loadingEnriched])
+
+  // Derive service name from filtered users
   const svcName = useMemo(() => {
     const ids = [...new Set(users.map(u => u.service_id).filter(Boolean) as string[])]
     if (ids.length === 1) return services.find(s => s.service_id === ids[0])?.service_name ?? ''
@@ -58,16 +84,6 @@ export default function PrintPanel({ users, phases, period, services, schedules,
       map.set(code, (map.get(code) ?? 0) + 1)
     })
     return [...map.entries()].sort((a, b) => b[1] - a[1])
-  }, [users])
-
-  // Shift breakdown
-  const shiftBreakdown = useMemo(() => {
-    const map = new Map<string, number>()
-    users.forEach(u => {
-      const key = u.assignment?.shift_num ? `Смена ${u.assignment.shift_num}` : '—'
-      map.set(key, (map.get(key) ?? 0) + 1)
-    })
-    return [...map.entries()].sort()
   }, [users])
 
   const toggleRosterCol = (key: string) => {
@@ -93,6 +109,21 @@ export default function PrintPanel({ users, phases, period, services, schedules,
     if (formType === 'roster')   html = printRoster(users, phases, opts)
     if (formType === 'tabel')    html = printTabel(users, phases, period, opts)
     if (formType === 'coverage') html = printCoverage(users, phases, period, schedules, opts)
+    if (formType === 'stroevaya') {
+      if (!enrichedUsers) { alert('Данные ещё загружаются, попробуйте через секунду'); return }
+      html = printStroevaiya(enrichedUsers, users, phases, services, {
+        orgName,
+        dateStr: stroDate,
+        showItrBreakdown: stroItrBreakdown,
+        showParkovschiki: stroParkovschiki,
+        showSvoSplit:     stroSvoSplit,
+        showTrudSvo:      stroTrudSvo,
+        showUvolenySvo:   stroUvolenySvo,
+        showShiftTotals:  stroShiftTotals,
+        showSignatureLines: showSig,
+        showDate,
+      })
+    }
 
     const win = window.open('', '_blank')
     if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
@@ -103,6 +134,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
   }
 
   const inp = 'bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-blue-500/50 w-full'
+  const chk = 'accent-blue-500'
 
   return (
     <div className="relative">
@@ -126,31 +158,33 @@ export default function PrintPanel({ users, phases, period, services, schedules,
           </div>
 
           {/* Context info block */}
-          <div className="rounded-xl p-3 space-y-2 border border-white/15" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <div className="text-[10px] text-white/80 uppercase tracking-wider mb-1">Что будет напечатано</div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                👥 {users.length} сотр.
-              </span>
-              {svcName && (
-                <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full border border-violet-500/30">
-                  🏢 {svcName}
+          {formType !== 'stroevaya' && (
+            <div className="rounded-xl p-3 space-y-2 border border-white/15" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="text-[10px] text-white/80 uppercase tracking-wider mb-1">Что будет напечатано</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                  👥 {users.length} сотр.
                 </span>
-              )}
-              <span className="text-xs bg-white/5 text-white/50 px-2 py-0.5 rounded-full border border-white/10">
-                📅 {period.start} — {period.end}
-              </span>
-            </div>
-            {scheduleBreakdown.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {scheduleBreakdown.map(([code, cnt]) => (
-                  <span key={code} className="text-[10px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded">
-                    {code}: {cnt}
+                {svcName && (
+                  <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full border border-violet-500/30">
+                    🏢 {svcName}
                   </span>
-                ))}
+                )}
+                <span className="text-xs bg-white/5 text-white/50 px-2 py-0.5 rounded-full border border-white/10">
+                  📅 {period.start} — {period.end}
+                </span>
               </div>
-            )}
-          </div>
+              {scheduleBreakdown.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {scheduleBreakdown.map(([code, cnt]) => (
+                    <span key={code} className="text-[10px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded">
+                      {code}: {cnt}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Form type selector */}
           <div className="space-y-1.5">
@@ -186,11 +220,6 @@ export default function PrintPanel({ users, phases, period, services, schedules,
               placeholder="Организация"
               className={inp}
             />
-            {svcName && (
-              <div className="text-xs text-white/70 px-1 flex items-center gap-1">
-                <span className="text-white/30">Служба:</span> {svcName}
-              </div>
-            )}
           </div>
 
           {/* Roster-specific: column picker */}
@@ -200,13 +229,47 @@ export default function PrintPanel({ users, phases, period, services, schedules,
               <div className="grid grid-cols-2 gap-1">
                 {ROSTER_COLS.map(c => (
                   <label key={c.key} className="flex items-center gap-2 cursor-pointer text-xs text-white/80 hover:text-white">
-                    <input
-                      type="checkbox"
-                      checked={rosterCols.has(c.key)}
-                      onChange={() => toggleRosterCol(c.key)}
-                      className="accent-blue-500"
-                    />
+                    <input type="checkbox" checked={rosterCols.has(c.key)} onChange={() => toggleRosterCol(c.key)} className={chk} />
                     {c.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Строевая записка settings */}
+          {formType === 'stroevaya' && (
+            <div className="space-y-3">
+              <div className="text-[10px] text-white/80 uppercase tracking-wider">Настройки строевой</div>
+
+              {/* Date */}
+              <div>
+                <div className="text-[10px] text-white/50 mb-1">Дата строевой записки</div>
+                <input type="date" value={stroDate} onChange={e => setStroDate(e.target.value)} className={inp} />
+              </div>
+
+              {/* Status of enriched data */}
+              {loadingEnriched && (
+                <div className="text-[10px] text-amber-400/80">Загрузка актуальных статусов...</div>
+              )}
+              {enrichedUsers && !loadingEnriched && (
+                <div className="text-[10px] text-teal-400/80">✓ Статусы загружены ({enrichedUsers.length} чел.)</div>
+              )}
+
+              {/* Column toggles */}
+              <div className="text-[10px] text-white/50 mb-1">Колонки</div>
+              <div className="space-y-1.5">
+                {[
+                  { state: stroItrBreakdown, set: setStroItrBreakdown, label: 'Разбивка ИТР / Рабочие' },
+                  { state: stroParkovschiki,  set: setStroParkovschiki,  label: 'Парковщики / Водители' },
+                  { state: stroSvoSplit,      set: setStroSvoSplit,      label: 'СВО: Москва / Регионы отдельно' },
+                  { state: stroTrudSvo,       set: setStroTrudSvo,       label: 'Труд.СВО (вернулся с СВО)' },
+                  { state: stroUvolenySvo,    set: setStroUvolenySvo,    label: 'Уволены СВО' },
+                  { state: stroShiftTotals,   set: setStroShiftTotals,   label: 'ИТОГО День / Ночь' },
+                ].map(({ state, set, label }) => (
+                  <label key={label} className="flex items-center gap-2 cursor-pointer text-xs text-white/70 hover:text-white">
+                    <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className={chk} />
+                    {label}
                   </label>
                 ))}
               </div>
@@ -217,11 +280,11 @@ export default function PrintPanel({ users, phases, period, services, schedules,
           <div className="space-y-1.5">
             <div className="text-[10px] text-white/80 uppercase tracking-wider">Нижний колонтитул</div>
             <label className="flex items-center gap-2 cursor-pointer text-xs text-white/60">
-              <input type="checkbox" checked={showSig} onChange={e => setShowSig(e.target.checked)} className="accent-blue-500" />
+              <input type="checkbox" checked={showSig} onChange={e => setShowSig(e.target.checked)} className={chk} />
               Строки для подписей
             </label>
             <label className="flex items-center gap-2 cursor-pointer text-xs text-white/60">
-              <input type="checkbox" checked={showDate} onChange={e => setShowDate(e.target.checked)} className="accent-blue-500" />
+              <input type="checkbox" checked={showDate} onChange={e => setShowDate(e.target.checked)} className={chk} />
               Дата печати
             </label>
           </div>
@@ -229,10 +292,12 @@ export default function PrintPanel({ users, phases, period, services, schedules,
           {/* Print button */}
           <button
             onClick={handlePrint}
-            disabled={users.length === 0}
+            disabled={formType !== 'stroevaya' ? users.length === 0 : loadingEnriched}
             className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
           >
-            🖨 Распечатать ({users.length} сотр.)
+            {formType === 'stroevaya'
+              ? loadingEnriched ? 'Загрузка...' : '🖨 Строевая записка'
+              : `🖨 Распечатать (${users.length} сотр.)`}
           </button>
         </div>
       )}

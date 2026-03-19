@@ -1,7 +1,10 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { setEmployeeStatus } from '@/lib/api'
-import { EMPLOYEE_STATUS_CONFIG, SERVICE_META } from '@/types'
+import {
+  EMPLOYEE_STATUS_CONFIG, SERVICE_META,
+  STATUSES_WITH_DATES, OPEN_ENDED_STATUSES,
+} from '@/types'
 import type { EnrichedEmployee, EmployeeStatusType, Service, UserWithAssignment } from '@/types'
 
 const DAILY_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
@@ -25,6 +28,12 @@ function getTenure(dateHired: string | null): string | null {
   return m > 0 ? `${y}г ${m}м` : `${y} г.`
 }
 
+function fmtShortDate(iso: string | null): string {
+  if (!iso) return '?'
+  const d = new Date(iso + 'T12:00:00')
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+}
+
 interface Props {
   employees: EnrichedEmployee[]
   canEdit: boolean
@@ -46,19 +55,31 @@ interface RowProps {
 }
 
 function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, services, assignment }: RowProps) {
+  const today = new Date().toISOString().split('T')[0]
+
   const [localStatus, setLocalStatus] = useState<EmployeeStatusType>(employee.currentStatus)
   const [popupOpen, setPopupOpen] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<EmployeeStatusType | null>(null)
-  const [reasonText, setReasonText] = useState('')
+
+  // Form state for date/reason collection
+  const [dateFrom, setDateFrom]                 = useState(today)
+  const [dateTo, setDateTo]                     = useState(today)
+  const [openEnded, setOpenEnded]               = useState(false)
+  const [plannedDeparture, setPlannedDeparture] = useState('')
+  const [plannedReturn, setPlannedReturn]       = useState('')
+  const [actualDeparture, setActualDeparture]   = useState('')
+  const [actualReturn, setActualReturn]         = useState('')
+  const [reasonText, setReasonText]             = useState('')
+
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]   = useState<string | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!popupOpen) return
     const handler = (e: MouseEvent) => {
       if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        setPopupOpen(false); setPendingStatus(null); setReasonText('')
+        setPopupOpen(false); setPendingStatus(null)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -82,31 +103,63 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
 
   const tenure = getTenure(user.date_hired)
 
+  // Status record for showing dates (only when status matches current)
+  const rec = localStatus === employee.currentStatus ? employee.statusRecord : null
+
   const handleStatusSelect = async (newStatus: EmployeeStatusType) => {
-    if (newStatus === localStatus) { setPopupOpen(false); setPendingStatus(null); setReasonText(''); return }
-    const prevStatus = localStatus
-    setLocalStatus(newStatus); setError(null); setSaving(true)
-    const today = new Date().toISOString().split('T')[0]
-    const result = await setEmployeeStatus(user.user_id, newStatus, today, today, null, currentUserId)
-    setSaving(false)
-    if (!result) {
-      setLocalStatus(prevStatus); setPopupOpen(false); setPendingStatus(null)
-      setError('Не удалось сохранить статус'); return
+    if (newStatus === localStatus) { setPopupOpen(false); return }
+
+    if (newStatus === 'Na_rabote') {
+      // Save immediately — no dates needed
+      const prevStatus = localStatus
+      setLocalStatus(newStatus); setError(null); setSaving(true)
+      const result = await setEmployeeStatus(user.user_id, newStatus, today, today, null, currentUserId)
+      setSaving(false)
+      if (!result) { setLocalStatus(prevStatus); setError('Ошибка сохранения') }
+      else { onRefresh() }
+      setPopupOpen(false)
+      return
     }
-    onRefresh()
-    if (newStatus === 'Na_rabote') { setPopupOpen(false); setPendingStatus(null); setReasonText('') }
-    else { setPendingStatus(newStatus); setReasonText('') }
+
+    // For all other statuses — open the date/reason form
+    const isOpenEnded = OPEN_ENDED_STATUSES.includes(newStatus)
+    setOpenEnded(isOpenEnded)
+    setDateFrom(today)
+    setDateTo(today)
+    setPlannedDeparture('')
+    setPlannedReturn('')
+    setActualDeparture('')
+    setActualReturn('')
+    setReasonText('')
+    setPendingStatus(newStatus)
   }
 
-  const handleReasonConfirm = async () => {
-    if (pendingStatus && reasonText.trim()) {
-      setSaving(true)
-      const today = new Date().toISOString().split('T')[0]
-      await setEmployeeStatus(user.user_id, pendingStatus, today, today, reasonText.trim(), currentUserId)
-      setSaving(false); onRefresh()
-    }
-    setPopupOpen(false); setPendingStatus(null); setReasonText('')
+  const handleConfirm = async () => {
+    if (!pendingStatus) return
+    const prevStatus = localStatus
+    setLocalStatus(pendingStatus); setError(null); setSaving(true)
+    const result = await setEmployeeStatus(
+      user.user_id,
+      pendingStatus,
+      dateFrom,
+      openEnded ? null : (dateTo || null),
+      reasonText.trim() || null,
+      currentUserId,
+      {
+        planned_departure: plannedDeparture || null,
+        planned_return:    plannedReturn    || null,
+        actual_departure:  actualDeparture  || null,
+        actual_return:     actualReturn     || null,
+      }
+    )
+    setSaving(false)
+    if (!result) { setLocalStatus(prevStatus); setError('Ошибка сохранения') }
+    else { onRefresh() }
+    setPopupOpen(false); setPendingStatus(null)
   }
+
+  const needsDates = pendingStatus ? STATUSES_WITH_DATES.includes(pendingStatus) : false
+  const inp = 'w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white/80 placeholder-white/30 focus:outline-none focus:border-white/30'
 
   return (
     <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
@@ -161,7 +214,7 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
           : <span className="text-white/20 text-xs">—</span>}
       </td>
 
-      {/* Status */}
+      {/* Status + dates */}
       <td className="px-4 py-2.5">
         <div className="relative inline-block" ref={popupRef}>
           {canEdit ? (
@@ -179,11 +232,32 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
               {cfg.label}
             </span>
           )}
+
+          {/* Show planned/actual dates below the badge */}
+          {rec && (rec.planned_departure || rec.actual_departure) && (
+            <div className="mt-0.5 space-y-0.5">
+              {rec.planned_departure && (
+                <div className="text-[9px] text-white/30">
+                  план: {fmtShortDate(rec.planned_departure)}{rec.planned_return ? ` — ${fmtShortDate(rec.planned_return)}` : ''}
+                </div>
+              )}
+              {rec.actual_departure && (
+                <div className="text-[9px] text-teal-500/60">
+                  факт: {fmtShortDate(rec.actual_departure)}{rec.actual_return ? ` — ${fmtShortDate(rec.actual_return)}` : ''}
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <div className="text-xs text-red-400 mt-1 whitespace-nowrap">{error}</div>}
 
+          {/* Status popup */}
           {popupOpen && (
-            <div className="absolute z-50 top-full left-0 mt-1 w-52 bg-slate-900 border border-white/10 rounded-xl shadow-2xl">
+            <div className="absolute z-50 top-full right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl"
+              style={{ width: pendingStatus ? '300px' : '208px' }}
+            >
               {pendingStatus === null ? (
+                /* Step 1: choose status */
                 <div className="p-2 space-y-0.5">
                   <div className="text-xs text-white/30 px-2 py-1">Ежедневные</div>
                   {DAILY_STATUSES.map(status => {
@@ -214,20 +288,95 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
                   })}
                 </div>
               ) : (
-                <div className="p-3 space-y-2">
-                  <div className="text-xs text-white/40">Укажите причину (необязательно)</div>
-                  <input
-                    type="text" value={reasonText} onChange={e => setReasonText(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleReasonConfirm() }}
-                    placeholder="Причина (необязательно)"
-                    className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white/80 placeholder-white/30 focus:outline-none focus:border-white/30"
-                    autoFocus
-                  />
+                /* Step 2: date/reason form */
+                <div className="p-3 space-y-3">
+                  {/* Status label */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded border ${EMPLOYEE_STATUS_CONFIG[pendingStatus].bg}`}
+                      style={{ color: EMPLOYEE_STATUS_CONFIG[pendingStatus].color }}
+                    >
+                      {EMPLOYEE_STATUS_CONFIG[pendingStatus].label}
+                    </span>
+                    <button
+                      onClick={() => setPendingStatus(null)}
+                      className="text-white/30 hover:text-white/60 text-xs ml-auto"
+                    >← назад</button>
+                  </div>
+
+                  {/* Period */}
+                  <div>
+                    <div className="text-[10px] text-white/40 mb-1">Период</div>
+                    <div className="flex gap-1.5 items-center">
+                      <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
+                      {!openEnded && (
+                        <>
+                          <span className="text-white/30 text-xs shrink-0">—</span>
+                          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
+                        </>
+                      )}
+                    </div>
+                    {OPEN_ENDED_STATUSES.includes(pendingStatus) && (
+                      <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer">
+                        <input type="checkbox" checked={openEnded} onChange={e => setOpenEnded(e.target.checked)} className="accent-blue-500" />
+                        <span className="text-[10px] text-white/40">Без даты окончания</span>
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Departure/return dates — only for statuses that have them */}
+                  {needsDates && (
+                    <>
+                      <div>
+                        <div className="text-[10px] text-white/40 mb-1">📋 Плановые даты</div>
+                        <div className="flex gap-1.5 items-center">
+                          <div className="flex-1">
+                            <div className="text-[9px] text-white/30 mb-0.5">Убытие</div>
+                            <input type="date" value={plannedDeparture} onChange={e => setPlannedDeparture(e.target.value)} className={inp} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-[9px] text-white/30 mb-0.5">Прибытие</div>
+                            <input type="date" value={plannedReturn} onChange={e => setPlannedReturn(e.target.value)} className={inp} />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-white/40 mb-1">✅ Фактические даты</div>
+                        <div className="flex gap-1.5 items-center">
+                          <div className="flex-1">
+                            <div className="text-[9px] text-white/30 mb-0.5">Убытие</div>
+                            <input type="date" value={actualDeparture} onChange={e => setActualDeparture(e.target.value)} className={inp} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-[9px] text-white/30 mb-0.5">Прибытие</div>
+                            <input type="date" value={actualReturn} onChange={e => setActualReturn(e.target.value)} className={inp} />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Reason */}
+                  <div>
+                    <div className="text-[10px] text-white/40 mb-1">Причина (необязательно)</div>
+                    <input
+                      type="text" value={reasonText} onChange={e => setReasonText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleConfirm() }}
+                      placeholder="Укажите причину"
+                      className={inp}
+                      autoFocus
+                    />
+                  </div>
+
                   <div className="flex gap-1.5">
-                    <button onClick={handleReasonConfirm} disabled={saving}
-                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/60 border border-white/10 disabled:opacity-50">✓</button>
-                    <button onClick={() => { setPopupOpen(false); setPendingStatus(null); setReasonText('') }}
-                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 border border-white/10">✕</button>
+                    <button onClick={handleConfirm} disabled={saving}
+                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50">
+                      {saving ? '...' : 'Сохранить'}
+                    </button>
+                    <button onClick={() => { setPopupOpen(false); setPendingStatus(null) }}
+                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 border border-white/10">
+                      Отмена
+                    </button>
                   </div>
                 </div>
               )}

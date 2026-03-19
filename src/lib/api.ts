@@ -449,11 +449,27 @@ export async function setEmployeeStatus(
   dateFrom: string,
   dateTo: string | null,
   reason: string | null,
-  createdBy: string
+  createdBy: string,
+  dates?: {
+    planned_departure?: string | null
+    planned_return?: string | null
+    actual_departure?: string | null
+    actual_return?: string | null
+  }
 ): Promise<EmployeeStatus | null> {
+  const row: Record<string, unknown> = {
+    user_id: userId, status, date_from: dateFrom, date_to: dateTo,
+    reason, created_by: createdBy,
+  }
+  if (dates) {
+    if (dates.planned_departure !== undefined) row.planned_departure = dates.planned_departure || null
+    if (dates.planned_return    !== undefined) row.planned_return    = dates.planned_return    || null
+    if (dates.actual_departure  !== undefined) row.actual_departure  = dates.actual_departure  || null
+    if (dates.actual_return     !== undefined) row.actual_return     = dates.actual_return     || null
+  }
   const { data, error } = await supabase
     .from('employee_status')
-    .insert({ user_id: userId, status, date_from: dateFrom, date_to: dateTo, reason, created_by: createdBy })
+    .insert(row)
     .select()
     .single()
   if (error) {
