@@ -414,7 +414,7 @@ export interface StroevayaOptions {
   showDate: boolean
 }
 
-interface StroevayaRow {
+export interface StroevayaRow {
   serviceId: string
   serviceName: string
   total: number
@@ -437,31 +437,35 @@ interface StroevayaRow {
   night: number
 }
 
-export function printStroevaiya(
-  enrichedUsers: EnrichedEmployee[],
-  usersWithAssignment: UserWithAssignment[],
-  phases: ShiftPhase[],
-  services: Service[],
-  opts: StroevayaOptions,
-): string {
-  const date = new Date(opts.dateStr + 'T12:00:00')
-  const assignmentMap = new Map(usersWithAssignment.map(u => [u.user_id, u.assignment]))
-
-  const emptyRow = (serviceId: string, serviceName: string): StroevayaRow => ({
+function makeEmptyRow(serviceId: string, serviceName: string): StroevayaRow {
+  return {
     serviceId, serviceName,
     total: 0, itr: 0, workers: 0, parkovschiki: 0,
     bolnichniy: 0, otgul: 0, otpusk: 0, uchebniy: 0, dekret: 0, komandirovka: 0,
     svoMoscow: 0, svoRegion: 0, mobilizovan: 0, trudSvo: 0, uvolenySvo: 0,
     vacancies: 0, day: 0, night: 0,
-  })
+  }
+}
+
+/** Build service-level rows for Строевая записка. Shared by screen view and print form. */
+export function buildStroevayaRows(
+  enrichedUsers: EnrichedEmployee[],
+  usersWithAssignment: UserWithAssignment[],
+  phases: ShiftPhase[],
+  services: Service[],
+  dateStr: string,
+  showSvoSplit: boolean,
+): { rows: StroevayaRow[], totals: StroevayaRow } {
+  const date = new Date(dateStr + 'T12:00:00')
+  const assignmentMap = new Map(usersWithAssignment.map(u => [u.user_id, u.assignment]))
 
   const rowMap = new Map<string, StroevayaRow>()
-  for (const svc of services) rowMap.set(svc.service_id, emptyRow(svc.service_id, svc.service_name))
+  for (const svc of services) rowMap.set(svc.service_id, makeEmptyRow(svc.service_id, svc.service_name))
 
   for (const eu of enrichedUsers) {
     const { user, currentStatus } = eu
     const svcId = user.service_id ?? '__other__'
-    if (!rowMap.has(svcId)) rowMap.set(svcId, emptyRow(svcId, 'Прочие'))
+    if (!rowMap.has(svcId)) rowMap.set(svcId, makeEmptyRow(svcId, 'Прочие'))
     const r = rowMap.get(svcId)!
 
     r.total++
@@ -479,15 +483,14 @@ export function printStroevaiya(
       case 'Mobilizovan':          r.mobilizovan++; break
       case 'Troydoustroyen_s_SVO': r.trudSvo++; break
       case 'SVO':
-        if (opts.showSvoSplit && user.svo_type === 'через_регион') r.svoRegion++
+        if (showSvoSplit && user.svo_type === 'через_регион') r.svoRegion++
         else r.svoMoscow++
         break
     }
 
-    // Shift calculation
     const assignment = assignmentMap.get(user.user_id)
     if (assignment) {
-      const phase = getPhaseForDate(phases, user.user_id, opts.dateStr)
+      const phase = getPhaseForDate(phases, user.user_id, dateStr)
       const st = resolveShiftStatus({
         schedule_code: assignment.schedule_code ?? '',
         shift_num: assignment.shift_num,
@@ -503,9 +506,7 @@ export function printStroevaiya(
   }
 
   const rows = [...rowMap.values()].filter(r => r.total > 0)
-
-  // Totals row
-  const totals = emptyRow('ИТОГО', 'ИТОГО:')
+  const totals = makeEmptyRow('ИТОГО', 'ИТОГО:')
   for (const r of rows) {
     totals.total       += r.total
     totals.itr         += r.itr
@@ -524,6 +525,18 @@ export function printStroevaiya(
     totals.day         += r.day
     totals.night       += r.night
   }
+  return { rows, totals }
+}
+
+export function printStroevaiya(
+  enrichedUsers: EnrichedEmployee[],
+  usersWithAssignment: UserWithAssignment[],
+  phases: ShiftPhase[],
+  services: Service[],
+  opts: StroevayaOptions,
+): string {
+  const { rows, totals } = buildStroevayaRows(enrichedUsers, usersWithAssignment, phases, services, opts.dateStr, opts.showSvoSplit)
+  const date = new Date(opts.dateStr + 'T12:00:00')
 
   // Column definitions
   type Col = { label: string; get: (r: StroevayaRow) => number }

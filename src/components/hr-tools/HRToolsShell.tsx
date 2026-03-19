@@ -5,9 +5,10 @@ import { fetchUsersWithAssignments, fetchServices, fetchSchedules, fetchAllShift
 import RosterTable from './RosterTable'
 import TabeTable from './TabeTable'
 import CoverageTable from './CoverageTable'
+import StroevayaView from './StroevayaView'
 import PrintPanel from './PrintPanel'
 
-export type ViewMode = 'roster' | 'tabel' | 'coverage'
+export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
 
 function fmt(d: Date) { return d.toISOString().split('T')[0] }
@@ -49,9 +50,10 @@ export interface HRToolsData {
 interface Props { session: AuthSession }
 
 const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
-  { key: 'roster',   label: '📋 Список'   },
-  { key: 'tabel',    label: '📅 Табель'   },
-  { key: 'coverage', label: '📊 Покрытие' },
+  { key: 'roster',    label: '📋 Список'    },
+  { key: 'tabel',     label: '📅 Табель'    },
+  { key: 'coverage',  label: '📊 Покрытие'  },
+  { key: 'stroevaya', label: '🪖 Строевая'  },
 ]
 
 const PRESET_OPTIONS: { key: PeriodPreset; label: string }[] = [
@@ -197,9 +199,10 @@ export default function HRToolsShell({ session }: Props) {
         <div className="text-center text-white/30 py-16 text-sm">Загрузка...</div>
       ) : (
         <>
-          {view === 'roster'   && <RosterTable   users={filtered} services={data.services} showService={showService} />}
-          {view === 'tabel'    && <TabeTable     users={filtered} phases={data.phases} period={period} />}
-          {view === 'coverage' && <CoverageTable users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
+          {view === 'roster'    && <RosterTable    users={filtered} services={data.services} showService={showService} />}
+          {view === 'tabel'     && <TabeTable      users={filtered} phases={data.phases} period={period} />}
+          {view === 'coverage'  && <CoverageTable  users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
+          {view === 'stroevaya' && <StroevayaView  users={data.users} phases={data.phases} services={data.services} />}
         </>
       )}
     </div>
