@@ -119,15 +119,15 @@ export default function PrintPanel({ users, phases, period, services, schedules,
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 z-30 w-[440px] bg-gray-900 rounded-2xl border border-gray-700 shadow-2xl p-4 space-y-4">
+        <div className="absolute top-full right-0 mt-2 z-30 w-[440px] rounded-2xl shadow-2xl p-4 space-y-4 border border-white/15" style={{ background: 'rgba(15, 20, 40, 0.97)', backdropFilter: 'blur(20px)' }}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-white">🖨 Настройка печати</span>
-            <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white text-sm">✕</button>
+            <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white text-sm">✕</button>
           </div>
 
           {/* Context info block */}
-          <div className="bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-700">
-            <div className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Что будет напечатано</div>
+          <div className="rounded-xl p-3 space-y-2 border border-white/15" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <div className="text-[10px] text-white/80 uppercase tracking-wider mb-1">Что будет напечатано</div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
                 👥 {users.length} сотр.
@@ -154,7 +154,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
 
           {/* Form type selector */}
           <div className="space-y-1.5">
-            <div className="text-[10px] text-white/50 uppercase tracking-wider">Тип документа</div>
+            <div className="text-[10px] text-white/80 uppercase tracking-wider">Тип документа</div>
             {FORM_OPTIONS.map(f => (
               <label key={f.key} className={`flex items-start gap-3 p-2.5 rounded-xl cursor-pointer border transition-colors ${
                 formType === f.key
@@ -171,7 +171,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
                 />
                 <div>
                   <div className="text-xs font-medium text-white/80">{f.label}</div>
-                  <div className="text-[10px] text-white/40 mt-0.5">{f.desc}</div>
+                  <div className="text-[10px] text-white/60 mt-0.5">{f.desc}</div>
                 </div>
               </label>
             ))}
@@ -179,7 +179,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
 
           {/* Common settings */}
           <div className="space-y-2">
-            <div className="text-[10px] text-white/50 uppercase tracking-wider">Шапка документа</div>
+            <div className="text-[10px] text-white/80 uppercase tracking-wider">Шапка документа</div>
             <input
               value={orgName}
               onChange={e => setOrgName(e.target.value)}
@@ -187,7 +187,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
               className={inp}
             />
             {svcName && (
-              <div className="text-xs text-white/50 px-1 flex items-center gap-1">
+              <div className="text-xs text-white/70 px-1 flex items-center gap-1">
                 <span className="text-white/30">Служба:</span> {svcName}
               </div>
             )}
@@ -196,10 +196,10 @@ export default function PrintPanel({ users, phases, period, services, schedules,
           {/* Roster-specific: column picker */}
           {formType === 'roster' && (
             <div className="space-y-2">
-              <div className="text-[10px] text-white/50 uppercase tracking-wider">Колонки в списке</div>
+              <div className="text-[10px] text-white/80 uppercase tracking-wider">Колонки в списке</div>
               <div className="grid grid-cols-2 gap-1">
                 {ROSTER_COLS.map(c => (
-                  <label key={c.key} className="flex items-center gap-2 cursor-pointer text-xs text-white/60 hover:text-white/80">
+                  <label key={c.key} className="flex items-center gap-2 cursor-pointer text-xs text-white/80 hover:text-white">
                     <input
                       type="checkbox"
                       checked={rosterCols.has(c.key)}
@@ -215,7 +215,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
 
           {/* Footer options */}
           <div className="space-y-1.5">
-            <div className="text-[10px] text-white/50 uppercase tracking-wider">Нижний колонтитул</div>
+            <div className="text-[10px] text-white/80 uppercase tracking-wider">Нижний колонтитул</div>
             <label className="flex items-center gap-2 cursor-pointer text-xs text-white/60">
               <input type="checkbox" checked={showSig} onChange={e => setShowSig(e.target.checked)} className="accent-blue-500" />
               Строки для подписей
