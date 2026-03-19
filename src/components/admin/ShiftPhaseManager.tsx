@@ -232,6 +232,7 @@ function NewPhaseForm({
   onCancel: () => void
 }) {
   const today = new Date().toISOString().split('T')[0]
+  const firstOfMonth = today.slice(0, 8) + '01'
   const [phase, setPhase] = useState<'day' | 'night'>('day')
   const [validFrom, setValidFrom] = useState(today)
   const [anchorDate, setAnchorDate] = useState(today)
@@ -243,15 +244,25 @@ function NewPhaseForm({
   const is1515 = scheduleCode === '15/15'
   const [isAlternating, setIsAlternating] = useState(false)
 
+  const handleAlternatingChange = (checked: boolean) => {
+    setIsAlternating(checked)
+    if (checked) {
+      setValidFrom(firstOfMonth)
+      setAnchorDate(firstOfMonth)
+    } else {
+      setAnchorDate(validFrom)
+    }
+  }
+
   const handleSave = async () => {
     if (!validFrom) { setError('Укажите дату начала фазы'); return }
-    if (!is1515 && anchorDate > validFrom) { setError('Якорная дата не может быть позже начала фазы'); return }
+    if (anchorDate > validFrom) { setError('Якорная дата не может быть позже начала фазы'); return }
     setSaving(true); setError(null)
     const result = await openShiftPhase(
       user.user_id,
       {
         phase,
-        anchor_date: is1515 ? validFrom : anchorDate,
+        anchor_date: anchorDate,
         valid_from: validFrom,
         schedule_code: scheduleCode,
         is_alternating: is1515 ? isAlternating : false,
@@ -270,7 +281,7 @@ function NewPhaseForm({
     <div className="border-t border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-3">
       <div className="text-xs text-blue-300/70 font-medium">Новая фаза для {user.full_name}</div>
 
-      <div className={`grid gap-3 ${is1515 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+      <div className="grid grid-cols-4 gap-3">
         <div>
           <label className="block text-[10px] text-white/30 mb-1">{is1515 && isAlternating ? 'Стартовая фаза' : 'Фаза'}</label>
           <div className="flex gap-1">
@@ -286,12 +297,15 @@ function NewPhaseForm({
           <label className="block text-[10px] text-white/30 mb-1">Начало фазы</label>
           <input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} className={inp} />
         </div>
-        {!is1515 && (
-          <div>
-            <label className="block text-[10px] text-white/30 mb-1">Якорная дата <span className="text-white/20">(1-й рабочий день)</span></label>
-            <input type="date" value={anchorDate} onChange={e => setAnchorDate(e.target.value)} className={inp} />
-          </div>
-        )}
+        <div>
+          <label className="block text-[10px] text-white/30 mb-1">
+            Якорная дата
+            {is1515 && isAlternating && <span className="text-white/20 ml-1">(авто)</span>}
+            {!is1515 && <span className="text-white/20 ml-1">(1-й рабочий день)</span>}
+          </label>
+          <input type="date" value={anchorDate}
+            onChange={e => setAnchorDate(e.target.value)} className={inp} />
+        </div>
         <div>
           <label className="block text-[10px] text-white/30 mb-1">Заметки</label>
           <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="необязательно" className={inp} />
@@ -301,7 +315,7 @@ function NewPhaseForm({
       {is1515 && (
         <div className={`rounded-xl px-3 py-2.5 border ${isAlternating ? 'border-amber-500/30 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={isAlternating} onChange={e => setIsAlternating(e.target.checked)} className="accent-amber-500" />
+            <input type="checkbox" checked={isAlternating} onChange={e => handleAlternatingChange(e.target.checked)} className="accent-amber-500" />
             <span className="text-xs text-white/70 font-medium">Чередовать фазы каждый месяц</span>
           </label>
           <div className="mt-1 text-[10px] text-white/40">

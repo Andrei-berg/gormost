@@ -37,6 +37,7 @@ function fmtShortDate(iso: string | null): string {
 interface Props {
   employees: EnrichedEmployee[]
   canEdit: boolean
+  canAdmin?: boolean
   currentUserId: string
   onNameClick: (userId: string) => void
   onRefresh: () => void
@@ -47,6 +48,7 @@ interface Props {
 interface RowProps {
   employee: EnrichedEmployee
   canEdit: boolean
+  canAdmin?: boolean
   currentUserId: string
   onNameClick: (userId: string) => void
   onRefresh: () => void
@@ -54,7 +56,7 @@ interface RowProps {
   assignment: UserWithAssignment['assignment'] | null
 }
 
-function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, services, assignment }: RowProps) {
+function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, onRefresh, services, assignment }: RowProps) {
   const today = new Date().toISOString().split('T')[0]
 
   const [localStatus, setLocalStatus] = useState<EmployeeStatusType>(employee.currentStatus)
@@ -213,6 +215,15 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
           ? <span className="text-xs text-white/50">{user.phone}</span>
           : <span className="text-white/20 text-xs">—</span>}
       </td>
+
+      {/* PIN — visible to admin/HR only */}
+      {canAdmin && (
+        <td className="px-4 py-2.5">
+          {user.pin_code
+            ? <span className="text-xs font-mono text-white/50 tracking-widest">{user.pin_code}</span>
+            : <span className="text-white/20 text-xs">—</span>}
+        </td>
+      )}
 
       {/* Status + dates */}
       <td className="px-4 py-2.5">
@@ -388,7 +399,7 @@ function HRTableRow({ employee, canEdit, currentUserId, onNameClick, onRefresh, 
   )
 }
 
-export default function HRTableView({ employees, canEdit, currentUserId, onNameClick, onRefresh, services, assignmentMap }: Props) {
+export default function HRTableView({ employees, canEdit, canAdmin, currentUserId, onNameClick, onRefresh, services, assignmentMap }: Props) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <table className="w-full text-sm">
@@ -399,13 +410,14 @@ export default function HRTableView({ employees, canEdit, currentUserId, onNameC
             <th className="px-4 py-3 text-left text-xs text-white/40 font-medium">Смена / График</th>
             <th className="px-4 py-3 text-left text-xs text-white/40 font-medium">Стаж</th>
             <th className="px-4 py-3 text-left text-xs text-white/40 font-medium">Телефон</th>
+            {canAdmin && <th className="px-4 py-3 text-left text-xs text-white/40 font-medium">PIN</th>}
             <th className="px-4 py-3 text-left text-xs text-white/40 font-medium">Статус</th>
           </tr>
         </thead>
         <tbody>
           {employees.length === 0 ? (
             <tr>
-              <td colSpan={6}>
+              <td colSpan={canAdmin ? 7 : 6}>
                 <div className="text-center text-white/30 py-8">Нет сотрудников</div>
               </td>
             </tr>
@@ -415,6 +427,7 @@ export default function HRTableView({ employees, canEdit, currentUserId, onNameC
                 key={emp.user.user_id}
                 employee={emp}
                 canEdit={canEdit}
+                canAdmin={canAdmin}
                 currentUserId={currentUserId}
                 onNameClick={onNameClick}
                 onRefresh={onRefresh}
