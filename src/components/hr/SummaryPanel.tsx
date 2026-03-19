@@ -74,9 +74,9 @@ export default function SummaryPanel({ employees, services, assignmentMap }: Pro
           {tiles.map(({ svc, svcTotal, svcActive, svcOnDuty }) => {
             const meta = SERVICE_META[svc.service_id]
             return (
-              <div key={svc.service_id} className="glass rounded-xl p-3 min-w-[130px] shrink-0 border border-white/5">
+              <div key={svc.service_id} className="glass rounded-xl p-3 w-[140px] shrink-0 border border-white/5">
                 <div className="text-xl mb-1">{meta?.emoji ?? '📋'}</div>
-                <div className="text-xs text-white/60 mb-2 leading-tight">{svc.service_name}</div>
+                <div className="text-xs text-white/60 mb-2 leading-tight line-clamp-2" title={svc.service_name}>{svc.service_name}</div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-white/30">Всего</span>

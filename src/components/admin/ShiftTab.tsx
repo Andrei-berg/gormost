@@ -267,37 +267,38 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
 
   return (
     <tr className="border-b border-blue-500/20 bg-blue-500/5">
-      <td className="px-3 py-2 text-white/80 text-sm" colSpan={2}>{user.full_name}</td>
-      <td className="px-3 py-2">
-        <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className={sel} disabled={!canSelectShift}>
-          <option value="">{requiresShift ? '— обязательно —' : '— опц. —'}</option>
-          {[1,2,3,4].map(n => <option key={n} value={n}>Смена {n}</option>)}
-        </select>
-      </td>
-      <td className="px-3 py-2">
-        <select
-          value={scheduleCode}
-          onChange={e => handleScheduleChange(e.target.value)}
-          className={sel}
-        >
-          <option value="">— не задан —</option>
-          {schedules.map(s => <option key={s.id} value={s.code}>{s.code} · {s.name}</option>)}
-        </select>
-      </td>
-      <td className="px-3 py-2 space-y-1">
-        {needsRefDate && (
-          <input type="date" value={refDate} onChange={e => setRefDate(e.target.value)} className={inp} placeholder="Якорная дата" />
-        )}
-        {needsHalf && (
-          <select value={rotationGroup} onChange={e => setRotationGroup(e.target.value)} className={sel}>
-            <option value="">—</option>
-            <option value="1">1–15 числа</option>
-            <option value="2">16–31 числа</option>
+      <td colSpan={6} className="px-3 py-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-white/80 text-sm font-medium mr-2">{user.full_name}</span>
+
+          <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className={sel} disabled={!canSelectShift}>
+            <option value="">{requiresShift ? '— смена (обяз.) —' : '— смена (опц.) —'}</option>
+            {[1,2,3,4].map(n => <option key={n} value={n}>Смена {n}</option>)}
           </select>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex gap-1">
+
+          <select value={scheduleCode} onChange={e => handleScheduleChange(e.target.value)} className={sel}>
+            <option value="">— график —</option>
+            {schedules.map(s => <option key={s.id} value={s.code}>{s.code} · {s.name}</option>)}
+          </select>
+
+          {needsRefDate && (
+            <input
+              type="date"
+              value={refDate}
+              onChange={e => setRefDate(e.target.value)}
+              className={inp}
+              title="Якорная дата"
+            />
+          )}
+
+          {needsHalf && (
+            <select value={rotationGroup} onChange={e => setRotationGroup(e.target.value)} className={sel}>
+              <option value="">— группа —</option>
+              <option value="1">1–15 числа</option>
+              <option value="2">16–31 числа</option>
+            </select>
+          )}
+
           <button
             disabled={saving || !scheduleId}
             onClick={() => onSave({
@@ -305,11 +306,11 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
               shift_num: shiftNum ? (Number(shiftNum) as 1|2|3|4) : null,
               rotation_group: rotationGroup || null,
               shift_reference_date: refDate || null,
-              is_driver: isDriver, // preserve existing value, not editable here
+              is_driver: isDriver,
             })}
-            className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs"
+            className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-medium"
           >
-            ✓
+            Сохранить
           </button>
           <button onClick={onCancel} className="px-2 py-1 rounded bg-white/5 text-white/40 text-xs">✕</button>
         </div>
