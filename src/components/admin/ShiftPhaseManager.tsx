@@ -234,7 +234,6 @@ function NewPhaseForm({
   onCancel: () => void
 }) {
   const today = new Date().toISOString().split('T')[0]
-  const firstOfMonth = today.slice(0, 8) + '01'
   const [phase, setPhase] = useState<'day' | 'night'>('day')
   const [validFrom, setValidFrom] = useState(today)
   const [anchorDate, setAnchorDate] = useState(today)
@@ -248,13 +247,21 @@ function NewPhaseForm({
 
   const handleAlternatingChange = (checked: boolean) => {
     setIsAlternating(checked)
-    if (checked) {
-      setValidFrom(firstOfMonth)
-      setAnchorDate(firstOfMonth)
-    } else {
-      setAnchorDate(validFrom)
-    }
+    // Dates are not auto-reset — user controls them directly.
   }
+
+  // Build 3-month alternation preview starting from anchorDate's month
+  const alternationPreview = (() => {
+    if (!is1515 || !isAlternating || !anchorDate) return null
+    const MONTH_NAMES = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']
+    const anchor = new Date(anchorDate + 'T12:00:00')
+    return [0, 1, 2].map(i => {
+      const d = new Date(anchor); d.setMonth(d.getMonth() + i)
+      const flipped = i % 2 !== 0
+      const p: 'day' | 'night' = flipped ? (phase === 'day' ? 'night' : 'day') : phase
+      return `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}: ${p === 'day' ? '☀ День' : '🌙 Ночь'}`
+    }).join(' → ')
+  })()
 
   const handleSave = async () => {
     if (!validFrom) { setError('Укажите дату начала фазы'); return }
@@ -302,8 +309,10 @@ function NewPhaseForm({
         <div>
           <label className="block text-[10px] text-white/30 mb-1">
             Якорная дата
-            {is1515 && isAlternating && <span className="text-white/20 ml-1">(авто)</span>}
-            {!is1515 && <span className="text-white/20 ml-1">(1-й рабочий день)</span>}
+            {is1515 && isAlternating
+              ? <span className="text-amber-400/60 ml-1" title="Месяц этой даты = первый месяц фазы 1. Конкретное число внутри месяца не имеет значения.">ℹ</span>
+              : <span className="text-white/20 ml-1" title="1-й рабочий день нового цикла. Цикл отсчитывается от этой даты.">ℹ</span>
+            }
           </label>
           <input type="date" value={anchorDate}
             onChange={e => setAnchorDate(e.target.value)} className={inp} />
@@ -322,7 +331,7 @@ function NewPhaseForm({
           </label>
           <div className="mt-1 text-[10px] text-white/40">
             {isAlternating
-              ? `${validFrom.slice(0,7)}: ${PHASE_LABEL[phase]} → следующий месяц: ${PHASE_LABEL[phase === 'day' ? 'night' : 'day']} → и т.д. Одна запись на весь период.`
+              ? alternationPreview ?? 'Укажите якорную дату для предпросмотра'
               : `Фиксированная фаза «${PHASE_LABEL[phase]}» — одна и та же каждую вахту`}
           </div>
         </div>
