@@ -59,7 +59,6 @@ export default function BrigadeAssigner({ session, services }: Props) {
     // local state (activeItemId, pickerRole). Loading spinner only shows on first mount.
     const [rawPlans, allUsers] = await Promise.all([
       fetchWorkPlans({
-        serviceId: session.service_id ?? undefined,
         statuses: ['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'DONE'],
       }),
       fetchUsersWithAssignments(),
@@ -86,7 +85,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
     setAllAssignments(assignments)
 
     setLoading(false)
-  }, [session.service_id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
@@ -115,10 +114,10 @@ export default function BrigadeAssigner({ session, services }: Props) {
     return map
   }, [plans, itemAssignmentsMap])
 
-  // Workers in this service (or all if no service filter)
+  // All on-duty workers across all services — master sees everyone
   const serviceWorkers = useMemo(
-    () => onDutyWorkers.filter(u => !session.service_id || u.service_id === session.service_id),
-    [onDutyWorkers, session.service_id]
+    () => onDutyWorkers,
+    [onDutyWorkers]
   )
 
   const assignedInServiceIds = useMemo(

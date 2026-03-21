@@ -76,7 +76,6 @@ export default function PlanDashboard({ session, services, onOpenAssigner }: Pro
 
   const load = useCallback(async () => {
     const rawPlans = await fetchWorkPlans({
-      serviceId: session.service_id ?? undefined,
       statuses: ['BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'PLANNED', 'FAST_TRACK'],
     })
 

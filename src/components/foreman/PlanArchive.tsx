@@ -40,7 +40,7 @@ export default function PlanArchive({ session, services }: Props) {
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear]   = useState(today.getFullYear())
-  const [filterService, setFilterService] = useState(session.service_id ?? '')
+  const [filterService, setFilterService] = useState('')
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [assignmentsMap, setAssignmentsMap] = useState<Map<string, WorkAssignmentWithUser[]>>(new Map())
   const [loading, setLoading] = useState(false)
