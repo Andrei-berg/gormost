@@ -11,9 +11,9 @@ const SHIFT_LABELS = ['', 'Смена 1', 'Смена 2', 'Смена 3', 'См�
 const SHIFT_COLORS = ['', 'text-blue-400', 'text-green-400', 'text-amber-400', 'text-purple-400']
 type SubTab = 'assignments' | 'phases' | 'monitor'
 
-interface Props { session: AuthSession }
+interface Props { session: AuthSession; hidePhases?: boolean }
 
-export default function ShiftTab({ session }: Props) {
+export default function ShiftTab({ session, hidePhases }: Props) {
   const [users, setUsers] = useState<UserWithAssignment[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -56,7 +56,7 @@ export default function ShiftTab({ session }: Props) {
     <div className="space-y-6">
       {/* Sub-tab switcher */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
-        {([['assignments', 'Назначения'], ['phases', 'Фазы смен'], ['monitor', '🔍 Мониторинг']] as [SubTab, string][]).map(([key, label]) => (
+        {(([['assignments', 'Назначения'], ...(!hidePhases ? [['phases', 'Фазы смен']] : []), ['monitor', '🔍 Мониторинг']] as [SubTab, string][])).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setSubTab(key)}
@@ -69,8 +69,8 @@ export default function ShiftTab({ session }: Props) {
         ))}
       </div>
 
-      {subTab === 'phases' && (
-        <ShiftPhaseManager users={users} session={session} onRefresh={load} />
+      {subTab === 'phases' && !hidePhases && (
+        <ShiftPhaseManager users={users} session={session} onRefresh={load} excludeDrivers />
       )}
 
       {subTab === 'monitor' && (

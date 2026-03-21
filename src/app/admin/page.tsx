@@ -71,7 +71,7 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {tab === 'users' && <UsersTab session={session} />}
-      {tab === 'shifts' && <ShiftTab session={session} />}
+      {tab === 'shifts' && <ShiftTab session={session} hidePhases />}
       {tab === 'services' && <ServicesTab />}
       {tab === 'categories' && <CategoriesTab />}
       {tab === 'objects' && <ObjectsTab />}

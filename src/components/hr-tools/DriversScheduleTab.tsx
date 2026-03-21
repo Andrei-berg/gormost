@@ -1,12 +1,21 @@
 'use client'
 import { useMemo, useState } from 'react'
-import type { UserWithAssignment, Service, ShiftPhase } from '@/types'
-import { resolveShiftStatus } from '@/lib/shifts'
+import type { UserWithAssignment, Service, ShiftPhase, AuthSession } from '@/types'
+import { resolveShiftStatus, isPhaseSchedule } from '@/lib/shifts'
+import { openShiftPhase, closeShiftPhase, deleteShiftPhase } from '@/lib/api'
 
 interface Props {
   users: UserWithAssignment[]
   phases: ShiftPhase[]
   services: Service[]
+  session?: AuthSession
+  onPhasesChanged?: () => void
+}
+
+const PHASE_LABEL: Record<'day' | 'night', string> = { day: '☀ ДЕНЬ', night: '🌙 НОЧЬ' }
+const PHASE_COLOR: Record<'day' | 'night', string> = {
+  day:   'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  night: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
 }
 
 // Hours per working day by schedule type
@@ -61,11 +70,13 @@ interface DriverRow {
   dayBreakdown: { date: Date; working: boolean; phase: 'day' | 'night' | null }[]
 }
 
-export default function DriversScheduleTab({ users, phases, services }: Props) {
+export default function DriversScheduleTab({ users, phases, services, session, onPhasesChanged }: Props) {
   const now = new Date()
   const [year,  setYear]  = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())   // 0-indexed
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [phaseFormFor, setPhaseFormFor] = useState<string | null>(null)
+  const today = now.toISOString().split('T')[0]
 
   const days = useMemo(() => getDaysInMonth(year, month), [year, month])
 
@@ -93,7 +104,7 @@ export default function DriversScheduleTab({ users, phases, services }: Props) {
           rotation_group:       u.assignment.rotation_group,
           shift_reference_date: u.assignment.shift_reference_date,
           active_phase: phase
-            ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code }
+            ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code, is_alternating: phase.is_alternating }
             : null,
         }, date)
         return { date, working: result.working, phase: result.phase }
@@ -234,6 +245,64 @@ export default function DriversScheduleTab({ users, phases, services }: Props) {
                           <span>🌙 Ночь: {row.dayBreakdown.filter(d => d.working && d.phase === 'night').length} смен</span>
                           <span>Итого: {row.workDays} дней · {row.hours} ч</span>
                         </div>
+
+                        {/* Phase management (only for cyclic schedules) */}
+                        {isPhaseSchedule(row.schedule) && (
+                          <div className="mt-3 border-t border-white/5 pt-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[10px] text-white/30 uppercase tracking-wider">Фазы смены</span>
+                              {(() => {
+                                const active = phases.find(p => p.employee_id === row.user.user_id && (!p.valid_to || p.valid_to >= today))
+                                return active ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PHASE_COLOR[active.phase]}`}>
+                                    {PHASE_LABEL[active.phase]}{active.is_alternating ? ' ⟳' : ''} с {active.valid_from}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-red-400/70 px-2 py-0.5 rounded-full border border-red-500/20">нет фазы</span>
+                                )
+                              })()}
+                              {session && (
+                                <button
+                                  onClick={() => setPhaseFormFor(phaseFormFor === row.user.user_id ? null : row.user.user_id)}
+                                  className="ml-auto px-2 py-0.5 rounded bg-blue-600/60 hover:bg-blue-600 text-white text-[10px]"
+                                >
+                                  + фаза
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Phase history */}
+                            {phases.filter(p => p.employee_id === row.user.user_id).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {phases.filter(p => p.employee_id === row.user.user_id).map(p => (
+                                  <div key={p.id} className="flex items-center gap-1 text-[10px] bg-white/5 rounded px-1.5 py-0.5 border border-white/10">
+                                    <span className={`font-bold ${p.phase === 'day' ? 'text-amber-300' : 'text-blue-300'}`}>{p.phase === 'day' ? '☀' : '🌙'}</span>
+                                    <span className="text-white/40">{p.valid_from}→{p.valid_to ?? 'сейчас'}</span>
+                                    {p.is_alternating && <span className="text-amber-400/60">⟳</span>}
+                                    {session && !p.valid_to && (
+                                      <button onClick={async () => {
+                                        const d = prompt('Закрыть фазу. Дата окончания (YYYY-MM-DD):', today)
+                                        if (d) { await closeShiftPhase(p.id, d, session.user_id); onPhasesChanged?.() }
+                                      }} className="text-white/20 hover:text-white/50 ml-1">✕</button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Mini new phase form */}
+                            {phaseFormFor === row.user.user_id && session && (
+                              <DriverPhaseForm
+                                user={row.user}
+                                scheduleCode={row.schedule}
+                                session={session}
+                                today={today}
+                                onSaved={() => { setPhaseFormFor(null); onPhasesChanged?.() }}
+                                onCancel={() => setPhaseFormFor(null)}
+                              />
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
@@ -243,6 +312,51 @@ export default function DriversScheduleTab({ users, phases, services }: Props) {
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+function DriverPhaseForm({ user, scheduleCode, session, today, onSaved, onCancel }: {
+  user: UserWithAssignment; scheduleCode: string; session: AuthSession
+  today: string; onSaved: () => void; onCancel: () => void
+}) {
+  const [phase, setPhase] = useState<'day' | 'night'>('day')
+  const [validFrom, setValidFrom] = useState(today)
+  const [anchorDate, setAnchorDate] = useState(today)
+  const [isAlternating, setIsAlternating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const inp = 'bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50 w-full'
+  const handleSave = async () => {
+    if (anchorDate > validFrom) { setError('Якорная дата не может быть позже начала фазы'); return }
+    setSaving(true); setError(null)
+    const r = await openShiftPhase(user.user_id, { phase, anchor_date: anchorDate, valid_from: validFrom, schedule_code: scheduleCode, is_alternating: isAlternating }, session.user_id)
+    setSaving(false)
+    if (r.ok) onSaved(); else setError(r.error ?? 'Ошибка')
+  }
+  return (
+    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 space-y-2">
+      <div className="flex gap-2 flex-wrap">
+        <div>
+          <div className="text-[10px] text-white/30 mb-1">{isAlternating ? 'Стартовая фаза' : 'Фаза'}</div>
+          <div className="flex gap-1">
+            {(['day', 'night'] as const).map(p => (
+              <button key={p} onClick={() => setPhase(p)} className={`px-2 py-1 rounded text-[10px] font-bold border ${phase === p ? PHASE_COLOR[p] : 'bg-white/5 border-white/10 text-white/30'}`}>{PHASE_LABEL[p]}</button>
+            ))}
+          </div>
+        </div>
+        <div className="w-32"><div className="text-[10px] text-white/30 mb-1">Начало фазы</div><input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} className={inp} /></div>
+        <div className="w-32"><div className="text-[10px] text-white/30 mb-1">Якорная дата</div><input type="date" value={anchorDate} onChange={e => setAnchorDate(e.target.value)} className={inp} /></div>
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer text-[10px] text-white/50">
+        <input type="checkbox" checked={isAlternating} onChange={e => setIsAlternating(e.target.checked)} className="accent-amber-500" />
+        Чередовать фазы каждый цикл (день→ночь→день...)
+      </label>
+      {error && <div className="text-[10px] text-red-400">{error}</div>}
+      <div className="flex gap-2">
+        <button disabled={saving} onClick={handleSave} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-medium">{saving ? '...' : 'Сохранить'}</button>
+        <button onClick={onCancel} className="px-3 py-1 rounded bg-white/5 text-white/40 text-[10px]">Отмена</button>
+      </div>
     </div>
   )
 }

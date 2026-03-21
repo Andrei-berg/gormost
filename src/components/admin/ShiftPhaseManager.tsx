@@ -8,6 +8,7 @@ interface Props {
   users: UserWithAssignment[]
   session: AuthSession
   onRefresh: () => void
+  excludeDrivers?: boolean  // when true, hide drivers (they are managed in DriversScheduleTab)
 }
 
 const PHASE_LABEL: Record<'day' | 'night', string> = { day: 'ДЕНЬ', night: 'НОЧЬ' }
@@ -16,7 +17,7 @@ const PHASE_COLOR: Record<'day' | 'night', string> = {
   night: 'bg-blue-500/20  text-blue-300  border-blue-500/30',
 }
 
-export default function ShiftPhaseManager({ users, session, onRefresh }: Props) {
+export default function ShiftPhaseManager({ users, session, onRefresh, excludeDrivers }: Props) {
   const [allPhases, setAllPhases] = useState<ShiftPhase[]>([])
   const [loading, setLoading] = useState(false)
   const [openFormFor, setOpenFormFor] = useState<string | null>(null)
@@ -35,7 +36,10 @@ export default function ShiftPhaseManager({ users, session, onRefresh }: Props) 
   // Only show employees with cyclic schedules that need phases
   const cyclicUsers = users.filter(u => {
     const code = u.assignment?.schedule_code ?? ''
-    return isPhaseSchedule(code) && (!filterCode || code === filterCode)
+    if (!isPhaseSchedule(code)) return false
+    if (filterCode && code !== filterCode) return false
+    if (excludeDrivers && (u.assignment?.is_driver || u.role_level === 'DRIVER')) return false
+    return true
   })
 
   // Build phase map: employee_id → all phases sorted newest first
@@ -243,23 +247,25 @@ function NewPhaseForm({
 
   const scheduleCode = user.assignment?.schedule_code ?? ''
   const is1515 = scheduleCode === '15/15'
+  const isCyclic = ['2/2', '3/3', '6/6', '15/15'].includes(scheduleCode)
   const [isAlternating, setIsAlternating] = useState(false)
 
-  const handleAlternatingChange = (checked: boolean) => {
-    setIsAlternating(checked)
-    // Dates are not auto-reset — user controls them directly.
-  }
-
-  // Build 3-month alternation preview starting from anchorDate's month
+  // Alternation preview — cycle-based for 2/2/3/3/6/6, monthly for 15/15
   const alternationPreview = (() => {
-    if (!is1515 || !isAlternating || !anchorDate) return null
-    const MONTH_NAMES = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']
-    const anchor = new Date(anchorDate + 'T12:00:00')
-    return [0, 1, 2].map(i => {
-      const d = new Date(anchor); d.setMonth(d.getMonth() + i)
-      const flipped = i % 2 !== 0
-      const p: 'day' | 'night' = flipped ? (phase === 'day' ? 'night' : 'day') : phase
-      return `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}: ${p === 'day' ? '☀ День' : '🌙 Ночь'}`
+    if (!isCyclic || !isAlternating || !anchorDate) return null
+    if (is1515) {
+      const MONTH_NAMES = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']
+      const anchor = new Date(anchorDate + 'T12:00:00')
+      return [0, 1, 2].map(i => {
+        const d = new Date(anchor); d.setMonth(d.getMonth() + i)
+        const p: 'day' | 'night' = i % 2 !== 0 ? (phase === 'day' ? 'night' : 'day') : phase
+        return `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}: ${p === 'day' ? '☀ День' : '🌙 Ночь'}`
+      }).join(' → ')
+    }
+    // 2/2, 3/3, 6/6 — show first 4 work cycles
+    return [0, 1, 2, 3].map(i => {
+      const p: 'day' | 'night' = i % 2 !== 0 ? (phase === 'day' ? 'night' : 'day') : phase
+      return `Цикл ${i + 1}: ${p === 'day' ? '☀ День' : '🌙 Ночь'}`
     }).join(' → ')
   })()
 
@@ -274,7 +280,7 @@ function NewPhaseForm({
         anchor_date: anchorDate,
         valid_from: validFrom,
         schedule_code: scheduleCode,
-        is_alternating: is1515 ? isAlternating : false,
+        is_alternating: isCyclic ? isAlternating : false,
         notes: notes || undefined,
       },
       session.user_id
@@ -292,7 +298,7 @@ function NewPhaseForm({
 
       <div className="grid grid-cols-4 gap-3">
         <div>
-          <label className="block text-[10px] text-white/30 mb-1">{is1515 && isAlternating ? 'Стартовая фаза' : 'Фаза'}</label>
+          <label className="block text-[10px] text-white/30 mb-1">{isCyclic && isAlternating ? 'Стартовая фаза' : 'Фаза'}</label>
           <div className="flex gap-1">
             {(['day', 'night'] as const).map(p => (
               <button key={p} onClick={() => setPhase(p)}
@@ -311,7 +317,7 @@ function NewPhaseForm({
             Якорная дата
             {is1515 && isAlternating
               ? <span className="text-amber-400/60 ml-1" title="Месяц этой даты = первый месяц фазы 1. Конкретное число внутри месяца не имеет значения.">ℹ</span>
-              : <span className="text-white/20 ml-1" title="1-й рабочий день нового цикла. Цикл отсчитывается от этой даты.">ℹ</span>
+              : <span className="text-white/20 ml-1" title="1-й рабочий день первого рабочего цикла. Чередование отсчитывается от этой даты.">ℹ</span>
             }
           </label>
           <input type="date" value={anchorDate}
@@ -323,11 +329,13 @@ function NewPhaseForm({
         </div>
       </div>
 
-      {is1515 && (
+      {isCyclic && (
         <div className={`rounded-xl px-3 py-2.5 border ${isAlternating ? 'border-amber-500/30 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={isAlternating} onChange={e => handleAlternatingChange(e.target.checked)} className="accent-amber-500" />
-            <span className="text-xs text-white/70 font-medium">Чередовать фазы каждый месяц</span>
+            <input type="checkbox" checked={isAlternating} onChange={e => setIsAlternating(e.target.checked)} className="accent-amber-500" />
+            <span className="text-xs text-white/70 font-medium">
+              {is1515 ? 'Чередовать фазы каждый месяц' : 'Чередовать фазы каждый цикл'}
+            </span>
           </label>
           <div className="mt-1 text-[10px] text-white/40">
             {isAlternating

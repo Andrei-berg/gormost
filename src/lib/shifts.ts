@@ -277,22 +277,35 @@ export function resolveShiftStatus(
   const phase = active_phase.phase
   const times = SHIFT_TIMES[phase]
 
+  // Helper: flip phase every cycle when is_alternating is true
+  const altPhase = (base: 'day' | 'night', periodDays: number): 'day' | 'night' => {
+    if (!active_phase!.is_alternating) return base
+    const cycleIdx = Math.floor(daysElapsed / periodDays)
+    return cycleIdx % 2 === 0 ? base : (base === 'day' ? 'night' : 'day')
+  }
+
   if (schedule_code === '2/2') {
     const pos = ((daysElapsed % 4) + 4) % 4
     const working = pos < 2
-    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+    const ep = altPhase(phase, 4)
+    const t = SHIFT_TIMES[ep]
+    return { working, phase: working ? ep : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
   }
 
   if (schedule_code === '3/3') {
     const pos = ((daysElapsed % 6) + 6) % 6
     const working = pos < 3
-    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+    const ep = altPhase(phase, 6)
+    const t = SHIFT_TIMES[ep]
+    return { working, phase: working ? ep : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
   }
 
   if (schedule_code === '6/6') {
     const pos = ((daysElapsed % 12) + 12) % 12
     const working = pos < 6
-    return { working, phase: working ? phase : null, shift_start: working ? times.start : null, shift_end: working ? times.end : null }
+    const ep = altPhase(phase, 12)
+    const t = SHIFT_TIMES[ep]
+    return { working, phase: working ? ep : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
   }
 
   if (schedule_code === '15/15') {
