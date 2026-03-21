@@ -8,8 +8,9 @@ import CoverageTable from './CoverageTable'
 import StroevayaView from './StroevayaView'
 import PrintPanel from './PrintPanel'
 import DriversScheduleTab from './DriversScheduleTab'
+import ScheduleCheckTab from './ScheduleCheckTab'
 
-export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers'
+export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers' | 'check'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
 
 function fmt(d: Date) { return d.toISOString().split('T')[0] }
@@ -56,6 +57,7 @@ const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
   { key: 'coverage',  label: '📊 Покрытие'  },
   { key: 'stroevaya', label: '🪖 Строевая'  },
   { key: 'drivers',   label: '🚗 Водители'  },
+  { key: 'check',     label: '🔎 Проверка'  },
 ]
 
 const PRESET_OPTIONS: { key: PeriodPreset; label: string }[] = [
@@ -206,6 +208,7 @@ export default function HRToolsShell({ session }: Props) {
           {view === 'coverage'  && <CoverageTable      users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
           {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
           {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} onPhasesChanged={load} />}
+          {view === 'check'     && <ScheduleCheckTab  users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} />}
         </>
       )}
     </div>
