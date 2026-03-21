@@ -697,6 +697,8 @@ export interface EmployeeAssignment {
   foreman_name: string | null
   shift_reference_date: string | null
   is_driver: boolean
+  custom_work_days: number | null   // X/Y schedule: days on
+  custom_rest_days: number | null   // X/Y schedule: days off
   started_at: string
   ended_at: string | null
   created_by: string | null

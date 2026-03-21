@@ -7,7 +7,7 @@ import type {
 import {
   fetchWorkPlans, fetchWorkPlanWithItems,
   fetchWorkAssignmentsForItems, createWorkAssignment, deleteWorkAssignment,
-  markWorkPlanAssigned, startWorkPlan,
+  markWorkPlanAssigned, startWorkPlan, completeWorkPlan,
   fetchUsersWithAssignments,
 } from '@/lib/api'
 import { isWorkerOnDuty, getShiftForDate } from '@/lib/shifts'
@@ -437,6 +437,14 @@ function PlanAssignCard({
     onRefresh()
   }
 
+  const handleComplete = async () => {
+    if (!confirm('Завершить план работ?')) return
+    setActing(true)
+    await completeWorkPlan(plan.id, session.user_id)
+    setActing(false)
+    onRefresh()
+  }
+
   return (
     <div className={`glass rounded-xl overflow-hidden border ${
       plan.status === 'ASSIGNED' ? 'border-blue-500/20' :
@@ -464,6 +472,15 @@ function PlanAssignCard({
               className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium"
             >
               {acting ? '...' : '▶ В работу'}
+            </button>
+          )}
+          {plan.status === 'IN_PROGRESS' && (
+            <button
+              onClick={handleComplete}
+              disabled={acting}
+              className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium"
+            >
+              {acting ? '...' : '✓ Завершить'}
             </button>
           )}
         </div>

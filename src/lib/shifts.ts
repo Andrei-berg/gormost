@@ -135,7 +135,7 @@ export function getShiftNumberForDate(date: Date): 1 | 2 | 3 | 4 {
  *   2/2           — rolling 4-day cycle; if active_phase provided, uses its anchor_date
  *   3/3           — rolling 6-day cycle; if active_phase provided, uses its anchor_date
  *   6/6           — rolling 12-day cycle; if active_phase provided, uses its anchor_date
- *   15/15         — calendar half: rotation_group '1' → 1–15, '2' → 16–end
+ *   15/15         — calendar half: rotation_group '1' → 1–15, '2' → 16–30; day 31 wraps to position 1 (group 1 works)
  *
  * active_phase is optional: when provided (Variant 2), its anchor_date takes precedence
  * over shift_reference_date for cyclic schedules. Existing call sites need no changes.
@@ -147,6 +147,8 @@ export function isWorkerOnDuty(
     shift_reference_date: string | null
     rotation_group: string | null
     active_phase?: { anchor_date: string } | null
+    custom_work_days?: number | null
+    custom_rest_days?: number | null
   },
   date: Date
 ): boolean {
@@ -155,6 +157,17 @@ export function isWorkerOnDuty(
 
   const { shift_num, schedule_code, shift_reference_date, rotation_group, active_phase } = assignment
   const code = schedule_code
+
+  if (code === 'X/Y') {
+    const w = assignment.custom_work_days
+    const r = assignment.custom_rest_days
+    const anchorXY = active_phase?.anchor_date ?? shift_reference_date
+    if (!w || !r || !anchorXY) return false
+    const ref = new Date(anchorXY); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    const cycle = w + r
+    return ((days % cycle) + cycle) % cycle < w
+  }
 
   if (code === '1/3') {
     if (!shift_num) return false
@@ -191,6 +204,14 @@ export function isWorkerOnDuty(
   }
 
   if (code === '15/15') {
+    if (anchorStr) {
+      // Variant B: rolling 30-day cycle from anchor date (day 31 handled naturally)
+      const ref = new Date(anchorStr); ref.setHours(0, 0, 0, 0)
+      const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+      const pos = ((days % 30) + 30) % 30
+      return rotation_group === '2' ? pos >= 15 : pos < 15
+    }
+    // Legacy fallback: calendar-based (no anchor set yet)
     const day = target.getDate()
     return rotation_group === '2' ? day >= 16 : day <= 15
   }
@@ -208,6 +229,20 @@ export type PhaseScheduleCode = typeof PHASE_SCHEDULE_CODES[number]
 
 export function isPhaseSchedule(code: string): code is PhaseScheduleCode {
   return PHASE_SCHEDULE_CODES.includes(code as PhaseScheduleCode)
+}
+
+/** X/Y custom schedule: whether code requires an anchor ref date (not 5/2 or 1/3) */
+export function isCustomSchedule(code: string): boolean {
+  return code === 'X/Y'
+}
+
+/**
+ * Display label for custom schedule. Returns e.g. "4/4", "5/3" from work/rest days.
+ * Falls back to the schedule code if values are missing.
+ */
+export function customScheduleLabel(workDays: number | null | undefined, restDays: number | null | undefined): string {
+  if (workDays && restDays) return `${workDays}/${restDays}`
+  return 'X/Y'
 }
 
 // Shift times per phase
@@ -235,6 +270,8 @@ export function resolveShiftStatus(
     rotation_group: string | null
     shift_reference_date: string | null
     active_phase?: { phase: 'day' | 'night'; anchor_date: string; schedule_code: string; is_alternating?: boolean } | null
+    custom_work_days?: number | null
+    custom_rest_days?: number | null
   },
   date: Date
 ): import('@/types').ShiftStatus {
@@ -242,6 +279,21 @@ export function resolveShiftStatus(
   target.setHours(0, 0, 0, 0)
 
   const { schedule_code, shift_num, rotation_group, active_phase } = assignment
+
+  // --- Нестандартный N/M (водители) ---
+  if (schedule_code === 'X/Y') {
+    const w = assignment.custom_work_days
+    const r = assignment.custom_rest_days
+    const anchorXY = active_phase?.anchor_date ?? assignment.shift_reference_date
+    if (!w || !r || !anchorXY) return { working: false, phase: null, shift_start: null, shift_end: null }
+    const ref = new Date(anchorXY); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    const cycle = w + r
+    const working = ((days % cycle) + cycle) % cycle < w
+    const p = active_phase?.phase ?? 'day'
+    const t = SHIFT_TIMES[p]
+    return { working, phase: working ? p : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
+  }
 
   // --- Суточный: 24h shift-based ---
   if (schedule_code === '1/3') {
@@ -309,14 +361,21 @@ export function resolveShiftStatus(
   }
 
   if (schedule_code === '15/15') {
-    const day = target.getDate()
-    const working = rotation_group === '2' ? day >= 16 : day <= 15
-    // Auto-alternating: flip phase each calendar month from the anchor month
+    let working: boolean
+    if (active_phase.anchor_date) {
+      // Variant B: rolling 30-day cycle from anchor date
+      const pos = ((daysElapsed % 30) + 30) % 30
+      working = rotation_group === '2' ? pos >= 15 : pos < 15
+    } else {
+      // Legacy fallback: calendar-based
+      const day = target.getDate()
+      working = rotation_group === '2' ? day >= 16 : day <= 15
+    }
+    // Auto-alternating: flip phase every 30-day cycle
     let effectivePhase = phase
     if (active_phase.is_alternating) {
-      const anchor = new Date(active_phase.anchor_date + 'T12:00:00')
-      const monthsElapsed = (target.getFullYear() - anchor.getFullYear()) * 12 + (target.getMonth() - anchor.getMonth())
-      if (monthsElapsed % 2 !== 0) effectivePhase = phase === 'day' ? 'night' : 'day'
+      const cycleIdx = Math.floor(daysElapsed / 30)
+      if (cycleIdx % 2 !== 0) effectivePhase = phase === 'day' ? 'night' : 'day'
     }
     const effectiveTimes = SHIFT_TIMES[effectivePhase]
     return { working, phase: working ? effectivePhase : null, shift_start: working ? effectiveTimes.start : null, shift_end: working ? effectiveTimes.end : null }
@@ -345,6 +404,8 @@ export function resolveShiftForDate(
     shift_reference_date: string | null
     rotation_group: string | null
     is_driver: boolean
+    custom_work_days?: number | null
+    custom_rest_days?: number | null
   },
   date: Date
 ): ShiftResolution {
@@ -352,6 +413,17 @@ export function resolveShiftForDate(
   target.setHours(0, 0, 0, 0)
 
   const { schedule_code, shift_reference_date, rotation_group } = assignment
+
+  if (schedule_code === 'X/Y') {
+    const w = assignment.custom_work_days
+    const r = assignment.custom_rest_days
+    if (!w || !r || !shift_reference_date) return { isWorking: false, shiftType: null }
+    const ref = new Date(shift_reference_date); ref.setHours(0, 0, 0, 0)
+    const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
+    const cycle = w + r
+    const isWorking = ((days % cycle) + cycle) % cycle < w
+    return { isWorking, shiftType: isWorking ? 'DAY' : null }
+  }
 
   if (schedule_code === '5/2') {
     const dow = target.getDay()  // 0=Sun, 6=Sat
@@ -386,15 +458,17 @@ export function resolveShiftForDate(
   }
 
   if (schedule_code === '15/15') {
-    const dayOfMonth = target.getDate()
     let isWorking: boolean
-    if (rotation_group === '2') {
-      isWorking = dayOfMonth >= 16
+    if (shift_reference_date) {
+      // Variant B: rolling 30-day cycle from anchor date
+      const pos = ((daysElapsed % 30) + 30) % 30
+      isWorking = rotation_group === '2' ? pos >= 15 : pos < 15
     } else if (rotation_group === '2_1') {
       isWorking = daysElapsed % 30 < 15
     } else {
-      // group '1' and bare '15/15'
-      isWorking = dayOfMonth >= 1 && dayOfMonth <= 15
+      // Legacy fallback: calendar-based
+      const dayOfMonth = target.getDate()
+      isWorking = rotation_group === '2' ? dayOfMonth >= 16 : dayOfMonth <= 15
     }
     return { isWorking, shiftType: isWorking ? 'DAY' : null }
   }

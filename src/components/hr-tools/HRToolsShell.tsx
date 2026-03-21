@@ -205,7 +205,7 @@ export default function HRToolsShell({ session }: Props) {
           {view === 'tabel'     && <TabeTable          users={filtered} phases={data.phases} period={period} />}
           {view === 'coverage'  && <CoverageTable      users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
           {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
-          {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} session={session} onPhasesChanged={load} />}
+          {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} onPhasesChanged={load} />}
         </>
       )}
     </div>

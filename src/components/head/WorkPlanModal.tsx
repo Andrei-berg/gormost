@@ -128,7 +128,6 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serviceUsers, setServiceUsers] = useState<User[]>([])
-  const [workerSearch, setWorkerSearch] = useState<Record<string, string>>({})
   const [countdown, setCountdown] = useState(getDeadlineCountdown())
 
   useEffect(() => {
@@ -157,7 +156,6 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
         ? { ...it, named_workers: [...it.named_workers, name] }
         : it
     ))
-    setWorkerSearch(prev => ({ ...prev, [itemId]: '' }))
   }, [])
 
   const removeNamedWorker = useCallback((itemId: string, name: string) => {
@@ -225,8 +223,6 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
     }
   }
 
-  const [showRoster, setShowRoster] = useState(true)
-
   const otherServices = ALL_SERVICES.filter(id => id !== session.service_id)
   const serviceMeta = session.service_id ? SERVICE_META[session.service_id] : null
   const filledCount = items.filter(it => it.location.trim() || it.work_description.trim()).length
@@ -291,32 +287,6 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           )}
         </div>
 
-        {/* ── Service roster ── */}
-        {serviceUsers.length > 0 && (
-          <div className="px-5 py-3 border-b border-white/10">
-            <button
-              onClick={() => setShowRoster(v => !v)}
-              className="flex items-center gap-2 w-full text-left"
-            >
-              <span className="text-[10px] text-white/35 uppercase tracking-widest">
-                👥 Состав службы · {serviceUsers.length} чел.
-              </span>
-              <span className="text-white/20 text-xs ml-auto">{showRoster ? '▲' : '▼'}</span>
-            </button>
-            {showRoster && (
-              <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {serviceUsers.map(u => (
-                  <div key={u.user_id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/4 border border-white/8">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs text-white/80 font-medium truncate">{u.full_name}</div>
-                      <div className="text-[10px] text-white/30 truncate">{u.position ?? '—'}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Items ── */}
         <div className="px-5 py-4 space-y-3">
@@ -332,21 +302,25 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
             </button>
           </div>
 
-          {items.map((item, idx) => (
-            <ItemCard
-              key={item._id}
-              item={item}
-              index={idx}
-              serviceUsers={serviceUsers}
-              otherServices={otherServices}
-              workerSearch={workerSearch[item._id] ?? ''}
-              onWorkerSearchChange={val => setWorkerSearch(prev => ({ ...prev, [item._id]: val }))}
-              onUpdate={patch => updateItem(item._id, patch)}
-              onRemove={() => removeItem(item._id)}
-              onAddWorker={name => addNamedWorker(item._id, name)}
-              onRemoveWorker={name => removeNamedWorker(item._id, name)}
-            />
-          ))}
+          {items.map((item, idx) => {
+            const takenByOther = new Set(
+              items.flatMap(it => it._id !== item._id ? it.named_workers : [])
+            )
+            return (
+              <ItemCard
+                key={item._id}
+                item={item}
+                index={idx}
+                serviceUsers={serviceUsers}
+                otherServices={otherServices}
+                takenByOther={takenByOther}
+                onUpdate={patch => updateItem(item._id, patch)}
+                onRemove={() => removeItem(item._id)}
+                onAddWorker={name => addNamedWorker(item._id, name)}
+                onRemoveWorker={name => removeNamedWorker(item._id, name)}
+              />
+            )
+          })}
 
           {items.length === 0 && (
             <button
@@ -423,8 +397,7 @@ interface ItemCardProps {
   index: number
   serviceUsers: User[]
   otherServices: string[]
-  workerSearch: string
-  onWorkerSearchChange: (val: string) => void
+  takenByOther: Set<string>
   onUpdate: (patch: Partial<DraftItem>) => void
   onRemove: () => void
   onAddWorker: (name: string) => void
@@ -432,14 +405,9 @@ interface ItemCardProps {
 }
 
 function ItemCard({
-  item, index, serviceUsers, otherServices,
-  workerSearch, onWorkerSearchChange,
+  item, index, serviceUsers, otherServices, takenByOther,
   onUpdate, onRemove, onAddWorker, onRemoveWorker
 }: ItemCardProps) {
-  const filteredUsers = serviceUsers.filter(u =>
-    !item.named_workers.includes(u.full_name) &&
-    (workerSearch === '' || u.full_name.toLowerCase().includes(workerSearch.toLowerCase()))
-  )
 
   const initCrossService = () => {
     if (item.cross_service) {
@@ -559,42 +527,37 @@ function ItemCard({
           </button>
         </div>
 
-        {/* Named workers expanded */}
+        {/* Named workers expanded — clickable roster */}
         {item.showNamed && (
-          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-3 space-y-2">
-            {item.named_workers.length > 0 && (
+          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-3">
+            {serviceUsers.length === 0 ? (
+              <div className="text-[11px] text-white/25 text-center py-2">Нет сотрудников в службе</div>
+            ) : (
               <div className="flex flex-wrap gap-1.5">
-                {item.named_workers.map(name => (
-                  <span key={name} className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[11px] text-emerald-300">
-                    {name}
-                    <button onClick={() => onRemoveWorker(name)} className="text-emerald-500/50 hover:text-red-400 transition-colors ml-0.5">×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="relative">
-              <input
-                type="text"
-                value={workerSearch}
-                onChange={e => onWorkerSearchChange(e.target.value)}
-                placeholder="Поиск сотрудника…"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/40"
-              />
-              {workerSearch && filteredUsers.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/15 rounded-xl shadow-2xl z-20 max-h-40 overflow-y-auto">
-                  {filteredUsers.slice(0, 10).map(u => (
+                {serviceUsers.map(u => {
+                  const added = item.named_workers.includes(u.full_name)
+                  const busy  = !added && takenByOther.has(u.full_name)
+                  return (
                     <button
                       key={u.user_id}
-                      onClick={() => onAddWorker(u.full_name)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/10 text-left transition-colors"
+                      disabled={busy}
+                      onClick={() => added ? onRemoveWorker(u.full_name) : onAddWorker(u.full_name)}
+                      title={busy ? 'Уже назначен в другой позиции' : undefined}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                        added
+                          ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-200'
+                          : busy
+                            ? 'bg-white/3 border-white/5 text-white/20 cursor-not-allowed line-through'
+                            : 'bg-white/5 border-white/8 text-white/50 hover:bg-emerald-500/10 hover:border-emerald-500/25 hover:text-emerald-300'
+                      }`}
                     >
-                      <span className="text-xs text-white">{u.full_name}</span>
-                      {u.position && <span className="text-[10px] text-white/40">{u.position}</span>}
+                      {added && <span className="text-emerald-400 text-[10px]">✓</span>}
+                      <span>{u.full_name}</span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

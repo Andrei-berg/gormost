@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssignmentWithScheduleCode } from '@/types'
 import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api'
-import { getShiftForDate, isPhaseSchedule } from '@/lib/shifts'
+import { getShiftForDate, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
 import ShiftRoster from '@/components/ShiftRoster'
 import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
 import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
@@ -204,6 +204,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     rotation_group: string | null
     shift_reference_date: string | null
     is_driver: boolean
+    custom_work_days?: number | null
+    custom_rest_days?: number | null
   }, phaseData: { phase: 'day' | 'night'; anchor_date: string; valid_from: string; schedule_code: string; is_alternating: boolean } | null) => Promise<void>
 }) {
   const today = new Date().toISOString().split('T')[0]
@@ -213,6 +215,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
   const [refDate, setRefDate] = useState(user.assignment?.shift_reference_date ?? '')
   const [isDriver, setIsDriver] = useState(user.assignment?.is_driver ?? false)
   const [scheduleId, setScheduleId] = useState(user.assignment?.schedule_id ?? '')
+  const [customWork, setCustomWork] = useState<string>(String(user.assignment?.custom_work_days ?? ''))
+  const [customRest, setCustomRest] = useState<string>(String(user.assignment?.custom_rest_days ?? ''))
   // Phase state for cyclic schedules
   const [phaseVal, setPhaseVal] = useState<'day' | 'night'>(user.assignment?.active_phase?.phase ?? 'day')
   const [phaseFrom, setPhaseFrom] = useState(today)
@@ -225,6 +229,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     const found = schedules.find(s => s.code === code)
     setScheduleId(found?.id ?? '')
     setShiftNum(''); setRotationGroup(''); setRefDate('')
+    setCustomWork(''); setCustomRest('')
     setCreatePhase(isPhaseSchedule(code))
   }
 
@@ -236,18 +241,23 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     setRefDate(user.assignment?.shift_reference_date ?? '')
     setIsDriver(user.assignment?.is_driver ?? false)
     setScheduleId(user.assignment?.schedule_id ?? '')
+    setCustomWork(String(user.assignment?.custom_work_days ?? ''))
+    setCustomRest(String(user.assignment?.custom_rest_days ?? ''))
   }, [user.assignment])
 
   const svcName = services.find(s => s.service_id === user.service_id)?.service_name
 
   const requiresShift = scheduleCode === '1/3'
-  const needsRefDate = scheduleCode === '2/2' || scheduleCode === '3/3' || scheduleCode === '6/6'
+  const needsRefDate = scheduleCode === '2/2' || scheduleCode === '3/3' || scheduleCode === '6/6' || scheduleCode === '15/15'
   const needsHalf = scheduleCode === '15/15'
-  // shift_num is required for 1/3 and 5/2, optional for others (organizational grouping)
+  const needsCustom = isCustomSchedule(scheduleCode)
   const canSelectShift = !!scheduleCode
 
   if (!isEditing) {
     const a = user.assignment
+    const displayCode = a?.schedule_code === 'X/Y'
+      ? customScheduleLabel(a.custom_work_days, a.custom_rest_days)
+      : a?.schedule_code
     return (
       <tr className="border-b border-white/5 hover:bg-white/3 group cursor-pointer" onDoubleClick={onEdit} title="Двойной клик — редактировать">
         <td className="px-3 py-2 text-white/80">{user.full_name}</td>
@@ -257,7 +267,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             ? <span className={`text-xs font-medium ${SHIFT_COLORS[a.shift_num]}`}>{SHIFT_LABELS[a.shift_num]}</span>
             : <span className="text-white/20 text-xs">—</span>}
         </td>
-        <td className="px-3 py-2 text-xs text-white/50">{a?.schedule_code ?? <span className="text-white/20">—</span>}</td>
+        <td className="px-3 py-2 text-xs text-white/50">{displayCode ?? <span className="text-white/20">—</span>}</td>
         <td className="px-3 py-2 text-xs text-white/30">
           {a?.rotation_group && `гр.${a.rotation_group}`}
           {a?.shift_reference_date && ` от ${a.shift_reference_date}`}
@@ -275,6 +285,10 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
   const sel = 'form-select text-xs px-1.5 py-1'
   const inp = 'form-input text-xs px-1.5 py-1'
 
+  const customWorkNum = customWork ? parseInt(customWork) : null
+  const customRestNum = customRest ? parseInt(customRest) : null
+  const customValid = !needsCustom || (!!customWorkNum && !!customRestNum && customWorkNum > 0 && customRestNum > 0)
+
   return (
     <tr className="border-b border-blue-500/20 bg-blue-500/5">
       <td colSpan={6} className="px-3 py-3">
@@ -291,6 +305,38 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             {schedules.map(s => <option key={s.id} value={s.code}>{s.code} · {s.name}</option>)}
           </select>
 
+          {/* X/Y custom schedule: work/rest day inputs */}
+          {needsCustom && (
+            <>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" min={1} max={30} value={customWork}
+                  onChange={e => setCustomWork(e.target.value)}
+                  className={`${inp} w-14 text-center`}
+                  placeholder="раб."
+                  title="Рабочих дней"
+                />
+                <span className="text-white/30 text-xs">/</span>
+                <input
+                  type="number" min={1} max={30} value={customRest}
+                  onChange={e => setCustomRest(e.target.value)}
+                  className={`${inp} w-14 text-center`}
+                  placeholder="вых."
+                  title="Выходных дней"
+                />
+              </div>
+              <input
+                type="date" value={refDate} onChange={e => setRefDate(e.target.value)}
+                className={inp} title="Дата начала первой рабочей вахты (якорная дата)"
+              />
+              {customWorkNum && customRestNum && (
+                <span className="text-xs text-white/25">
+                  = цикл {customWorkNum}/{customRestNum} ({customWorkNum + customRestNum} дн.)
+                </span>
+              )}
+            </>
+          )}
+
           {needsRefDate && (
             <input
               type="date"
@@ -305,7 +351,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             <select value={rotationGroup} onChange={e => setRotationGroup(e.target.value)} className={sel}>
               <option value="">— группа —</option>
               <option value="1">1–15 числа</option>
-              <option value="2">16–31 числа</option>
+              <option value="2">16–30 числа</option>
             </select>
           )}
 
@@ -335,13 +381,15 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
           )}
 
           <button
-            disabled={saving || !scheduleId}
+            disabled={saving || !scheduleId || !customValid}
             onClick={() => onSave({
               schedule_id: scheduleId,
               shift_num: shiftNum ? (Number(shiftNum) as 1|2|3|4) : null,
               rotation_group: rotationGroup || null,
               shift_reference_date: refDate || null,
               is_driver: isDriver,
+              custom_work_days: needsCustom ? customWorkNum : null,
+              custom_rest_days: needsCustom ? customRestNum : null,
             }, createPhase && isPhaseSchedule(scheduleCode) ? {
               phase: phaseVal,
               anchor_date: phaseFrom,
