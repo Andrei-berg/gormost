@@ -324,9 +324,9 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
                   </select>
                   <input type="date" value={phaseFrom} onChange={e => setPhaseFrom(e.target.value)} className={inp} title="Начало фазы" />
                   {scheduleCode === '15/15' && (
-                    <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer">
+                    <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer" title="Автоматически чередовать фазу каждый месяц">
                       <input type="checkbox" checked={phaseAlt} onChange={e => setPhaseAlt(e.target.checked)} className="accent-indigo-400" />
-                      alt
+                      чередование
                     </label>
                   )}
                 </>
