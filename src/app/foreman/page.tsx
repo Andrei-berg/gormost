@@ -4,6 +4,7 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import TaskList from '@/components/foreman/TaskList'
 import BrigadeAssigner from '@/components/foreman/BrigadeAssigner'
+import PlanDashboard from '@/components/foreman/PlanDashboard'
 import RedirectBanner from '@/components/foreman/RedirectBanner'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions,
@@ -36,7 +37,7 @@ function Content({ session }: { session: AuthSession }) {
   const [redirectedPlans, setRedirectedPlans] = useState<WorkPlanWithItems[]>([])
   const [redirects, setRedirects] = useState<WorkRedirect[]>([])
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
-  const [tab, setTab] = useState<'tasks' | 'brigade'>('brigade')
+  const [tab, setTab] = useState<'plans' | 'brigade' | 'tasks'>('plans')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [planLoading, setPlanLoading] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -211,6 +212,9 @@ function Content({ session }: { session: AuthSession }) {
 
       {/* Main tabs */}
       <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50'}`}>
+          📊 Планы смены
+        </button>
         <button onClick={() => setTab('brigade')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'brigade' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-white/50'}`}>
           👷 Бригады
         </button>
@@ -219,6 +223,14 @@ function Content({ session }: { session: AuthSession }) {
         </button>
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
+
+      {tab === 'plans' && (
+        <PlanDashboard
+          session={session}
+          services={services}
+          onOpenAssigner={() => setTab('brigade')}
+        />
+      )}
 
       {tab === 'brigade' && <BrigadeAssigner session={session} services={services} />}
 

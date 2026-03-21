@@ -19,7 +19,7 @@ interface Props {
   services: Service[]
 }
 
-const SERVICE_META: Record<string, string> = {
+const SERVICE_EMOJI: Record<string, string> = {
   'SRV-ENG':  '⚡',
   'SRV-STR':  '🏗️',
   'SRV-FIRE': '🚒',
@@ -61,13 +61,16 @@ export default function OnDutyMonitor({ users, services }: Props) {
   const offToday   = filtered.filter(e => e.status === 'off_today')
   const noSchedule = filtered.filter(e => e.status === 'no_schedule')
 
-  // Group on-duty workers by service, in SERVICE_META order
+  // Group on-duty workers by service, in SERVICE_EMOJI order
   const byService = services
     .map(svc => ({
       svc,
       workers: onDuty.filter(e => e.user.service_id === svc.service_id),
     }))
     .filter(g => g.workers.length > 0)
+
+  const totalDay   = onDuty.filter(e => e.phase === 'day').length
+  const totalNight = onDuty.filter(e => e.phase === 'night').length
 
   return (
     <div className="glass rounded-2xl p-4 space-y-4">
@@ -126,40 +129,78 @@ export default function OnDutyMonitor({ users, services }: Props) {
         </div>
       </div>
 
-      {/* On-duty list grouped by service */}
+      {/* On-duty: service card grid */}
       {onDuty.length === 0 ? (
         <div className="text-center text-white/20 py-4 text-sm">
           По выбранным фильтрам никто не работает в этот день
         </div>
       ) : (
-        <div className="space-y-3">
-          {byService.map(({ svc, workers }) => (
-            <div key={svc.service_id}>
-              <div className="text-xs text-white/30 mb-2 flex items-center gap-2">
-                <span>{SERVICE_META[svc.service_id] ?? ''} {svc.service_name}</span>
-                <span className="bg-green-500/15 text-green-400 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                  {workers.length}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {workers.map(e => (
-                  <div
-                    key={e.user.user_id}
-                    className="flex items-center gap-1.5 bg-white/5 hover:bg-white/8 rounded-lg px-2.5 py-1.5 border border-white/8 transition-colors"
-                  >
-                    <span className="text-xs text-white/80">{e.user.full_name}</span>
-                    <span className="text-[10px] text-white/25">{e.user.assignment?.schedule_code}</span>
-                    {e.phase && (
-                      <span className="text-[10px]" title={e.phase === 'day' ? `${e.shiftStart}–${e.shiftEnd}` : `${e.shiftStart}–${e.shiftEnd}`}>
-                        {e.phase === 'day' ? '☀' : '🌙'}
-                      </span>
-                    )}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {byService.map(({ svc, workers }) => {
+              const dayCount   = workers.filter(e => e.phase === 'day').length
+              const nightCount = workers.filter(e => e.phase === 'night').length
+              return (
+                <div key={svc.service_id} className="rounded-xl border border-white/10 bg-white/3 overflow-hidden">
+                  {/* Card header */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white/3 border-b border-white/5">
+                    <span className="text-base">{SERVICE_EMOJI[svc.service_id] ?? '🏢'}</span>
+                    <span className="text-xs font-semibold text-white/85 flex-1 truncate">{svc.service_name}</span>
+                    <span className="text-[10px] font-bold bg-green-500/15 text-green-400 rounded-full px-1.5 py-0.5 shrink-0">
+                      {workers.length}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+
+                  {/* Worker rows */}
+                  <div className="divide-y divide-white/[0.04]">
+                    {workers.map(e => (
+                      <div key={e.user.user_id} className="flex items-center gap-2 px-3 py-1.5">
+                        {e.phase ? (
+                          <span
+                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? 'text-amber-300' : 'text-blue-300'}`}
+                            title={e.shiftStart && e.shiftEnd ? `${e.shiftStart}–${e.shiftEnd}` : undefined}
+                          >
+                            {e.phase === 'day' ? '☀' : '🌙'}
+                          </span>
+                        ) : (
+                          <span className="w-4 shrink-0" />
+                        )}
+                        <span className="text-xs text-white/80 flex-1 truncate">{e.user.full_name}</span>
+                        <span className="text-[10px] text-white/25 shrink-0 truncate max-w-[90px]">
+                          {e.user.position ?? e.user.assignment?.schedule_code ?? ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Card footer: day/night split */}
+                  {(dayCount > 0 || nightCount > 0) && (
+                    <div className="px-3 py-1 border-t border-white/5 flex gap-3 bg-black/10">
+                      {dayCount > 0 && (
+                        <span className="text-[10px] text-amber-300/60">☀ {dayCount} дн.</span>
+                      )}
+                      {nightCount > 0 && (
+                        <span className="text-[10px] text-blue-300/60">🌙 {nightCount} ноч.</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Totals line */}
+          <div className="flex items-center gap-4 pt-1 text-[10px] text-white/30">
+            <span>
+              Итого: <span className="text-white/60 font-semibold">{onDuty.length} чел.</span>
+            </span>
+            {totalDay > 0 && <span className="text-amber-300/50">☀ дн. {totalDay}</span>}
+            {totalNight > 0 && <span className="text-blue-300/50">🌙 ноч. {totalNight}</span>}
+            {onDuty.filter(e => !e.phase).length > 0 && (
+              <span>{onDuty.filter(e => !e.phase).length} без фазы</span>
+            )}
+          </div>
+        </>
       )}
 
       {/* Off-duty list (collapsible) */}
