@@ -7,8 +7,9 @@ import TabeTable from './TabeTable'
 import CoverageTable from './CoverageTable'
 import StroevayaView from './StroevayaView'
 import PrintPanel from './PrintPanel'
+import DriversScheduleTab from './DriversScheduleTab'
 
-export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya'
+export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
 
 function fmt(d: Date) { return d.toISOString().split('T')[0] }
@@ -54,6 +55,7 @@ const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
   { key: 'tabel',     label: '📅 Табель'    },
   { key: 'coverage',  label: '📊 Покрытие'  },
   { key: 'stroevaya', label: '🪖 Строевая'  },
+  { key: 'drivers',   label: '🚗 Водители'  },
 ]
 
 const PRESET_OPTIONS: { key: PeriodPreset; label: string }[] = [
@@ -199,10 +201,11 @@ export default function HRToolsShell({ session }: Props) {
         <div className="text-center text-white/30 py-16 text-sm">Загрузка...</div>
       ) : (
         <>
-          {view === 'roster'    && <RosterTable    users={filtered} services={data.services} showService={showService} />}
-          {view === 'tabel'     && <TabeTable      users={filtered} phases={data.phases} period={period} />}
-          {view === 'coverage'  && <CoverageTable  users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
-          {view === 'stroevaya' && <StroevayaView  users={data.users} phases={data.phases} services={data.services} />}
+          {view === 'roster'    && <RosterTable        users={filtered} services={data.services} showService={showService} />}
+          {view === 'tabel'     && <TabeTable          users={filtered} phases={data.phases} period={period} />}
+          {view === 'coverage'  && <CoverageTable      users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
+          {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
+          {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} />}
         </>
       )}
     </div>
