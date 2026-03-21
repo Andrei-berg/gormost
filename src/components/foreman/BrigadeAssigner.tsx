@@ -144,7 +144,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
       <div className="glass rounded-xl border border-cyan-500/20 overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="text-sm font-bold text-white">
-            Смена №{shiftInfo.shiftNumber} · Ваша служба
+            Смена №{shiftInfo.shiftNumber} · Все службы
           </div>
           <div className="text-xs text-white/30">{serviceWorkers.length} чел. на смене</div>
         </div>
@@ -161,7 +161,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
               rosterPanel === 'free' ? 'bg-green-500/10' : 'hover:bg-white/3'
             }`}
           >
-            <span className={`text-xl font-bold font-mono ${freeCount > 0 ? 'text-green-400' : 'text-white/20'}`}>
+            <span className={`text-2xl font-bold font-mono ${freeCount > 0 ? 'text-green-400' : 'text-white/20'}`}>
               {freeCount}
             </span>
             <span className="text-[10px] text-white/40">Свободны</span>
@@ -173,56 +173,79 @@ export default function BrigadeAssigner({ session, services }: Props) {
               rosterPanel === 'assigned' ? 'bg-amber-500/10' : 'hover:bg-white/3'
             }`}
           >
-            <span className={`text-xl font-bold font-mono ${assignedCount > 0 ? 'text-amber-400' : 'text-white/20'}`}>
+            <span className={`text-2xl font-bold font-mono ${assignedCount > 0 ? 'text-amber-400' : 'text-white/20'}`}>
               {assignedCount}
             </span>
             <span className="text-[10px] text-white/40">Назначены</span>
           </button>
         </div>
 
-        {/* Roster: free workers */}
+        {/* Roster: free workers — grouped by service */}
         {rosterPanel === 'free' && (
-          <div className="border-t border-white/5 p-3">
-            <div className="text-[10px] text-green-400/60 uppercase tracking-wider mb-2">Свободные сотрудники</div>
-            {serviceWorkers.filter(u => !assignedInServiceIds.has(u.user_id)).length === 0 ? (
+          <div className="border-t border-white/5 p-3 space-y-3">
+            {freeCount === 0 ? (
               <div className="text-xs text-white/20 italic py-1">Все назначены</div>
             ) : (
-              <div className="grid grid-cols-2 gap-1">
-                {serviceWorkers
-                  .filter(u => !assignedInServiceIds.has(u.user_id))
-                  .map(u => (
-                    <div key={u.user_id} className="text-xs px-2 py-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
-                      <div className="text-white/80 font-medium truncate">{u.full_name}</div>
-                      <div className="text-[10px] text-white/30">{u.position ?? u.assignment?.schedule_code ?? '—'}</div>
+              services.map(svc => {
+                const svcFree = serviceWorkers.filter(u =>
+                  !assignedInServiceIds.has(u.user_id) && u.service_id === svc.service_id
+                )
+                if (svcFree.length === 0) return null
+                const svcEmoji = (['SRV-ENG','SRV-STR','SRV-FIRE','SRV-VENT','SRV-CCTV'] as const)
+                return (
+                  <div key={svc.service_id}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-xs text-white/30 font-medium truncate">{svc.service_name}</span>
+                      <span className="text-[10px] bg-green-500/15 text-green-400 rounded-full px-1.5 py-0.5 shrink-0">{svcFree.length}</span>
                     </div>
-                  ))}
-              </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {svcFree.map(u => (
+                        <div key={u.user_id} className="text-xs px-2 py-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
+                          <div className="text-white/80 font-medium truncate">{u.full_name}</div>
+                          <div className="text-[10px] text-white/30">{u.position ?? u.assignment?.schedule_code ?? '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
         )}
 
-        {/* Roster: assigned workers */}
+        {/* Roster: assigned workers — grouped by service */}
         {rosterPanel === 'assigned' && (
-          <div className="border-t border-white/5 p-3">
-            <div className="text-[10px] text-amber-400/60 uppercase tracking-wider mb-2">Назначенные сотрудники</div>
-            {serviceWorkers.filter(u => assignedInServiceIds.has(u.user_id)).length === 0 ? (
+          <div className="border-t border-white/5 p-3 space-y-3">
+            {assignedCount === 0 ? (
               <div className="text-xs text-white/20 italic py-1">Никто ещё не назначен</div>
             ) : (
-              <div className="space-y-1">
-                {serviceWorkers
-                  .filter(u => assignedInServiceIds.has(u.user_id))
-                  .map(u => {
-                    const locations = workerBusyMap.get(u.user_id) ?? []
-                    return (
-                      <div key={u.user_id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                        <div className="text-white/80 font-medium truncate min-w-0 flex-1">{u.full_name}</div>
-                        <div className="text-[10px] text-amber-400/70 truncate shrink-0 max-w-[40%]">
-                          {locations[0]}{locations.length > 1 ? ` +${locations.length - 1}` : ''}
-                        </div>
-                      </div>
-                    )
-                  })}
-              </div>
+              services.map(svc => {
+                const svcAssigned = serviceWorkers.filter(u =>
+                  assignedInServiceIds.has(u.user_id) && u.service_id === svc.service_id
+                )
+                if (svcAssigned.length === 0) return null
+                return (
+                  <div key={svc.service_id}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-xs text-white/30 font-medium truncate">{svc.service_name}</span>
+                      <span className="text-[10px] bg-amber-500/15 text-amber-400 rounded-full px-1.5 py-0.5 shrink-0">{svcAssigned.length}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {svcAssigned.map(u => {
+                        const locations = workerBusyMap.get(u.user_id) ?? []
+                        return (
+                          <div key={u.user_id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                            <div className="text-white/80 font-medium truncate min-w-0 flex-1">{u.full_name}</div>
+                            <div className="text-[10px] text-amber-400/70 truncate shrink-0 max-w-[45%]">
+                              {locations[0]}{locations.length > 1 ? ` +${locations.length - 1}` : ''}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
         )}
