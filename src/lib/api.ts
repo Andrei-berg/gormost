@@ -539,6 +539,8 @@ export async function fireEmployee(
 export async function fetchWorkPlans(filters?: {
   serviceId?: string
   planDate?: string
+  dateFrom?: string   // inclusive lower bound 'YYYY-MM-DD'
+  dateTo?: string     // inclusive upper bound 'YYYY-MM-DD'
   shiftType?: string
   status?: WorkPlanStatus
   statuses?: WorkPlanStatus[]
@@ -546,6 +548,8 @@ export async function fetchWorkPlans(filters?: {
   let q = supabase.from('work_plans').select('*').order('plan_date', { ascending: false })
   if (filters?.serviceId) q = q.eq('service_id', filters.serviceId)
   if (filters?.planDate)  q = q.eq('plan_date', filters.planDate)
+  if (filters?.dateFrom)  q = q.gte('plan_date', filters.dateFrom)
+  if (filters?.dateTo)    q = q.lte('plan_date', filters.dateTo)
   if (filters?.shiftType) q = q.eq('shift_type', filters.shiftType)
   if (filters?.status)    q = q.eq('status', filters.status)
   if (filters?.statuses && filters.statuses.length > 0) q = q.in('status', filters.statuses)
@@ -1278,6 +1282,8 @@ export async function upsertEmployeeAssignment(
     rotation_group: string | null
     shift_reference_date: string | null
     is_driver: boolean
+    custom_work_days?: number | null
+    custom_rest_days?: number | null
   },
   performedBy: string
 ): Promise<boolean> {
@@ -1297,6 +1303,8 @@ export async function upsertEmployeeAssignment(
       rotation_group: data.rotation_group,
       shift_reference_date: data.shift_reference_date,
       is_driver: data.is_driver,
+      custom_work_days: data.custom_work_days ?? null,
+      custom_rest_days: data.custom_rest_days ?? null,
       started_at: new Date().toISOString().split('T')[0],
       created_by: performedBy,
     })
