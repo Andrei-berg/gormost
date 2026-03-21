@@ -13,6 +13,7 @@ import type {
   EmployeePositionWithProfession, EmployeeAssignmentWithSchedule, EmployeeDetail,
   EmployeeAssignmentWithScheduleCode, UserWithAssignment, WorkAssignment, WorkAssignmentWithUser,
   CrossServiceRequest,
+  WorkRedirect, WorkSource, OriginalPlanFate, ShiftType,
 } from '@/types'
 
 // ============ USERS ============
@@ -1543,4 +1544,173 @@ export async function redirectWorkPlanItem(
     .eq('id', itemId)
   if (!error) await logAction(userId, 'REDIRECT_BRIGADE', 'work_plan_item', itemId, { reason })
   return !error
+}
+
+// ============ OVERRIDE / REDIRECT SYSTEM ============
+
+/**
+ * Create an override order: builds a FAST_TRACK work plan + optionally
+ * creates a work_redirect record and marks the original plan as REDIRECTED/SUSPENDED.
+ */
+export async function createOverrideOrder(data: {
+  serviceId: string
+  planDate: string
+  shiftType: ShiftType
+  location: string
+  workDescription: string
+  source: WorkSource
+  sourceRef: string | null
+  sourceOrg: string | null
+  fastTrackReason: string
+  fromPlanId: string | null
+  fromPlanStatus: string | null
+  partialWorkDone: string | null
+  originalPlanFate: OriginalPlanFate
+  suspendedUntil: string | null
+  orderedBySource: WorkSource
+  orderReference: string | null
+  orderText: string
+  affectedUsers: string[]
+  fullBrigade: boolean
+  createdBy: string
+}): Promise<{ plan: WorkPlan; redirect: WorkRedirect | null } | null> {
+  // 1. Create the FAST_TRACK work plan
+  const planPayload = {
+    service_id: data.serviceId,
+    plan_date: data.planDate,
+    shift_type: data.shiftType,
+    status: 'FAST_TRACK' as WorkPlanStatus,
+    created_by: data.createdBy,
+    priority: 'OVERRIDE',
+    source: data.source,
+    source_ref: data.sourceRef,
+    source_org: data.sourceOrg,
+    fast_track: true,
+    fast_track_reason: data.fastTrackReason,
+  }
+  const { data: newPlan, error: planError } = await supabase
+    .from('work_plans')
+    .insert(planPayload)
+    .select()
+    .single()
+  if (planError || !newPlan) {
+    console.error('createOverrideOrder: plan creation failed', planError?.message)
+    return null
+  }
+
+  // 2. Add work plan item
+  await supabase.from('work_plan_items').insert({
+    plan_id: newPlan.id,
+    location: data.location,
+    work_description: data.workDescription,
+    workers: [],
+    sort_order: 0,
+  })
+
+  let redirect: WorkRedirect | null = null
+
+  // 3. If redirecting from an existing plan — create redirect record
+  if (data.fromPlanId && data.fromPlanStatus) {
+    const newStatus: WorkPlanStatus = data.originalPlanFate === 'CANCEL'
+      ? 'REDIRECTED'
+      : data.originalPlanFate === 'POSTPONE'
+        ? 'SUSPENDED'
+        : 'REDIRECTED'
+
+    const redirectPayload = {
+      from_plan_id: data.fromPlanId,
+      from_status: data.fromPlanStatus,
+      partial_work_done: data.partialWorkDone,
+      to_plan_id: newPlan.id,
+      ordered_by_source: data.orderedBySource,
+      order_reference: data.orderReference,
+      order_text: data.orderText,
+      redirected_by: data.createdBy,
+      affected_users: data.affectedUsers,
+      full_brigade: data.fullBrigade,
+      original_plan_fate: data.originalPlanFate,
+    }
+
+    const { data: redirectRow, error: rErr } = await supabase
+      .from('work_redirects')
+      .insert(redirectPayload)
+      .select()
+      .single()
+
+    if (!rErr && redirectRow) {
+      redirect = redirectRow as WorkRedirect
+
+      // Update original plan status
+      const originalUpdate: Record<string, unknown> = {
+        status: newStatus,
+        parent_redirect_id: redirect.id,
+      }
+      if (data.originalPlanFate === 'POSTPONE' && data.suspendedUntil) {
+        originalUpdate.suspended_until = data.suspendedUntil
+      }
+      await supabase.from('work_plans').update(originalUpdate).eq('id', data.fromPlanId)
+
+      // If fate is CANCEL, mark assignments as REDIRECTED
+      if (data.affectedUsers.length > 0) {
+        await supabase
+          .from('work_assignments')
+          .update({ assignment_status: 'REDIRECTED', redirect_id: redirect.id })
+          .eq('plan_item_id', data.fromPlanId)
+      }
+
+      // Link override plan back to the redirect
+      await supabase
+        .from('work_plans')
+        .update({ parent_redirect_id: redirect.id })
+        .eq('id', newPlan.id)
+    }
+  }
+
+  await logAction(data.createdBy, 'CREATE_OVERRIDE_ORDER', 'work_plans', newPlan.id, {
+    source: data.source, fromPlanId: data.fromPlanId, fate: data.originalPlanFate,
+  })
+
+  return { plan: newPlan as WorkPlan, redirect }
+}
+
+/**
+ * Pause a work plan (IN_PROGRESS → paused state still IN_PROGRESS but with pause_reason set).
+ */
+export async function pauseWorkPlan(planId: string, reason: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ paused_at: new Date().toISOString(), pause_reason: reason })
+    .eq('id', planId)
+  if (!error) await logAction(userId, 'PAUSE_WORK_PLAN', 'work_plans', planId, { reason })
+  return !error
+}
+
+/**
+ * Fetch the redirect journal for a given plan (or all redirects).
+ */
+export async function fetchWorkRedirects(planId?: string): Promise<WorkRedirect[]> {
+  let q = supabase.from('work_redirects').select('*').order('redirected_at', { ascending: false })
+  if (planId) q = q.or(`from_plan_id.eq.${planId},to_plan_id.eq.${planId}`)
+  const { data } = await q
+  return (data || []) as WorkRedirect[]
+}
+
+/**
+ * Fetch plans currently in SUSPENDED status, optionally filtered by service.
+ */
+export async function fetchSuspendedPlans(serviceId?: string): Promise<WorkPlan[]> {
+  let q = supabase.from('work_plans').select('*').eq('status', 'SUSPENDED').order('suspended_until')
+  if (serviceId) q = q.eq('service_id', serviceId)
+  const { data } = await q
+  return (data || []) as WorkPlan[]
+}
+
+/**
+ * Fetch plans currently in FAST_TRACK status needing brigade assignment.
+ */
+export async function fetchFastTrackPlans(serviceId?: string): Promise<WorkPlan[]> {
+  let q = supabase.from('work_plans').select('*').eq('status', 'FAST_TRACK').order('created_at', { ascending: false })
+  if (serviceId) q = q.eq('service_id', serviceId)
+  const { data } = await q
+  return (data || []) as WorkPlan[]
 }

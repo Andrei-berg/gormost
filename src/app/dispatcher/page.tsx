@@ -10,8 +10,9 @@ import TableView from '@/components/dispatcher/TableView'
 import PeopleStats from '@/components/dispatcher/PeopleStats'
 import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
-import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api'
-import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession } from '@/types'
+import OverrideModal from '@/components/dispatcher/OverrideModal'
+import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
+import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
 
 export default function DispatcherPage() {
   return (
@@ -35,6 +36,8 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [peopleStats, setPeopleStats] = useState<{ totalDeployed: number; byService: Record<string, number>; activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> }>({ totalDeployed: 0, byService: {}, activeAssignments: [] })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [shiftUsers, setShiftUsers] = useState<UserWithAssignment[]>([])
+  const [activePlans, setActivePlans] = useState<WorkPlanWithItems[]>([])
+  const [showOverrideModal, setShowOverrideModal] = useState(false)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, shiftU] = await Promise.all([
@@ -50,6 +53,13 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
     const ps = await fetchPeopleStats()
     setPeopleStats(ps)
+
+    // Load active plans for override modal
+    const today = new Date().toISOString().split('T')[0]
+    const rawActivePlans = await fetchWorkPlans({ planDate: today, statuses: ['ASSIGNED', 'IN_PROGRESS', 'BOSS_CONFIRMED', 'FAST_TRACK'] })
+    const withItems = await Promise.all(rawActivePlans.map(p => fetchWorkPlanWithItems(p.id)))
+    setActivePlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+
     setLastUpdated(new Date())
   }, [filterService])
 
@@ -71,6 +81,17 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       <Header session={session} title="Диспетчерская" emoji="🗂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       <KPICards {...kpi} />
+
+      {/* Override / Fast Track button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowOverrideModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-medium text-sm transition-colors"
+        >
+          <span className="text-base">⚡</span>
+          Поручение сверху
+        </button>
+      </div>
 
       <div className="mb-4">
         <OnDutyMonitor users={shiftUsers} services={services} />
@@ -109,6 +130,16 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />
+      )}
+
+      {showOverrideModal && (
+        <OverrideModal
+          session={session}
+          activePlans={activePlans}
+          services={services}
+          onClose={() => setShowOverrideModal(false)}
+          onSuccess={loadData}
+        />
       )}
     </div>
   )

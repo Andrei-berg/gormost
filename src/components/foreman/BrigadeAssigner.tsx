@@ -18,6 +18,7 @@ const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   BRIGADIER: 'Бригадир',
   MASTER: 'Мастер',
   ITR: 'ИТР',
+  DRIVER: 'Водитель',
 }
 
 const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
@@ -25,6 +26,7 @@ const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
   BRIGADIER: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   MASTER: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   ITR: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  DRIVER: 'bg-green-500/20 text-green-300 border-green-500/30',
 }
 
 const ROLE_ICONS: Record<WorkAssignmentRole, string> = {
@@ -32,6 +34,7 @@ const ROLE_ICONS: Record<WorkAssignmentRole, string> = {
   BRIGADIER: '⭐',
   MASTER: '🦺',
   ITR: '📋',
+  DRIVER: '🚗',
 }
 
 interface Props {
@@ -546,6 +549,7 @@ function SplitViewPlanCard({
     BRIGADIER: ['FOREMAN'],
     MASTER:    ['FOREMAN', 'HEAD'],
     ITR:       ['SPECIALIST', 'CHIEF_ENGINEER', 'HEAD', 'ZAMPORAB', 'DISPATCHER', 'HR'],
+    DRIVER:    ['DRIVER'],
   }
 
   // Workers shown in right panel (filtered by search + workerFilter + pickerRole)

@@ -4,13 +4,15 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import TaskList from '@/components/foreman/TaskList'
 import BrigadeAssigner from '@/components/foreman/BrigadeAssigner'
+import RedirectBanner from '@/components/foreman/RedirectBanner'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions,
   fetchWorkTypes, fetchServices, updateRequestStatus,
   fetchWorkPlans, fetchWorkPlanWithItems, startWorkPlan, completeWorkPlan,
+  fetchWorkRedirects,
 } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
-import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems } from '@/types'
+import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems, WorkRedirect } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import AlertBanner from '@/components/AlertBanner'
 
@@ -31,6 +33,8 @@ function Content({ session }: { session: AuthSession }) {
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [myPlans, setMyPlans] = useState<WorkPlanWithItems[]>([])
+  const [redirectedPlans, setRedirectedPlans] = useState<WorkPlanWithItems[]>([])
+  const [redirects, setRedirects] = useState<WorkRedirect[]>([])
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
   const [tab, setTab] = useState<'tasks' | 'brigade'>('brigade')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -45,7 +49,7 @@ function Content({ session }: { session: AuthSession }) {
       fetchWorkPlans({
         serviceId: session.service_id ?? undefined,
         planDate: today,
-        statuses: ['PLANNED', 'IN_PROGRESS', 'DONE'],
+        statuses: ['BOSS_CONFIRMED', 'ASSIGNED', 'PLANNED', 'FAST_TRACK', 'IN_PROGRESS', 'DONE'],
       }),
     ])
     setAllRequests(reqs); setCategories(cats); setObjects(objs)
@@ -53,6 +57,19 @@ function Content({ session }: { session: AuthSession }) {
 
     const plansWithItems = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
     setMyPlans(plansWithItems.filter(Boolean) as WorkPlanWithItems[])
+
+    // Load redirected/suspended plans for this service
+    const rawRedirected = await fetchWorkPlans({
+      serviceId: session.service_id ?? undefined,
+      planDate: today,
+      statuses: ['REDIRECTED', 'SUSPENDED', 'FAST_TRACK'],
+    })
+    const redirectedWithItems = await Promise.all(rawRedirected.map(p => fetchWorkPlanWithItems(p.id)))
+    setRedirectedPlans(redirectedWithItems.filter(Boolean) as WorkPlanWithItems[])
+
+    // Load redirect records
+    const allRedirects = await fetchWorkRedirects()
+    setRedirects(allRedirects)
 
     const { data: assignments } = await supabase.from('request_assignments').select('request_id').eq('user_id', session.user_id)
     setMyRequestIds(new Set((assignments || []).map((a: { request_id: string }) => a.request_id)))
@@ -93,6 +110,8 @@ function Content({ session }: { session: AuthSession }) {
 
       <AlertBanner session={session} />
 
+      <RedirectBanner redirectedPlans={redirectedPlans} redirects={redirects} />
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="glass rounded-xl p-4 text-center">
@@ -122,6 +141,7 @@ function Content({ session }: { session: AuthSession }) {
                 <div key={plan.id} className={`glass rounded-xl overflow-hidden border ${
                   plan.status === 'IN_PROGRESS' ? 'border-violet-500/30' :
                   plan.status === 'DONE' ? 'border-green-500/20' :
+                  plan.status === 'FAST_TRACK' ? 'border-rose-500/40' :
                   'border-blue-500/20'
                 }`}>
                   <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
@@ -137,13 +157,15 @@ function Content({ session }: { session: AuthSession }) {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
                         {statusCfg.label}
                       </span>
-                      {plan.status === 'PLANNED' && (
+                      {(plan.status === 'PLANNED' || plan.status === 'ASSIGNED' || plan.status === 'FAST_TRACK') && (
                         <button
                           onClick={() => handlePlanAction(plan.id, 'start')}
                           disabled={isLoading}
-                          className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium disabled:opacity-50"
+                          className={`px-3 py-1.5 rounded-lg text-white text-sm font-medium disabled:opacity-50 ${
+                            plan.status === 'FAST_TRACK' ? 'bg-rose-600 hover:bg-rose-500' : 'bg-violet-600 hover:bg-violet-500'
+                          }`}
                         >
-                          {isLoading ? '...' : '▶ В работу'}
+                          {isLoading ? '...' : plan.status === 'FAST_TRACK' ? '⚡ Срочно в работу' : '▶ В работу'}
                         </button>
                       )}
                       {plan.status === 'IN_PROGRESS' && (

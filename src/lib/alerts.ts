@@ -126,6 +126,58 @@ export async function fetchSystemAlerts(opts: AlertsOptions): Promise<SystemAler
         })
       }
     }
+
+    // Fast Track plans waiting for brigade assignment
+    const fastTrack = scope.filter((p) => p.status === 'FAST_TRACK')
+    if (fastTrack.length > 0) {
+      alerts.push({
+        id: 'fast-track-unassigned',
+        level: 'critical',
+        title: `⚡ ${fastTrack.length} поручение(я) Fast Track — нужна бригада`,
+        detail: 'Внеплановое задание от вышестоящей организации',
+      })
+    }
+
+    // Redirected plans needing reassignment
+    const needsReassign = scope.filter((p) => p.status === 'REDIRECTED')
+    if (needsReassign.length > 0) {
+      alerts.push({
+        id: 'plan-needs-reassign',
+        level: 'critical',
+        title: `🚨 ${needsReassign.length} план(а) без бригады — снята по поручению`,
+        detail: 'Назначьте замену или перенесите план',
+      })
+    }
+
+    // Suspended plans past their resume date
+    const todayStr = today
+    const overdueResume = scope.filter((p) =>
+      p.status === 'SUSPENDED' && p.suspended_until && p.suspended_until <= todayStr
+    )
+    if (overdueResume.length > 0) {
+      alerts.push({
+        id: 'plan-resume-overdue',
+        level: 'warning',
+        title: `${overdueResume.length} план(а) ожидают возобновления`,
+        detail: 'Дата возобновления наступила — назначьте бригаду',
+      })
+    }
+  }
+
+  // --- ALL roles: active Fast Track orders today ---
+  const allFastTrack = plans.filter((p) => p.status === 'FAST_TRACK')
+  if (allFastTrack.length > 0 && ['DISPATCHER', 'BOSS', 'ZAMPORAB', 'ADMIN'].includes(opts.role)) {
+    const sources = [...new Set(allFastTrack.map((p) => p.source).filter(Boolean))]
+    const externalCount = allFastTrack.filter((p) => p.source !== 'INTERNAL').length
+    if (externalCount > 0) {
+      alerts.push({
+        id: 'fast-track-external',
+        level: 'critical',
+        title: `⚡ ${externalCount} внешних поручений в работе сегодня`,
+        detail: sources.includes('MAYOR') ? 'Есть поручения от Мэрии Москвы' :
+                sources.includes('DJKH') ? 'Есть поручения от ДЖКХ' : 'Поручения от ГУ Гормост',
+      })
+    }
   }
 
   return alerts

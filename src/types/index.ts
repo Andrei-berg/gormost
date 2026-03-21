@@ -331,7 +331,17 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 // WORK PLANNING MODULE — v3.0
 // ============================================
 
-export type WorkPlanStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PLANNED' | 'BOSS_CONFIRMED' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE'
+export type WorkPlanStatus =
+  | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+  | 'PLANNED' | 'BOSS_CONFIRMED' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE'
+  | 'FAST_TRACK'   // bypasses approval chain for emergency/external orders
+  | 'REDIRECTED'   // brigade was pulled off this plan
+  | 'SUSPENDED'    // plan paused, will resume later
+
+export type WorkPriority = 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'CRITICAL' | 'OVERRIDE'
+export type WorkSource = 'INTERNAL' | 'MAIN_OFFICE' | 'DJKH' | 'MAYOR'
+export type OriginalPlanFate = 'REASSIGN' | 'POSTPONE' | 'CANCEL'
+export type WorkAssignmentStatus = 'ACTIVE' | 'REDIRECTED' | 'COMPLETED'
 export type VehicleStatus = 'ACTIVE' | 'BROKEN' | 'MAINTENANCE'
 export type VehicleType = 'CAR' | 'TRUCK' | 'SPECIAL' | 'BUS' | 'TRACTOR' | 'AERIAL' | 'WASHER' | 'LOADER' | 'KMU' | 'CRANE'
 export type VehicleBreakdownSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
@@ -354,6 +364,22 @@ export interface WorkPlan {
   fact_finish: string | null
   created_at: string
   updated_at: string
+  // Override/redirect fields (migration 026)
+  priority: WorkPriority
+  source: WorkSource
+  source_ref: string | null
+  source_org: string | null
+  fast_track: boolean
+  fast_track_reason: string | null
+  started_at: string | null
+  started_by: string | null
+  paused_at: string | null
+  pause_reason: string | null
+  completed_at: string | null
+  completed_by: string | null
+  completion_note: string | null
+  suspended_until: string | null
+  parent_redirect_id: string | null
 }
 
 export interface WorkPlanItem {
@@ -380,7 +406,7 @@ export interface WorkPlanItem {
 }
 
 // Work assignment — employee assigned to a specific work plan item (brigade)
-export type WorkAssignmentRole = 'WORKER' | 'BRIGADIER' | 'MASTER' | 'ITR'
+export type WorkAssignmentRole = 'WORKER' | 'BRIGADIER' | 'MASTER' | 'ITR' | 'DRIVER'
 
 export interface WorkAssignment {
   id: string
@@ -389,6 +415,26 @@ export interface WorkAssignment {
   role: WorkAssignmentRole
   assigned_by: string | null
   assigned_at: string
+  assignment_status: WorkAssignmentStatus
+  redirect_id: string | null
+}
+
+// Redirect journal entry — records every brigade redirect event
+export interface WorkRedirect {
+  id: string
+  from_plan_id: string
+  from_status: string
+  partial_work_done: string | null
+  to_plan_id: string | null
+  ordered_by_source: WorkSource
+  order_reference: string | null
+  order_text: string
+  redirected_by: string
+  redirected_at: string
+  affected_users: string[]
+  full_brigade: boolean
+  original_plan_fate: OriginalPlanFate
+  created_at: string
 }
 
 export interface WorkAssignmentWithUser extends WorkAssignment {
@@ -548,6 +594,24 @@ export const WORK_PLAN_STATUS_CONFIG: Record<WorkPlanStatus, { label: string; co
   ASSIGNED:       { label: 'Люди назначены',    color: '#06b6d4', bg: 'bg-cyan-500/20 border-cyan-500/30' },
   IN_PROGRESS:    { label: 'В работе',          color: '#8b5cf6', bg: 'bg-violet-500/20 border-violet-500/30' },
   DONE:           { label: 'Выполнен',          color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
+  FAST_TRACK:     { label: 'Fast Track ⚡',     color: '#f43f5e', bg: 'bg-rose-500/20 border-rose-500/30' },
+  REDIRECTED:     { label: 'Бригада снята',     color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
+  SUSPENDED:      { label: 'Приостановлен',     color: '#f59e0b', bg: 'bg-amber-500/20 border-amber-500/30' },
+}
+
+export const WORK_PRIORITY_CONFIG: Record<WorkPriority, { label: string; color: string; emoji: string }> = {
+  ROUTINE:   { label: 'Плановая',   color: '#64748b', emoji: '📋' },
+  URGENT:    { label: 'Срочная',    color: '#f97316', emoji: '🔶' },
+  EMERGENCY: { label: 'Аварийная',  color: '#ef4444', emoji: '🚨' },
+  CRITICAL:  { label: 'Критическая', color: '#dc2626', emoji: '🔴' },
+  OVERRIDE:  { label: 'Поручение',  color: '#f43f5e', emoji: '⚡' },
+}
+
+export const WORK_SOURCE_CONFIG: Record<WorkSource, { label: string; color: string; emoji: string; bg: string }> = {
+  INTERNAL:    { label: 'Внутренний',   color: '#64748b', emoji: '🏢', bg: 'bg-slate-500/10' },
+  MAIN_OFFICE: { label: 'ГУ Гормост',  color: '#8b5cf6', emoji: '🏛️', bg: 'bg-violet-500/10' },
+  DJKH:        { label: 'ДЖКХ',        color: '#3b82f6', emoji: '🏙️', bg: 'bg-blue-500/10' },
+  MAYOR:       { label: 'Мэрия Москвы', color: '#ef4444', emoji: '⭐', bg: 'bg-red-500/10' },
 }
 
 export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color: string; bg: string }> = {
