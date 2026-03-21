@@ -9,8 +9,9 @@ import Toolbar from '@/components/dispatcher/Toolbar'
 import TableView from '@/components/dispatcher/TableView'
 import PeopleStats from '@/components/dispatcher/PeopleStats'
 import ServiceSummary from '@/components/dispatcher/ServiceSummary'
-import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats } from '@/lib/api'
-import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession } from '@/types'
+import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
+import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api'
+import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession } from '@/types'
 
 export default function DispatcherPage() {
   return (
@@ -33,16 +34,19 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [filterService, setFilterService] = useState('')
   const [peopleStats, setPeopleStats] = useState<{ totalDeployed: number; byService: Record<string, number>; activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> }>({ totalDeployed: 0, byService: {}, activeAssignments: [] })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [shiftUsers, setShiftUsers] = useState<UserWithAssignment[]>([])
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, shiftU] = await Promise.all([
       // Диспетчер видит только согласованные заявки (PLANNED и выше)
       fetchRequests(filterService ? { serviceId: filterService } : undefined),
-      fetchCategories(), fetchObjects(), fetchConstructions(), fetchWorkTypes(), fetchServices()
+      fetchCategories(), fetchObjects(), fetchConstructions(), fetchWorkTypes(), fetchServices(),
+      fetchUsersWithAssignments(),
     ])
     const approvedReqs = reqs.filter(r => r.status !== 'NEW')
     setRequests(approvedReqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
+    setShiftUsers(shiftU)
 
     const ps = await fetchPeopleStats()
     setPeopleStats(ps)
@@ -67,6 +71,10 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       <Header session={session} title="Диспетчерская" emoji="🗂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       <KPICards {...kpi} />
+
+      <div className="mb-4">
+        <OnDutyMonitor users={shiftUsers} services={services} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <PeopleStats {...peopleStats} services={services} />
