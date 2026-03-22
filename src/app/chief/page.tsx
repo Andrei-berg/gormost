@@ -7,6 +7,7 @@ import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
 import LiveBoard from '@/components/chief/LiveBoard'
+import ChiefDirectives from '@/components/chief/ChiefDirectives'
 import AlertBanner from '@/components/AlertBanner'
 
 export default function ChiefPage() {
@@ -35,7 +36,7 @@ function Content({ session }: { session: AuthSession }) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [filter, setFilter] = useState<WorkPlanStatus | 'ALL'>('SUBMITTED')
-  const [tab, setTab] = useState<'live' | 'approvals'>('live')
+  const [tab, setTab] = useState<'live' | 'approvals' | 'directives'>('live')
 
   const loadData = useCallback(async () => {
     const [raw, svcs] = await Promise.all([fetchWorkPlans(), fetchServices()])
@@ -84,6 +85,12 @@ function Content({ session }: { session: AuthSession }) {
           )}
         </button>
         <button
+          onClick={() => setTab('directives')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'directives' ? 'bg-rose-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          📝 Поручения
+        </button>
+        <button
           onClick={loadData}
           className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
         >
@@ -93,6 +100,8 @@ function Content({ session }: { session: AuthSession }) {
 
       {tab === 'live' ? (
         <LiveBoard />
+      ) : tab === 'directives' ? (
+        <ChiefDirectives session={session} />
       ) : (
         <>
           {/* Filter tabs */}

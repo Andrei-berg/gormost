@@ -14,6 +14,7 @@ import type {
   EmployeeAssignmentWithScheduleCode, UserWithAssignment, WorkAssignment, WorkAssignmentWithUser,
   CrossServiceRequest,
   WorkRedirect, WorkSource, OriginalPlanFate, ShiftType,
+  Directive, DirectivePriority, DirectiveStatus,
 } from '@/types'
 
 // ============ USERS ============
@@ -1721,4 +1722,76 @@ export async function fetchFastTrackPlans(serviceId?: string): Promise<WorkPlan[
   if (serviceId) q = q.eq('service_id', serviceId)
   const { data } = await q
   return (data || []) as WorkPlan[]
+}
+
+// ============ CANCEL / BULK DELETE PLANS ============
+
+export async function cancelWorkPlan(
+  id: string,
+  reason: string,
+  userId: string
+): Promise<void> {
+  await supabase
+    .from('work_plans')
+    .update({ status: 'CANCELLED', completion_note: reason, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  await logAction(userId, 'CANCEL_WORK_PLAN', 'work_plan', id, { reason })
+}
+
+export async function cancelWorkPlansBulk(
+  ids: string[],
+  reason: string,
+  userId: string
+): Promise<void> {
+  if (ids.length === 0) return
+  await supabase
+    .from('work_plans')
+    .update({ status: 'CANCELLED', completion_note: reason, updated_at: new Date().toISOString() })
+    .in('id', ids)
+  await logAction(userId, 'CANCEL_WORK_PLANS_BULK', 'work_plan', ids[0], { ids, reason })
+}
+
+// Delete stale demo/test plans (DRAFT/SUBMITTED/REJECTED older than N days)
+export async function deleteStaleWorkPlans(olderThanDays: number): Promise<number> {
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0]
+  const { data } = await supabase
+    .from('work_plans')
+    .delete()
+    .in('status', ['DRAFT', 'SUBMITTED', 'REJECTED'])
+    .lt('plan_date', cutoff)
+    .select('id')
+  return (data || []).length
+}
+
+// ============ DIRECTIVES ============
+
+export async function fetchDirectives(): Promise<Directive[]> {
+  const { data } = await supabase
+    .from('directives')
+    .select('*')
+    .order('created_at', { ascending: false })
+  return (data || []) as Directive[]
+}
+
+export async function createDirective(
+  data: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan'>,
+  userId: string
+): Promise<Directive | null> {
+  const { data: result, error } = await supabase
+    .from('directives')
+    .insert({ ...data, created_by: userId, status: 'NEW' })
+    .select().single()
+  if (error) throw new Error(error.message)
+  return result as Directive
+}
+
+export async function updateDirectiveStatus(
+  id: string,
+  status: DirectiveStatus
+): Promise<void> {
+  await supabase
+    .from('directives')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id)
 }

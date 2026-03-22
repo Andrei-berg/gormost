@@ -328,6 +328,41 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
 }
 
 // ============================================
+// DIRECTIVES MODULE
+// ============================================
+
+export type DirectivePriority = 'NORMAL' | 'URGENT' | 'IMMEDIATE'
+export type DirectiveStatus   = 'NEW' | 'ACCEPTED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'
+
+export interface Directive {
+  id:           string
+  title:        string
+  description:  string | null
+  priority:     DirectivePriority
+  plan_id:      string | null
+  created_by:   string
+  status:       DirectiveStatus
+  suspend_plan: boolean
+  notes:        string | null
+  created_at:   string
+  updated_at:   string
+}
+
+export const DIRECTIVE_PRIORITY_CONFIG: Record<DirectivePriority, { label: string; color: string }> = {
+  NORMAL:    { label: 'Обычный',    color: '#64748b' },
+  URGENT:    { label: 'Срочно',     color: '#f97316' },
+  IMMEDIATE: { label: 'Немедленно', color: '#ef4444' },
+}
+
+export const DIRECTIVE_STATUS_CONFIG: Record<DirectiveStatus, { label: string; color: string }> = {
+  NEW:         { label: 'Новое',     color: '#eab308' },
+  ACCEPTED:    { label: 'Принято',   color: '#3b82f6' },
+  IN_PROGRESS: { label: 'В работе',  color: '#8b5cf6' },
+  DONE:        { label: 'Выполнено', color: '#22c55e' },
+  CANCELLED:   { label: 'Отменено',  color: '#64748b' },
+}
+
+// ============================================
 // WORK PLANNING MODULE — v3.0
 // ============================================
 
@@ -337,6 +372,7 @@ export type WorkPlanStatus =
   | 'FAST_TRACK'   // bypasses approval chain for emergency/external orders
   | 'REDIRECTED'   // brigade was pulled off this plan
   | 'SUSPENDED'    // plan paused, will resume later
+  | 'CANCELLED'    // plan explicitly cancelled (overdue / not executed)
 
 export type WorkPriority = 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'CRITICAL' | 'OVERRIDE'
 export type WorkSource = 'INTERNAL' | 'MAIN_OFFICE' | 'DJKH' | 'MAYOR'
@@ -597,6 +633,7 @@ export const WORK_PLAN_STATUS_CONFIG: Record<WorkPlanStatus, { label: string; co
   FAST_TRACK:     { label: 'Fast Track ⚡',     color: '#f43f5e', bg: 'bg-rose-500/20 border-rose-500/30' },
   REDIRECTED:     { label: 'Бригада снята',     color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
   SUSPENDED:      { label: 'Приостановлен',     color: '#f59e0b', bg: 'bg-amber-500/20 border-amber-500/30' },
+  CANCELLED:      { label: 'Отменён',           color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
 }
 
 export const WORK_PRIORITY_CONFIG: Record<WorkPriority, { label: string; color: string; emoji: string }> = {

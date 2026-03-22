@@ -6,23 +6,21 @@ import KanbanBoard from '@/components/KanbanBoard'
 import RequestModal from '@/components/RequestModal'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
-  fetchServices, fetchStaffRequests, fetchUsers, approveRequest,
+  fetchServices, fetchUsers, approveRequest,
   fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
 } from '@/lib/api'
 import type {
   Request, Category, GObject, Construction, WorkType, Service,
-  StaffRequest, User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
+  User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
 } from '@/types'
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
+import ZamporabPlanBoard from '@/components/zamporab/ZamporabPlanBoard'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
+import ShiftOverview from '@/components/zamporab/ShiftOverview'
 import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
 // HEAD components
-import ServiceStats from '@/components/head/ServiceStats'
-import PlanList from '@/components/head/PlanList'
-import WorkPlanModal from '@/components/head/WorkPlanModal'
-import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
 
 export default function ZamPorabPage() {
@@ -33,7 +31,7 @@ export default function ZamPorabPage() {
   )
 }
 
-type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'staffreqs'
+type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming'
 
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
@@ -42,43 +40,37 @@ function Content({ session }: { session: AuthSession }) {
   const [constructions, setConstructions] = useState<Construction[]>([])
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [services, setServices] = useState<Service[]>([])
-  const [staffReqs, setStaffReqs] = useState<StaffRequest[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
-  // own plans (HEAD-style)
-  const [ownPlans, setOwnPlans] = useState<WorkPlanWithItems[]>([])
-  const [rawOwnPlans, setRawOwnPlans] = useState<WorkPlan[]>([])
+  // all plans (board view — no items needed)
+  const [allPlans, setAllPlans] = useState<WorkPlan[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
-  // plans awaiting zamporab confirmation
+  // plans awaiting zamporab confirmation (with items — for review modal)
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
   const [reviewPlan, setReviewPlan] = useState<WorkPlanWithItems | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
   const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs, srs, usrs, rawApproved, rawSubmittedStr] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw] = await Promise.all([
       fetchRequests(), fetchCategories(), fetchObjects(), fetchConstructions(),
-      fetchWorkTypes(), fetchServices(), fetchStaffRequests(), fetchUsers(),
+      fetchWorkTypes(), fetchServices(), fetchUsers(),
       fetchWorkPlans({ status: 'APPROVED' }),
       fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }),
+      fetchWorkPlans(), // all plans for board (no items)
     ])
     setRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
-    setStaffReqs(srs); setAllUsers(usrs)
+    setAllUsers(usrs); setAllPlans(allRaw)
 
-    // Pending plans awaiting zamporab confirmation
+    // Pending plans awaiting zamporab confirmation (load with items for review modal)
     const allPending = [...rawApproved, ...rawSubmittedStr]
     const pendingWithItems = await Promise.all(allPending.map(p => fetchWorkPlanWithItems(p.id)))
     setPendingPlans(pendingWithItems.filter(Boolean) as WorkPlanWithItems[])
 
-    // Own service plans (HEAD-style)
+    // Incoming cross-service requests
     if (session.service_id) {
-      const raw = await fetchWorkPlans({ serviceId: session.service_id })
-      setRawOwnPlans(raw)
-      const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-      setOwnPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
       const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })
       setIncomingRequests(incoming)
     }
@@ -110,7 +102,6 @@ function Content({ session }: { session: AuthSession }) {
   }
 
   const unapproved = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length
-  const pendingStaff = staffReqs.filter(s => s.status === 'PENDING').length
   const pendingIncoming = incomingRequests.filter(r => r.status === 'PENDING').length
 
   const tabCls = (t: Tab, color = 'bg-blue-600') =>
@@ -155,36 +146,19 @@ function Content({ session }: { session: AuthSession }) {
             </span>
           )}
         </button>
-        <button onClick={() => setTab('staffreqs')} className={tabCls('staffreqs', 'bg-blue-600')}>
-          👤 Люди
-          {pendingStaff > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {pendingStaff}
-            </span>
-          )}
-        </button>
         <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
-      {/* Tab: Own plans (HEAD-style) */}
+      {/* Tab: All plans board */}
       {tab === 'plans' && (
-        <>
-          <ServiceStats plans={ownPlans} />
-          <PlanList
-            plans={ownPlans}
-            session={session}
-            onRefresh={loadData}
-            onCreatePlan={() => setShowCreate(true)}
-          />
-          {showCreate && (
-            <WorkPlanModal
-              session={session}
-              existingPlans={rawOwnPlans}
-              onClose={() => setShowCreate(false)}
-              onSaved={loadData}
-            />
-          )}
-        </>
+        <ZamporabPlanBoard
+          allPlans={allPlans}
+          pendingPlans={pendingPlans}
+          services={services}
+          session={session}
+          onOpenPending={setReviewPlan}
+          onRefresh={loadData}
+        />
       )}
 
       {/* Tab: Pending confirmation */}
@@ -282,84 +256,13 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       )}
 
-      {tab === 'staff' && <StaffBoard serviceId={session.service_id ?? ''} />}
+      {tab === 'staff' && <ShiftOverview />}
 
       {tab === 'incoming' && <IncomingRequests session={session} />}
-
-      {tab === 'staffreqs' && (
-        <StaffRequestsView staffReqs={staffReqs} services={services} users={allUsers} session={session} onRefresh={loadData} />
-      )}
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />
       )}
-    </div>
-  )
-}
-
-function StaffRequestsView({ staffReqs, services, users, session, onRefresh }: {
-  staffReqs: StaffRequest[], services: Service[], users: User[], session: AuthSession, onRefresh: () => void
-}) {
-  const { updateStaffRequestStatus } = require('@/lib/api')
-  const pending = staffReqs.filter(s => s.status === 'PENDING')
-  const resolved = staffReqs.filter(s => s.status !== 'PENDING')
-
-  const handleAction = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-    await updateStaffRequestStatus(id, status, session.user_id)
-    onRefresh()
-  }
-
-  return (
-    <div className="space-y-4">
-      {pending.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold text-amber-400 mb-3">Ожидают решения ({pending.length})</h3>
-          <div className="space-y-2">
-            {pending.map(sr => {
-              const from = services.find(s => s.service_id === sr.from_service_id)
-              const to = services.find(s => s.service_id === sr.to_service_id)
-              return (
-                <div key={sr.id} className="glass rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-white">
-                      <span className="font-medium">{from?.service_name || sr.from_service_id}</span>
-                      <span className="text-white/40"> → </span>
-                      <span className="font-medium">{to?.service_name || sr.to_service_id}</span>
-                    </div>
-                    {sr.reason && <div className="text-xs text-white/40 mt-1">{sr.reason}</div>}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleAction(sr.id, 'APPROVED')} className="px-3 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm">✓ Одобрить</button>
-                    <button onClick={() => handleAction(sr.id, 'REJECTED')} className="px-3 py-1 rounded-lg bg-red-600/50 hover:bg-red-500 text-white text-sm">✗ Отклонить</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      {resolved.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold text-white/40 mb-3">Обработанные ({resolved.length})</h3>
-          <div className="space-y-2">
-            {resolved.map(sr => {
-              const from = services.find(s => s.service_id === sr.from_service_id)
-              const to = services.find(s => s.service_id === sr.to_service_id)
-              return (
-                <div key={sr.id} className="glass rounded-xl p-4 opacity-60">
-                  <div className="text-sm text-white">
-                    {from?.service_name} → {to?.service_name}
-                    <span className={`ml-2 text-xs ${sr.status === 'APPROVED' ? 'text-green-400' : 'text-red-400'}`}>
-                      {sr.status === 'APPROVED' ? '✓ Одобрено' : '✗ Отклонено'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      {staffReqs.length === 0 && <EmptyState message="Нет запросов на людей" />}
     </div>
   )
 }
