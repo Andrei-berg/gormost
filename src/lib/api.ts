@@ -1795,3 +1795,24 @@ export async function updateDirectiveStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
 }
+
+// Returns a map userId → EmployeeStatusType for employees who are absent on a given date.
+// Only non-working statuses are included (Na_rabote is excluded).
+export async function fetchActiveStatusesOnDate(
+  userIds: string[],
+  dateStr: string
+): Promise<Map<string, EmployeeStatusType>> {
+  if (!userIds.length) return new Map()
+  const { data } = await supabase
+    .from('employee_status')
+    .select('user_id, status')
+    .in('user_id', userIds)
+    .lte('date_from', dateStr)
+    .or(`date_to.is.null,date_to.gte.${dateStr}`)
+    .neq('status', 'Na_rabote')
+  const map = new Map<string, EmployeeStatusType>()
+  ;(data ?? []).forEach((r: { user_id: string; status: string }) => {
+    if (!map.has(r.user_id)) map.set(r.user_id, r.status as EmployeeStatusType)
+  })
+  return map
+}

@@ -11,6 +11,7 @@ import WorkPlanModal from '@/components/head/WorkPlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import AlertBanner from '@/components/AlertBanner'
+import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 
 export default function HeadPage() {
   return (
@@ -36,6 +37,7 @@ function Content({ session }: { session: AuthSession }) {
   const [rawPlans, setRawPlans] = useState<WorkPlan[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [showCreate, setShowCreate] = useState(false)
+  const [showTaskSheet, setShowTaskSheet] = useState(false)
   const [tab, setTab] = useState<'plans' | 'staff' | 'incoming'>('plans')
   const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineTimer())
 
@@ -97,13 +99,21 @@ function Content({ session }: { session: AuthSession }) {
             </span>
           )}
         </button>
-        <Link
-          href="/hr-tools"
-          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-sm font-medium"
-        >
-          📊 Кадровая аналитика →
-        </Link>
-        <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowTaskSheet(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+          >
+            🖨 План-задание
+          </button>
+          <Link
+            href="/hr-tools"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-sm font-medium"
+          >
+            📊 Аналитика →
+          </Link>
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        </div>
       </div>
 
       {tab === 'plans' && (
@@ -128,6 +138,23 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'staff' && <StaffBoard serviceId={session.service_id ?? ''} />}
 
       {tab === 'incoming' && <IncomingRequests session={session} />}
+
+      {showTaskSheet && plans.length > 0 && (
+        <PlanTaskSheetModal
+          plans={plans}
+          session={session}
+          defaultDate={plans[0].plan_date}
+          onClose={() => setShowTaskSheet(false)}
+        />
+      )}
+      {showTaskSheet && plans.length === 0 && (
+        <PlanTaskSheetModal
+          plans={[]}
+          session={session}
+          defaultDate={new Date().toISOString().split('T')[0]}
+          onClose={() => setShowTaskSheet(false)}
+        />
+      )}
     </div>
   )
 }

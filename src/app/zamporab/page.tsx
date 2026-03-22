@@ -22,6 +22,7 @@ import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
 // HEAD components
 import IncomingRequests from '@/components/head/IncomingRequests'
+import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
 
 export default function ZamPorabPage() {
   return (
@@ -48,6 +49,7 @@ function Content({ session }: { session: AuthSession }) {
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
   const [reviewPlan, setReviewPlan] = useState<WorkPlanWithItems | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
   const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
@@ -146,7 +148,13 @@ function Content({ session }: { session: AuthSession }) {
             </span>
           )}
         </button>
-        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <button
+          onClick={() => setShowSummary(true)}
+          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+        >
+          🖨 План работ
+        </button>
+        <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
       </div>
 
       {/* Tab: All plans board */}
@@ -262,6 +270,9 @@ function Content({ session }: { session: AuthSession }) {
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />
+      )}
+      {showSummary && (
+        <WorkPlanSummaryModal session={session} onClose={() => setShowSummary(false)} />
       )}
     </div>
   )

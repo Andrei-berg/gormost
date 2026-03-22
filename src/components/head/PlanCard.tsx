@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, WorkPlanItemWithVehicles, AuthSession } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META } from '@/types'
+import WorkPermitModal from './WorkPermitModal'
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -27,6 +28,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showPermit, setShowPermit] = useState(false)
 
   const canEdit = plan.status === 'DRAFT' || plan.status === 'REJECTED'
   const canSubmit = canEdit && plan.items.length > 0
@@ -82,6 +84,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   }
 
   return (
+    <>
     <div className="glass rounded-xl overflow-hidden">
       {/* Rejected banner */}
       {plan.status === 'REJECTED' && plan.chief_notes && (
@@ -194,6 +197,12 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 }
               </button>
             )}
+            <button
+              onClick={() => setShowPermit(true)}
+              className="w-full py-1.5 rounded-lg bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 text-xs transition-all"
+            >
+              🖨 Наряд-допуск
+            </button>
             {(plan.status === 'DRAFT' || plan.status === 'SUBMITTED' || plan.status === 'REJECTED') && (
               <button
                 onClick={handleDelete}
@@ -208,6 +217,11 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
 
       </div>
     </div>
+
+    {showPermit && (
+      <WorkPermitModal plan={plan} session={session} onClose={() => setShowPermit(false)} />
+    )}
+    </>
   )
 }
 
