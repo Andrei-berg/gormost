@@ -9,6 +9,7 @@ import StroevayaView from './StroevayaView'
 import PrintPanel from './PrintPanel'
 import DriversScheduleTab from './DriversScheduleTab'
 import ScheduleCheckTab from './ScheduleCheckTab'
+import TimesheetExport from './TimesheetExport'
 
 export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers' | 'check'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
@@ -204,7 +205,16 @@ export default function HRToolsShell({ session }: Props) {
       ) : (
         <>
           {view === 'roster'    && <RosterTable        users={filtered} services={data.services} showService={showService} />}
-          {view === 'tabel'     && <TabeTable          users={filtered} phases={data.phases} period={period} />}
+          {view === 'tabel'     && (
+            <>
+              <TabeTable users={filtered} phases={data.phases} period={period} />
+              <TimesheetExport
+                year={parseInt(period.start.slice(0, 4), 10)}
+                month={parseInt(period.start.slice(5, 7), 10)}
+                serviceId={filterService || undefined}
+              />
+            </>
+          )}
           {view === 'coverage'  && <CoverageTable      users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
           {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
           {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} onPhasesChanged={load} />}
