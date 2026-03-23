@@ -92,6 +92,7 @@ Rules for all pages:
 | Transport | `src/app/transport/page.tsx` | TRANSPORT, ADMIN, BOSS, ZAMPORAB |
 | Complaints | `src/app/complaints/page.tsx` | COMPLAINTS, ADMIN, BOSS, DISPATCHER |
 | Admin Panel | `src/app/admin/page.tsx` | ADMIN |
+| Safety (ТБиОТ) | `src/app/safety/page.tsx` | SAFETY_ENGINEER, ADMIN |
 
 ## Work Plan Approval Flow
 ```

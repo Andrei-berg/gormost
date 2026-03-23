@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { RoleLevel } from '@/types'
+import { certStatusFromDates } from '@/types'
 
 export type AlertLevel = 'critical' | 'warning' | 'info'
 
@@ -177,6 +178,38 @@ export async function fetchSystemAlerts(opts: AlertsOptions): Promise<SystemAler
         detail: sources.includes('MAYOR') ? 'Есть поручения от Мэрии Москвы' :
                 sources.includes('DJKH') ? 'Есть поручения от ДЖКХ' : 'Поручения от ГУ Гормост',
       })
+    }
+  }
+
+  // --- SAFETY_ENGINEER / ADMIN: cert expiry alerts ---
+  if (['SAFETY_ENGINEER', 'ADMIN', 'BOSS'].includes(opts.role)) {
+    const { data: certs } = await supabase
+      .from('employee_certs')
+      .select('id, expires_at')
+      .not('expires_at', 'is', null)
+
+    if (certs && certs.length > 0) {
+      let expired = 0, expiringSoon = 0
+      for (const c of certs) {
+        const st = certStatusFromDates(c.expires_at)
+        if (st === 'EXPIRED') expired++
+        else if (st === 'EXPIRING_SOON') expiringSoon++
+      }
+      if (expired > 0) {
+        alerts.push({
+          id: 'certs-expired',
+          level: 'critical',
+          title: `🛡️ ${expired} допуск(а) просрочено`,
+          detail: 'Требуется переаттестация сотрудников',
+        })
+      } else if (expiringSoon > 0) {
+        alerts.push({
+          id: 'certs-expiring',
+          level: 'warning',
+          title: `🛡️ ${expiringSoon} допуск(а) истекают в ближайшие 30 дней`,
+          detail: 'Запланируйте переаттестацию',
+        })
+      }
     }
   }
 

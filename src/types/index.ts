@@ -3,7 +3,7 @@
 // Matches real Supabase schema
 // ============================================
 
-export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR' | 'DRIVER'
+export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR' | 'DRIVER' | 'SAFETY_ENGINEER'
 export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 export type Urgency = 'NORMAL' | 'URGENT' | 'EMERGENCY'
@@ -263,6 +263,13 @@ export const PANELS: PanelConfig[] = [
     roles: ['DRIVER'],
     color: 'from-blue-600/40 to-blue-800/40 border-blue-500/30',
     roleLabel: 'Водитель',
+  },
+  {
+    id: 'safety', path: '/safety', title: 'ТБиОТ',
+    subtitle: 'Допуски · Аттестации · Охрана труда', emoji: '🛡️',
+    roles: ['SAFETY_ENGINEER', 'ADMIN'],
+    color: 'from-rose-600/40 to-rose-800/40 border-rose-500/30',
+    roleLabel: 'Инженер ТБиОТ',
   },
 ]
 
@@ -771,4 +778,79 @@ export interface DriverManualShift {
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+// ============================================
+// SAFETY MODULE (ТБиОТ) — v1.0
+// ============================================
+
+export type CertCategory = 'Обучение' | 'Аттестация' | 'Допуск' | 'Удостоверение'
+
+// Computed on frontend from expires_at vs today
+export type CertStatus = 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' | 'NOT_ASSIGNED'
+
+export interface CertType {
+  id: string
+  code: string
+  name: string
+  cert_category: CertCategory
+  period_months: number | null   // null = no fixed period
+  period_note: string | null     // '1–3 года', 'По закону'
+  target_group: string | null
+  notes: string | null
+  is_active: boolean
+  sort_order: number
+}
+
+export interface EmployeeCert {
+  id: string
+  employee_id: string
+  cert_type_id: string
+  issued_at: string        // 'YYYY-MM-DD'
+  expires_at: string | null
+  doc_number: string | null
+  issuer: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  cert_type?: CertType
+  employee?: User
+}
+
+export interface CertRequirement {
+  id: string
+  cert_type_id: string
+  role_level: string | null      // RoleLevel value
+  service_id: string | null
+  position_pattern: string | null  // ILIKE match against users.position
+  notes: string | null
+  created_at: string
+  cert_type?: CertType
+}
+
+/** Helpers */
+export function certStatusFromDates(expiresAt: string | null): 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' {
+  if (!expiresAt) return 'VALID'
+  const now = new Date()
+  const exp = new Date(expiresAt)
+  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86400000)
+  if (daysLeft < 0) return 'EXPIRED'
+  if (daysLeft <= 30) return 'EXPIRING_SOON'
+  return 'VALID'
+}
+
+export const CERT_STATUS_CONFIG: Record<CertStatus, { label: string; color: string; bg: string; text: string }> = {
+  VALID:          { label: 'Действует',   color: '#22c55e', bg: 'bg-green-500/20',  text: 'text-green-400' },
+  EXPIRING_SOON:  { label: 'Истекает',    color: '#f97316', bg: 'bg-orange-500/20', text: 'text-orange-400' },
+  EXPIRED:        { label: 'Просрочен',   color: '#ef4444', bg: 'bg-red-500/20',    text: 'text-red-400' },
+  NOT_ASSIGNED:   { label: 'Не внесён',   color: '#64748b', bg: 'bg-slate-500/10',  text: 'text-slate-500' },
+}
+
+export const CERT_CATEGORY_CONFIG: Record<CertCategory, { emoji: string; color: string }> = {
+  'Обучение':      { emoji: '📚', color: 'text-blue-400' },
+  'Аттестация':    { emoji: '📋', color: 'text-violet-400' },
+  'Допуск':        { emoji: '🔑', color: 'text-amber-400' },
+  'Удостоверение': { emoji: '🪪', color: 'text-teal-400' },
 }

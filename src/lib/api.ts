@@ -15,6 +15,7 @@ import type {
   CrossServiceRequest,
   WorkRedirect, WorkSource, OriginalPlanFate, ShiftType,
   Directive, DirectivePriority, DirectiveStatus,
+  CertType, EmployeeCert, CertRequirement,
 } from '@/types'
 
 // ============ USERS ============
@@ -1875,4 +1876,90 @@ export async function deleteDriverManualShift(
     .eq('user_id', userId)
     .eq('shift_date', shiftDate)
   return !error
+}
+
+// ============ SAFETY / ТБиОТ ============
+
+export async function fetchCertTypes(activeOnly = false): Promise<CertType[]> {
+  let q = supabase.from('cert_types').select('*').order('sort_order')
+  if (activeOnly) q = q.eq('is_active', true)
+  const { data } = await q
+  return (data || []) as CertType[]
+}
+
+export async function upsertCertType(ct: Partial<CertType>): Promise<CertType | null> {
+  const { data, error } = await supabase
+    .from('cert_types')
+    .upsert(ct, { onConflict: 'id' })
+    .select()
+    .single()
+  if (error) console.error('upsertCertType:', error)
+  return data as CertType | null
+}
+
+export async function deleteCertType(id: string): Promise<boolean> {
+  const { error } = await supabase.from('cert_types').delete().eq('id', id)
+  return !error
+}
+
+export async function fetchEmployeeCerts(employeeId?: string): Promise<EmployeeCert[]> {
+  let q = supabase
+    .from('employee_certs')
+    .select('*, cert_type:cert_types(*)')
+    .order('created_at', { ascending: false })
+  if (employeeId) q = q.eq('employee_id', employeeId)
+  const { data } = await q
+  return (data || []) as EmployeeCert[]
+}
+
+export async function upsertEmployeeCert(cert: Partial<EmployeeCert>): Promise<EmployeeCert | null> {
+  const payload = { ...cert }
+  delete payload.cert_type
+  delete payload.employee
+  const { data, error } = await supabase
+    .from('employee_certs')
+    .upsert(payload, { onConflict: 'employee_id,cert_type_id' })
+    .select('*, cert_type:cert_types(*)')
+    .single()
+  if (error) console.error('upsertEmployeeCert:', error)
+  return data as EmployeeCert | null
+}
+
+export async function deleteEmployeeCert(id: string): Promise<boolean> {
+  const { error } = await supabase.from('employee_certs').delete().eq('id', id)
+  return !error
+}
+
+export async function fetchCertRequirements(): Promise<CertRequirement[]> {
+  const { data } = await supabase
+    .from('cert_requirements')
+    .select('*, cert_type:cert_types(*)')
+    .order('created_at')
+  return (data || []) as CertRequirement[]
+}
+
+export async function upsertCertRequirement(req: Partial<CertRequirement>): Promise<CertRequirement | null> {
+  const payload = { ...req }
+  delete payload.cert_type
+  const { data, error } = await supabase
+    .from('cert_requirements')
+    .upsert(payload, { onConflict: 'id' })
+    .select('*, cert_type:cert_types(*)')
+    .single()
+  if (error) console.error('upsertCertRequirement:', error)
+  return data as CertRequirement | null
+}
+
+export async function deleteCertRequirement(id: string): Promise<boolean> {
+  const { error } = await supabase.from('cert_requirements').delete().eq('id', id)
+  return !error
+}
+
+/** Fetch all active employee certs with employee data — for coverage overview */
+export async function fetchAllCertsWithEmployees(): Promise<EmployeeCert[]> {
+  const { data } = await supabase
+    .from('employee_certs')
+    .select('*, cert_type:cert_types(*), employee:users!employee_id(user_id,full_name,service_id,position,is_active)')
+    .order('expires_at', { ascending: true, nullsFirst: false })
+  return (data || []) as EmployeeCert[]
 }
