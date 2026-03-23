@@ -10,8 +10,9 @@ import PrintPanel from './PrintPanel'
 import DriversScheduleTab from './DriversScheduleTab'
 import ScheduleCheckTab from './ScheduleCheckTab'
 import TimesheetExport from './TimesheetExport'
+import DriverPlannerBoard from './DriverPlannerBoard'
 
-export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers' | 'check'
+export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers' | 'check' | 'planner'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
 
 function fmt(d: Date) { return d.toISOString().split('T')[0] }
@@ -57,8 +58,9 @@ const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
   { key: 'tabel',     label: '📅 Табель'    },
   { key: 'coverage',  label: '📊 Покрытие'  },
   { key: 'stroevaya', label: '🪖 Строевая'  },
-  { key: 'drivers',   label: '🚗 Водители'  },
-  { key: 'check',     label: '🔎 Проверка'  },
+  { key: 'drivers',   label: '🚗 Водители'   },
+  { key: 'planner',  label: '🗓 Планирование' },
+  { key: 'check',    label: '🔎 Проверка'   },
 ]
 
 const PRESET_OPTIONS: { key: PeriodPreset; label: string }[] = [
@@ -218,7 +220,8 @@ export default function HRToolsShell({ session }: Props) {
           {view === 'coverage'  && <CoverageTable      users={filtered} phases={data.phases} period={period} schedules={data.schedules} />}
           {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
           {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} onPhasesChanged={load} />}
-          {view === 'check'     && <ScheduleCheckTab  users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} />}
+          {view === 'check'     && <ScheduleCheckTab   users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} />}
+          {view === 'planner'   && <DriverPlannerBoard users={data.users} phases={data.phases} session={session} />}
         </>
       )}
     </div>

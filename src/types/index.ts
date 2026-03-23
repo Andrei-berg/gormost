@@ -736,6 +736,7 @@ export interface EmployeeAssignment {
   is_driver: boolean
   custom_work_days: number | null   // X/Y schedule: days on
   custom_rest_days: number | null   // X/Y schedule: days off
+  driver_group_number: number | null  // 1–17 driver group from Excel schedule template
   started_at: string
   ended_at: string | null
   created_by: string | null
@@ -757,4 +758,17 @@ export interface EmployeeDetail {
   positionHistory: EmployeePositionWithProfession[]
   currentAssignment: EmployeeAssignmentWithSchedule | null
   recentRequests: RequestAssignment[]
+}
+
+
+// Driver manual shift planning override
+export interface DriverManualShift {
+  id: string
+  user_id: string
+  shift_date: string       // 'YYYY-MM-DD'
+  shift_type: 'I' | 'II' | 'OFF'
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }

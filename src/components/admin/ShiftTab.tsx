@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssignmentWithScheduleCode } from '@/types'
 import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api'
 import { getShiftForDate, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
+import { DRIVER_GROUPS, getDriverGroup } from '@/lib/driverGroups'
 import ShiftRoster from '@/components/ShiftRoster'
 import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
 import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
@@ -206,6 +207,7 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     is_driver: boolean
     custom_work_days?: number | null
     custom_rest_days?: number | null
+    driver_group_number?: number | null
   }, phaseData: { phase: 'day' | 'night'; anchor_date: string; valid_from: string; schedule_code: string; is_alternating: boolean } | null) => Promise<void>
 }) {
   const today = new Date().toISOString().split('T')[0]
@@ -222,6 +224,10 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
   const [phaseFrom, setPhaseFrom] = useState(today)
   const [phaseAlt, setPhaseAlt] = useState(false)
   const [createPhase, setCreatePhase] = useState(false)
+  // Driver group (1–17)
+  const [driverGroupNum, setDriverGroupNum] = useState<string>(
+    String(user.assignment?.driver_group_number ?? '')
+  )
 
   // Derive scheduleId from code selection
   const handleScheduleChange = (code: string) => {
@@ -231,6 +237,26 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
     setShiftNum(''); setRotationGroup(''); setRefDate('')
     setCustomWork(''); setCustomRest('')
     setCreatePhase(isPhaseSchedule(code))
+  }
+
+  // Auto-fill all fields from driver group template
+  const handleDriverGroupChange = (groupStr: string) => {
+    setDriverGroupNum(groupStr)
+    if (!groupStr) return
+    const tpl = getDriverGroup(Number(groupStr))
+    if (!tpl) return
+    const code = tpl.schedule_code
+    const found = schedules.find(s => s.code === code)
+    setScheduleCode(code)
+    setScheduleId(found?.id ?? '')
+    setRefDate(tpl.anchor_date ?? '')
+    setRotationGroup(tpl.rotation_group ?? '')
+    setCustomWork(tpl.custom_work_days ? String(tpl.custom_work_days) : '')
+    setCustomRest(tpl.custom_rest_days ? String(tpl.custom_rest_days) : '')
+    setPhaseVal(tpl.phase)
+    setPhaseAlt(tpl.is_alternating)
+    setPhaseFrom(today)
+    setCreatePhase(isPhaseSchedule(code) || code === 'X/Y')
   }
 
   // Keep local state in sync when user changes (e.g., after refresh)
@@ -269,8 +295,10 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
         </td>
         <td className="px-3 py-2 text-xs text-white/50">{displayCode ?? <span className="text-white/20">—</span>}</td>
         <td className="px-3 py-2 text-xs text-white/30">
-          {a?.rotation_group && `гр.${a.rotation_group}`}
-          {a?.shift_reference_date && ` от ${a.shift_reference_date}`}
+          {a?.driver_group_number
+            ? <span className="text-amber-400/70 font-medium">Гр.{a.driver_group_number}</span>
+            : a?.rotation_group && `гр.${a.rotation_group}`}
+          {a?.shift_reference_date && !a?.driver_group_number && ` от ${a.shift_reference_date}`}
           {a?.is_driver && ' 🚗'}
         </td>
         <td className="px-3 py-2">
@@ -294,6 +322,21 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
       <td colSpan={6} className="px-3 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white/80 text-sm font-medium mr-2">{user.full_name}</span>
+
+          {/* Driver group quick-select — appears for drivers */}
+          {isDriver && (
+            <select
+              value={driverGroupNum}
+              onChange={e => handleDriverGroupChange(e.target.value)}
+              className={`${sel} border border-amber-500/30 text-amber-300`}
+              title="Выбрать группу из графика водителей (автозаполнение)"
+            >
+              <option value="">🚗 Группа...</option>
+              {DRIVER_GROUPS.map(g => (
+                <option key={g.group} value={g.group}>{g.label}</option>
+              ))}
+            </select>
+          )}
 
           <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className={sel} disabled={!canSelectShift}>
             <option value="">{requiresShift ? '— смена (обяз.) —' : '— смена (опц.) —'}</option>
@@ -369,8 +412,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
                     <option value="night">🌙 Ночь</option>
                   </select>
                   <input type="date" value={phaseFrom} onChange={e => setPhaseFrom(e.target.value)} className={inp} title="Начало фазы" />
-                  {scheduleCode === '15/15' && (
-                    <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer" title="Автоматически чередовать фазу каждый месяц">
+                  {(scheduleCode === '15/15' || scheduleCode === '2/2' || scheduleCode === '6/6') && (
+                    <label className="flex items-center gap-1 text-xs text-white/50 cursor-pointer" title="Автоматически чередовать день/ночь каждый цикл">
                       <input type="checkbox" checked={phaseAlt} onChange={e => setPhaseAlt(e.target.checked)} className="accent-indigo-400" />
                       чередование
                     </label>
@@ -390,7 +433,8 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
               is_driver: isDriver,
               custom_work_days: needsCustom ? customWorkNum : null,
               custom_rest_days: needsCustom ? customRestNum : null,
-            }, createPhase && isPhaseSchedule(scheduleCode) ? {
+              driver_group_number: driverGroupNum ? Number(driverGroupNum) : null,
+            }, createPhase && (isPhaseSchedule(scheduleCode) || scheduleCode === 'X/Y') ? {
               phase: phaseVal,
               anchor_date: phaseFrom,
               valid_from: phaseFrom,

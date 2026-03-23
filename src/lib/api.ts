@@ -1285,6 +1285,7 @@ export async function upsertEmployeeAssignment(
     is_driver: boolean
     custom_work_days?: number | null
     custom_rest_days?: number | null
+    driver_group_number?: number | null
   },
   performedBy: string
 ): Promise<boolean> {
@@ -1306,6 +1307,7 @@ export async function upsertEmployeeAssignment(
       is_driver: data.is_driver,
       custom_work_days: data.custom_work_days ?? null,
       custom_rest_days: data.custom_rest_days ?? null,
+      driver_group_number: data.driver_group_number ?? null,
       started_at: new Date().toISOString().split('T')[0],
       created_by: performedBy,
     })
@@ -1815,4 +1817,62 @@ export async function fetchActiveStatusesOnDate(
     if (!map.has(r.user_id)) map.set(r.user_id, r.status as EmployeeStatusType)
   })
   return map
+}
+
+// ============ DRIVER MANUAL SHIFTS ============
+
+/**
+ * Fetch all manual shift overrides in a date range.
+ * Returns flat array; callers index by "userId_date" for O(1) lookup.
+ */
+export async function fetchDriverManualShifts(
+  dateFrom: string,
+  dateTo: string
+): Promise<import('@/types').DriverManualShift[]> {
+  const { data } = await supabase
+    .from('driver_manual_shifts')
+    .select('*')
+    .gte('shift_date', dateFrom)
+    .lte('shift_date', dateTo)
+    .order('shift_date')
+  return (data ?? []) as import('@/types').DriverManualShift[]
+}
+
+/**
+ * Upsert a manual shift override for a single driver+date.
+ * shiftType = 'I' | 'II' | 'OFF'
+ */
+export async function upsertDriverManualShift(
+  userId: string,
+  shiftDate: string,
+  shiftType: 'I' | 'II' | 'OFF',
+  createdBy: string,
+  notes?: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('driver_manual_shifts')
+    .upsert({
+      user_id: userId,
+      shift_date: shiftDate,
+      shift_type: shiftType,
+      notes: notes ?? null,
+      created_by: createdBy,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,shift_date' })
+  return !error
+}
+
+/**
+ * Remove a manual override for a driver+date (restores auto-computed schedule).
+ */
+export async function deleteDriverManualShift(
+  userId: string,
+  shiftDate: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('driver_manual_shifts')
+    .delete()
+    .eq('user_id', userId)
+    .eq('shift_date', shiftDate)
+  return !error
 }

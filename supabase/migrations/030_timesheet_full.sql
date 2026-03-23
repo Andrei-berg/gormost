@@ -75,7 +75,7 @@ CREATE POLICY "timesheet_select" ON timesheet_entries
       SELECT 1 FROM users u
       WHERE u.id::text = auth.uid()::text
         AND (
-          u.role IN ('ADMIN','BOSS','HR','HEAD','ZAMPORAB','CHIEF_ENGINEER')
+          u.role_level IN ('ADMIN','BOSS','HR','HEAD','ZAMPORAB','CHIEF_ENGINEER')
           OR u.id = timesheet_entries.user_id
         )
     )
@@ -86,7 +86,7 @@ CREATE POLICY "timesheet_insert_update" ON timesheet_entries
     EXISTS (
       SELECT 1 FROM users u
       WHERE u.id::text = auth.uid()::text
-        AND u.role IN ('ADMIN','HR')
+        AND u.role_level IN ('ADMIN','HR')
     )
   );
 
