@@ -46,14 +46,14 @@ INSERT INTO cert_types (code, name, cert_category, period_months, period_note, t
 -- ============ EMPLOYEE CERTS ============
 CREATE TABLE employee_certs (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id   uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  employee_id   text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   cert_type_id  uuid NOT NULL REFERENCES cert_types(id) ON DELETE CASCADE,
   issued_at     date NOT NULL,
   expires_at    date,          -- null = open-ended (no expiry)
   doc_number    text,
   issuer        text,          -- 'Ростехнадзор', 'Внутренняя комиссия', etc.
   notes         text,
-  created_by    uuid REFERENCES users(user_id),
+  created_by    text REFERENCES users(user_id),
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (employee_id, cert_type_id)
