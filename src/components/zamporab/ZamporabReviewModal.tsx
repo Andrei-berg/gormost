@@ -483,6 +483,7 @@ function PlanItemForm({ initial, planServiceId, existingCrossRequest, onSave, on
       required_masters:    Number(reqMasters)    || 0,
       required_foremen:    Number(reqForemen)    || 0,
       required_vehicles:   Number(reqVehicles)   || 0,
+      required_vehicle_types: [],
       is_redirected:  initial?.is_redirected  ?? false,
       redirect_reason: initial?.redirect_reason ?? null,
     }, crossDraft)

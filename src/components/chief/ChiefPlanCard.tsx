@@ -255,6 +255,7 @@ function ItemForm({ initial, onSave, onCancel }: {
       required_masters: 0,
       required_foremen: 0,
       required_vehicles: 0,
+      required_vehicle_types: [],
       is_redirected: false,
       redirect_reason: null,
     })

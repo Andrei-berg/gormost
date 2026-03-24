@@ -441,6 +441,7 @@ export interface WorkPlanItem {
   required_masters: number
   required_foremen: number
   required_vehicles: number
+  required_vehicle_types: VehicleRequirement[]
   // emergency redirect
   is_redirected: boolean
   redirect_reason: string | null
@@ -662,6 +663,11 @@ export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color
   ACTIVE:      { label: 'Активен',      color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
   BROKEN:      { label: 'Сломан',       color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
   MAINTENANCE: { label: 'ТО / Ремонт',  color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+}
+
+export interface VehicleRequirement {
+  type: VehicleType
+  count: number
 }
 
 export const VEHICLE_TYPE_CONFIG: Record<VehicleType, { label: string; emoji: string }> = {

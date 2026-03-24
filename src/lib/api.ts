@@ -711,8 +711,19 @@ export async function rejectWorkPlan(planId: string, userId: string, notes: stri
 
 export async function deleteWorkPlan(planId: string, userId: string): Promise<boolean> {
   const { error } = await supabase
-    .from('work_plans').delete().eq('id', planId).in('status', ['DRAFT', 'SUBMITTED'])  // allow recall from submitted
+    .from('work_plans').delete().eq('id', planId).eq('status', 'DRAFT')
   if (!error) await logAction(userId, 'DELETE_WORK_PLAN', 'work_plan', planId, null)
+  return !error
+}
+
+// Recall submitted plan back to DRAFT for editing (SUBMITTED → DRAFT)
+export async function recallWorkPlan(planId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_plans')
+    .update({ status: 'DRAFT', updated_at: new Date().toISOString() })
+    .eq('id', planId)
+    .eq('status', 'SUBMITTED')
+  if (!error) await logAction(userId, 'RECALL_WORK_PLAN', 'work_plan', planId, null)
   return !error
 }
 

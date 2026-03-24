@@ -197,6 +197,7 @@ export default function WorkPlanModal({ session, existingPlans, onClose, onSaved
           required_masters: it.required_masters,
           required_foremen: it.required_foremen,
           required_vehicles: it.required_vehicles,
+          required_vehicle_types: [],
           is_redirected: false,
           redirect_reason: null,
         })

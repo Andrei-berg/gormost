@@ -377,6 +377,7 @@ function OwnItemForm({ initial, onSave, onCancel }: {
       required_masters: 0,
       required_foremen: Number(reqForemen) || 0,
       required_vehicles: Number(reqVehicles) || 0,
+      required_vehicle_types: [],
       is_redirected: initial?.is_redirected ?? false,
       redirect_reason: initial?.redirect_reason ?? null,
     })
