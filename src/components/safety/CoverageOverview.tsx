@@ -5,6 +5,7 @@ import { certStatusFromDates, CERT_STATUS_CONFIG } from '@/types'
 
 interface Props {
   allCerts: EmployeeCert[]
+  unlinkedCount?: number
   requirements: CertRequirement[]
   employees: User[]
   services: Service[]
@@ -23,7 +24,7 @@ function daysUntilExpiry(expiresAt: string | null): number | null {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000)
 }
 
-export default function CoverageOverview({ allCerts, requirements, employees, services }: Props) {
+export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirements, employees, services }: Props) {
   // Index certs by employee+certType for O(1) lookup
   const certIndex = useMemo(() => {
     const map = new Map<string, EmployeeCert>()
@@ -80,11 +81,12 @@ export default function CoverageOverview({ allCerts, requirements, employees, se
   return (
     <div className="space-y-6">
       {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Всего записей" value={allCerts.length} color="text-white" />
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <KpiCard label="Всего записей" value={allCerts.length + unlinkedCount} color="text-white" />
         <KpiCard label="Действует" value={totalValid} color="text-green-400" />
         <KpiCard label="Истекает (≤30д)" value={totalExpiringSoon} color="text-orange-400" />
         <KpiCard label="Просрочено" value={totalExpired} color="text-red-400" />
+        <KpiCard label="Не привязано" value={unlinkedCount} color={unlinkedCount > 0 ? 'text-amber-400' : 'text-white/30'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

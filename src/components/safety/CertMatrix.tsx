@@ -64,7 +64,7 @@ export default function CertMatrix({ certTypes, allCerts, employees, services, s
   const counts = useMemo(() => {
     let expired = 0, expiringSoon = 0
     for (const c of allCerts) {
-      const st = certStatusFromDates(c.expires_at)
+      const st = certStatusFromDates(c.expires_at, c.is_indefinite)
       if (st === 'EXPIRED') expired++
       else if (st === 'EXPIRING_SOON') expiringSoon++
     }
@@ -140,9 +140,11 @@ export default function CertMatrix({ certTypes, allCerts, employees, services, s
                     </td>
                     {visibleTypes.map((ct) => {
                       const cert = certIndex.get(`${emp.user_id}:${ct.id}`)
-                      const st: CertStatus = cert ? certStatusFromDates(cert.expires_at) : 'NOT_ASSIGNED'
+                      const st: CertStatus = cert ? certStatusFromDates(cert.expires_at, cert.is_indefinite) : 'NOT_ASSIGNED'
                       const cfg = CERT_STATUS_CONFIG[st]
-                      const daysLeft = cert?.expires_at
+                      const daysLeft = cert?.is_indefinite
+                        ? null
+                        : cert?.expires_at
                         ? Math.ceil((new Date(cert.expires_at).getTime() - Date.now()) / 86400000)
                         : null
 

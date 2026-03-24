@@ -816,13 +816,22 @@ export interface CertType {
   sort_order: number
 }
 
+export type RenewalType = 'первичное' | 'очередное' | 'повторное' | 'бессрочное'
+export type ReturnStatus = 'сдал' | 'не сдал' | 'забрал'
+
 export interface EmployeeCert {
   id: string
-  employee_id: string
+  employee_id: string | null  // null for unlinked import records
+  full_name: string | null    // for unlinked records (when employee_id is null)
   cert_type_id: string
-  issued_at: string        // 'YYYY-MM-DD'
+  issued_at: string | null    // 'YYYY-MM-DD'
   expires_at: string | null
+  is_indefinite: boolean      // true = бессрочно (never expires)
   doc_number: string | null
+  protocol_number: string | null  // № протокола
+  ob_pa_date: string | null       // Дата ОБ/ПА — плановый инструктаж
+  renewal_type: RenewalType | null  // первичное / очередное / повторное / бессрочное
+  return_status: ReturnStatus | null  // сдал / не сдал / забрал
   issuer: string | null
   notes: string | null
   created_by: string | null
@@ -830,7 +839,7 @@ export interface EmployeeCert {
   updated_at: string
   // joined
   cert_type?: CertType
-  employee?: User
+  employee?: User | null
 }
 
 export interface CertRequirement {
@@ -845,8 +854,8 @@ export interface CertRequirement {
 }
 
 /** Helpers */
-export function certStatusFromDates(expiresAt: string | null): 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' {
-  if (!expiresAt) return 'VALID'
+export function certStatusFromDates(expiresAt: string | null, isIndefinite = false): 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' {
+  if (isIndefinite || !expiresAt) return 'VALID'
   const now = new Date()
   const exp = new Date(expiresAt)
   const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86400000)

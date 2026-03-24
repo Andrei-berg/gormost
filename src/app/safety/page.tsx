@@ -6,20 +6,14 @@ import CoverageOverview from '@/components/safety/CoverageOverview'
 import CertMatrix from '@/components/safety/CertMatrix'
 import CatalogTab from '@/components/safety/CatalogTab'
 import RequirementsTab from '@/components/safety/RequirementsTab'
+import UnlinkedCerts from '@/components/safety/UnlinkedCerts'
 import {
   fetchCertTypes, fetchAllCertsWithEmployees, fetchCertRequirements,
-  fetchUsers, fetchServices,
+  fetchUsers, fetchServices, fetchUnlinkedCerts,
 } from '@/lib/api'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
-type Tab = 'overview' | 'matrix' | 'catalog' | 'requirements'
-
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'overview',      label: 'Обзор',       emoji: '📊' },
-  { id: 'matrix',        label: 'Допуски',      emoji: '📋' },
-  { id: 'catalog',       label: 'Каталог',      emoji: '📝' },
-  { id: 'requirements',  label: 'Требования',   emoji: '⚙️' },
-]
+type Tab = 'overview' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
 
 export default function SafetyPage() {
   return (
@@ -31,23 +25,26 @@ export default function SafetyPage() {
 
 function Content({ session }: { session: AuthSession }) {
   const [tab, setTab] = useState<Tab>('overview')
-  const [certTypes, setCertTypes] = useState<CertType[]>([])
-  const [allCerts, setAllCerts] = useState<EmployeeCert[]>([])
+  const [certTypes, setCertTypes]       = useState<CertType[]>([])
+  const [allCerts, setAllCerts]         = useState<EmployeeCert[]>([])
+  const [unlinked, setUnlinked]         = useState<EmployeeCert[]>([])
   const [requirements, setRequirements] = useState<CertRequirement[]>([])
-  const [employees, setEmployees] = useState<User[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [loading, setLoading] = useState(true)
+  const [employees, setEmployees]       = useState<User[]>([])
+  const [services, setServices]         = useState<Service[]>([])
+  const [loading, setLoading]           = useState(true)
 
   const loadData = useCallback(async () => {
-    const [cts, certs, reqs, emps, svcs] = await Promise.all([
+    const [cts, certs, unlinkedCerts, reqs, emps, svcs] = await Promise.all([
       fetchCertTypes(),
       fetchAllCertsWithEmployees(),
+      fetchUnlinkedCerts(),
       fetchCertRequirements(),
       fetchUsers(true),
       fetchServices(),
     ])
     setCertTypes(cts)
     setAllCerts(certs)
+    setUnlinked(unlinkedCerts)
     setRequirements(reqs)
     setEmployees(emps)
     setServices(svcs)
@@ -56,17 +53,25 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
+  const TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
+    { id: 'overview',      label: 'Обзор',        emoji: '📊' },
+    { id: 'matrix',        label: 'Допуски',       emoji: '📋' },
+    { id: 'unlinked',      label: 'Несвязанные',   emoji: '🔗', badge: unlinked.length },
+    { id: 'catalog',       label: 'Каталог',       emoji: '📝' },
+    { id: 'requirements',  label: 'Требования',    emoji: '⚙️' },
+  ]
+
   return (
     <div className="min-h-screen p-4 md:p-6">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit">
+      <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               tab === t.id
                 ? 'bg-rose-600/40 text-white border border-rose-500/40'
                 : 'text-white/50 hover:text-white hover:bg-white/5'
@@ -74,6 +79,11 @@ function Content({ session }: { session: AuthSession }) {
           >
             <span>{t.emoji}</span>
             <span className="hidden sm:inline">{t.label}</span>
+            {t.badge && t.badge > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {t.badge > 99 ? '!' : t.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -87,6 +97,7 @@ function Content({ session }: { session: AuthSession }) {
           {tab === 'overview' && (
             <CoverageOverview
               allCerts={allCerts}
+              unlinkedCount={unlinked.length}
               requirements={requirements}
               employees={employees}
               services={services}
@@ -98,6 +109,14 @@ function Content({ session }: { session: AuthSession }) {
               allCerts={allCerts}
               employees={employees}
               services={services}
+              session={session}
+              onRefresh={loadData}
+            />
+          )}
+          {tab === 'unlinked' && (
+            <UnlinkedCerts
+              unlinked={unlinked}
+              employees={employees}
               session={session}
               onRefresh={loadData}
             />

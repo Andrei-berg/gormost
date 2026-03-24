@@ -1927,13 +1927,61 @@ export async function upsertEmployeeCert(cert: Partial<EmployeeCert>): Promise<E
   const payload = { ...cert }
   delete payload.cert_type
   delete payload.employee
+  // employee_certs_linked_uniq index handles dedup for linked records
   const { data, error } = await supabase
     .from('employee_certs')
-    .upsert(payload, { onConflict: 'employee_id,cert_type_id' })
+    .upsert(payload, { onConflict: 'id' })
     .select('*, cert_type:cert_types(*)')
     .single()
   if (error) console.error('upsertEmployeeCert:', error)
   return data as EmployeeCert | null
+}
+
+/** Insert a new cert record for a linked employee (creates or updates by employee+type) */
+export async function upsertLinkedCert(cert: Partial<EmployeeCert>): Promise<EmployeeCert | null> {
+  const payload = { ...cert }
+  delete payload.cert_type
+  delete payload.employee
+  payload.employee_id = payload.employee_id ?? null
+  payload.is_indefinite = payload.is_indefinite ?? false
+  // Use id-based upsert if editing existing, otherwise insert fresh
+  if (payload.id) {
+    const { data, error } = await supabase
+      .from('employee_certs')
+      .update(payload)
+      .eq('id', payload.id)
+      .select('*, cert_type:cert_types(*)')
+      .single()
+    if (error) console.error('upsertLinkedCert update:', error)
+    return data as EmployeeCert | null
+  }
+  const { data, error } = await supabase
+    .from('employee_certs')
+    .insert(payload)
+    .select('*, cert_type:cert_types(*)')
+    .single()
+  if (error) console.error('upsertLinkedCert insert:', error)
+  return data as EmployeeCert | null
+}
+
+/** Fetch all unlinked cert records (employee_id IS NULL) */
+export async function fetchUnlinkedCerts(): Promise<EmployeeCert[]> {
+  const { data } = await supabase
+    .from('employee_certs')
+    .select('*, cert_type:cert_types(*)')
+    .is('employee_id', null)
+    .order('full_name')
+  return (data || []) as EmployeeCert[]
+}
+
+/** Link an unlinked cert record to a user */
+export async function linkCertToEmployee(certId: string, employeeId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('employee_certs')
+    .update({ employee_id: employeeId, full_name: null })
+    .eq('id', certId)
+  if (error) { console.error('linkCertToEmployee:', error); return false }
+  return true
 }
 
 export async function deleteEmployeeCert(id: string): Promise<boolean> {
@@ -1966,11 +2014,12 @@ export async function deleteCertRequirement(id: string): Promise<boolean> {
   return !error
 }
 
-/** Fetch all active employee certs with employee data — for coverage overview */
+/** Fetch all linked employee certs with employee data — for matrix + coverage overview */
 export async function fetchAllCertsWithEmployees(): Promise<EmployeeCert[]> {
   const { data } = await supabase
     .from('employee_certs')
     .select('*, cert_type:cert_types(*), employee:users!employee_id(user_id,full_name,service_id,position,is_active)')
+    .not('employee_id', 'is', null)
     .order('expires_at', { ascending: true, nullsFirst: false })
   return (data || []) as EmployeeCert[]
 }
