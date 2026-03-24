@@ -566,8 +566,11 @@ def insert_cert(url: str, key: str, record: dict, dry_run: bool) -> bool:
 def main():
     parser = argparse.ArgumentParser(description='Import certs from Excel to Supabase')
     parser.add_argument('--dry-run', action='store_true', help='Print without inserting')
+    parser.add_argument('--sql', action='store_true', help='Output SQL file instead of inserting')
     parser.add_argument('--sheet', type=str, help='Import only this sheet')
     args = parser.parse_args()
+    if args.sql:
+        args.dry_run = True  # sql mode implies no real inserts
 
     # Find Excel file
     excel_path = None
@@ -660,6 +663,26 @@ def main():
             all_records.append(rec)
 
         print(f"  Matched: {matched}, Unmatched (no user_id): {unmatched}, Missing cert type: {missing_cert_type}")
+
+    # SQL mode — write to file
+    if args.sql:
+        sql_path = Path(__file__).parent.parent / 'supabase' / 'migrations' / '036_import_certs_data.sql'
+        with open(sql_path, 'w', encoding='utf-8') as f:
+            f.write('-- Auto-generated: import certificates from Excel\n')
+            f.write('-- Run in Supabase SQL Editor after migration 035 + 035b\n\n')
+            for rec in all_records:
+                payload = {k: v for k, v in rec.items() if v is not None}
+                payload.setdefault('is_indefinite', False)
+                cols = ', '.join(payload.keys())
+                def q(v):
+                    if isinstance(v, bool): return 'true' if v else 'false'
+                    if isinstance(v, str): return "'" + v.replace("'", "''") + "'"
+                    return str(v)
+                vals = ', '.join(q(v) for v in payload.values())
+                f.write(f'INSERT INTO employee_certs ({cols}) VALUES ({vals}) ON CONFLICT DO NOTHING;\n')
+        print(f"SQL written to: {sql_path}")
+        print(f"Total: {len(all_records)} INSERT statements")
+        return
 
     # Insert all records
     print(f"\n{'[DRY RUN] ' if args.dry_run else ''}Inserting {len(all_records)} records...")
