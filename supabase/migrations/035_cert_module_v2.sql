@@ -94,7 +94,16 @@ ON CONFLICT (code) DO NOTHING;
 -- Mark old generic HEIGHT as inactive (replaced by HEIGHT_1/2/3/SCAFFOLD)
 UPDATE cert_types SET is_active = false WHERE code = 'HEIGHT';
 
--- ============ 4. ADD SAFETY_ENGINEER USER ============
+-- ============ 4. FIX ROLE CONSTRAINT + ADD SAFETY_ENGINEER USER ============
+-- Add SAFETY_ENGINEER to role_level CHECK constraint first
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_level_check;
+ALTER TABLE users ADD CONSTRAINT users_role_level_check
+  CHECK (role_level IN (
+    'ADMIN', 'BOSS', 'ZAMPORAB', 'HEAD', 'DISPATCHER', 'FOREMAN',
+    'TRANSPORT', 'COMPLAINTS', 'WORKER', 'CHIEF_ENGINEER',
+    'SPECIALIST', 'HR', 'DRIVER', 'SAFETY_ENGINEER'
+  ));
+
 -- Default PIN: 5555 (инженер ТБиОТ должна сменить при первом входе)
 
 INSERT INTO users (user_id, full_name, tab_number, role_level, service_id, is_active, pin_code, position)
