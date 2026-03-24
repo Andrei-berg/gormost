@@ -1,14 +1,13 @@
 'use client'
 import { useState } from 'react'
-import type { WorkPlanWithItems, WorkPlanItem, WorkPlanItemWithVehicles, CrossServiceRequest, Service, AuthSession } from '@/types'
+import type { WorkPlanWithItems, WorkPlanItemWithVehicles, CrossServiceRequest, CrossServiceDraft, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG } from '@/types'
+import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
   createCrossServiceRequest,
 } from '@/lib/api'
-
-const ALL_SERVICES = Object.keys(SERVICE_META)
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -16,14 +15,6 @@ const SERVICE_NAMES: Record<string, string> = {
   'SRV-FIRE': 'Пожарная безопасность',
   'SRV-VENT': 'Вентиляция',
   'SRV-CCTV': 'Видеонаблюдение',
-}
-
-interface CrossServiceDraft {
-  to_service_id: string
-  description: string
-  needed_count: number
-  time_start: string
-  time_end: string
 }
 
 // SRV-STR (СЭИС) is managed by Zamporab — skips chief engineer
@@ -88,7 +79,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
     onRefresh()
   }
 
-  const handleSaveItem = async (data: ItemFormData, crossDraft: CrossServiceDraft | null) => {
+  const handleSaveItem = async (data: PlanItemFormData, crossDraft: CrossServiceDraft | null) => {
     const item = await createWorkPlanItem({ plan_id: plan.id, sort_order: plan.items.length, ...data })
     if (item && crossDraft && session.service_id) {
       await createCrossServiceRequest({
@@ -107,7 +98,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
     onRefresh()
   }
 
-  const handleUpdateItem = async (itemId: string, data: ItemFormData, crossDraft: CrossServiceDraft | null) => {
+  const handleUpdateItem = async (itemId: string, data: PlanItemFormData, crossDraft: CrossServiceDraft | null) => {
     await updateWorkPlanItem(itemId, data)
     if (crossDraft && session.service_id) {
       await createCrossServiceRequest({
@@ -232,8 +223,9 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
               <PlanItemForm
                 key={item.id}
                 initial={item}
-                planServiceId={plan.service_id}
+                serviceId={plan.service_id}
                 existingCrossRequest={item.cross_requests?.[0] ?? null}
+                withCrossService
                 onSave={(data, crossDraft) => handleUpdateItem(item.id, data, crossDraft)}
                 onCancel={() => setEditingItemId(null)}
               />
@@ -249,7 +241,8 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
 
           {showAddItem ? (
             <PlanItemForm
-              planServiceId={plan.service_id}
+              serviceId={plan.service_id}
+              withCrossService
               onSave={handleSaveItem}
               onCancel={() => setShowAddItem(false)}
             />
@@ -337,231 +330,3 @@ function ItemRow({ item, onEdit, onDelete }: {
   )
 }
 
-type ItemFormData = Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order'>
-
-function PlanItemForm({ initial, planServiceId, existingCrossRequest, onSave, onCancel }: {
-  initial?: WorkPlanItem
-  planServiceId: string
-  existingCrossRequest?: CrossServiceRequest | null
-  onSave: (data: ItemFormData, crossDraft: CrossServiceDraft | null) => void
-  onCancel: () => void
-}) {
-  const [location, setLocation] = useState(initial?.location || '')
-  const [workDesc, setWorkDesc] = useState(initial?.work_description || '')
-  const [workersText, setWorkersText] = useState(initial?.workers.join('\n') || '')
-  const [timeStart, setTimeStart] = useState(initial?.time_start || '')
-  const [timeEnd, setTimeEnd] = useState(initial?.time_end || '')
-  const [notes, setNotes] = useState(initial?.notes || '')
-  const [reqWorkers, setReqWorkers] = useState(String(initial?.required_workers ?? 0))
-  const [reqForemen, setReqForemen] = useState(String(initial?.required_foremen ?? 0))
-  const [reqVehicles, setReqVehicles] = useState(String(initial?.required_vehicles ?? 0))
-
-  const otherServices = ALL_SERVICES.filter(id => id !== planServiceId)
-
-  const initCross = (): CrossServiceDraft => existingCrossRequest ? {
-    to_service_id: existingCrossRequest.to_service_id,
-    description: existingCrossRequest.description,
-    needed_count: existingCrossRequest.needed_count,
-    time_start: existingCrossRequest.time_start || '',
-    time_end: existingCrossRequest.time_end || '',
-  } : {
-    to_service_id: otherServices[0] ?? '',
-    description: '',
-    needed_count: 1,
-    time_start: initial?.time_start || '',
-    time_end: initial?.time_end || '',
-  }
-
-  const [crossDraft, setCrossDraft] = useState<CrossServiceDraft | null>(
-    existingCrossRequest ? initCross() : null
-  )
-  const [showCross, setShowCross] = useState(!!existingCrossRequest)
-
-  const handleSave = () => {
-    if (!location.trim() || !workDesc.trim()) return
-    onSave({
-      location: location.trim(),
-      work_description: workDesc.trim(),
-      workers: workersText.split('\n').map(w => w.trim()).filter(Boolean),
-      time_start: timeStart || null,
-      time_end: timeEnd || null,
-      notes: notes.trim() || null,
-      required_workers: Number(reqWorkers) || 0,
-      required_brigadiers: 0,
-      required_masters: 0,
-      required_foremen: Number(reqForemen) || 0,
-      required_vehicles: Number(reqVehicles) || 0,
-      required_vehicle_types: [],
-      is_redirected: initial?.is_redirected ?? false,
-      redirect_reason: initial?.redirect_reason ?? null,
-    }, crossDraft)
-  }
-
-  const toggleCross = () => {
-    if (crossDraft) {
-      setShowCross(v => !v)
-    } else {
-      const draft = initCross()
-      setCrossDraft(draft)
-      setShowCross(true)
-    }
-  }
-
-  const inputCls = 'w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50'
-  const labelCls = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
-  const numCls = 'w-full px-2 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm text-center focus:outline-none focus:border-blue-500/50'
-
-  return (
-    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Место / Объект *</label>
-          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Тоннель №3, портал..." className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Вид работ *</label>
-          <input value={workDesc} onChange={e => setWorkDesc(e.target.value)} placeholder="Замена ламп, ревизия..." className={inputCls} />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>С</label>
-          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>До</label>
-          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Примечание</label>
-          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="..." className={inputCls} />
-        </div>
-      </div>
-      {/* Headcount planning */}
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>👷 Рабочих</label>
-          <input type="number" min="0" value={reqWorkers} onChange={e => setReqWorkers(e.target.value)} className={numCls} />
-        </div>
-        <div>
-          <label className={labelCls}>🦺 Мастеров</label>
-          <input type="number" min="0" value={reqForemen} onChange={e => setReqForemen(e.target.value)} className={numCls} />
-        </div>
-        <div>
-          <label className={labelCls}>🚛 ТС</label>
-          <input type="number" min="0" value={reqVehicles} onChange={e => setReqVehicles(e.target.value)} className={numCls} />
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Работники (каждый с новой строки)</label>
-        <textarea
-          value={workersText}
-          onChange={e => setWorkersText(e.target.value)}
-          rows={3}
-          placeholder={'Иванов И.И.\nПетров П.П.'}
-          className={`${inputCls} resize-none`}
-        />
-      </div>
-
-      {/* Cross-service toggle */}
-      <div>
-        <button
-          type="button"
-          onClick={toggleCross}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
-            crossDraft
-              ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
-              : 'bg-violet-500/8 border-violet-500/20 text-violet-400/70 hover:text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/35'
-          }`}
-        >
-          <span>🔗</span>
-          <span>
-            {crossDraft
-              ? `${SERVICE_META[crossDraft.to_service_id]?.emoji ?? ''} ${SERVICE_NAMES[crossDraft.to_service_id] ?? crossDraft.to_service_id} ${showCross ? '▾' : '▸'}`
-              : 'Смежная служба'}
-          </span>
-        </button>
-      </div>
-
-      {/* Cross-service expanded form */}
-      {crossDraft && showCross && (
-        <div className="rounded-lg bg-violet-500/5 border border-violet-500/20 p-3 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-violet-300 uppercase tracking-wider">🔗 Запрос смежной службе</span>
-            <button
-              type="button"
-              onClick={() => { setCrossDraft(null); setShowCross(false) }}
-              className="text-white/25 hover:text-red-400 text-xs transition-colors px-1"
-            >
-              ✕ убрать
-            </button>
-          </div>
-          <div>
-            <div className="text-[10px] text-white/35 mb-1.5">Кому направляем запрос</div>
-            <div className="flex flex-wrap gap-1.5">
-              {otherServices.map(sid => (
-                <button
-                  key={sid}
-                  type="button"
-                  onClick={() => setCrossDraft(d => d ? { ...d, to_service_id: sid } : d)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                    crossDraft.to_service_id === sid
-                      ? 'bg-violet-600/40 border-violet-500/60 text-white'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80'
-                  }`}
-                >
-                  <span>{SERVICE_META[sid]?.emoji ?? ''}</span>
-                  <span>{SERVICE_NAMES[sid] ?? sid}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-white/40">Людей</span>
-              <div className="flex items-center gap-0.5">
-                <button type="button"
-                  onClick={() => setCrossDraft(d => d ? { ...d, needed_count: Math.max(1, d.needed_count - 1) } : d)}
-                  className="w-6 h-6 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">−</button>
-                <span className="w-7 text-center text-sm font-semibold text-white">{crossDraft.needed_count}</span>
-                <button type="button"
-                  onClick={() => setCrossDraft(d => d ? { ...d, needed_count: Math.min(20, d.needed_count + 1) } : d)}
-                  className="w-6 h-6 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">+</button>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-white/40">с</span>
-              <input type="time" value={crossDraft.time_start}
-                onChange={e => setCrossDraft(d => d ? { ...d, time_start: e.target.value } : d)}
-                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" />
-              <span className="text-white/30 text-xs">–</span>
-              <input type="time" value={crossDraft.time_end}
-                onChange={e => setCrossDraft(d => d ? { ...d, time_end: e.target.value } : d)}
-                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" />
-            </div>
-          </div>
-          <input
-            type="text"
-            value={crossDraft.description}
-            onChange={e => setCrossDraft(d => d ? { ...d, description: e.target.value } : d)}
-            placeholder="Что нужно сделать (опишите задачу для другой службы)…"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50"
-          />
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={handleSave}
-          disabled={!location.trim() || !workDesc.trim()}
-          className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium"
-        >
-          Сохранить
-        </button>
-        <button onClick={onCancel} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm">
-          Отмена
-        </button>
-      </div>
-    </div>
-  )
-}

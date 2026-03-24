@@ -1,14 +1,13 @@
 'use client'
-import { useState, useCallback } from 'react'
-import type { WorkPlanWithItems, WorkPlanItem, WorkPlanItemWithVehicles, AuthSession, UserWithAssignment, VehicleRequirement } from '@/types'
+import { useState } from 'react'
+import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG, VehicleType } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
+import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan, recallWorkPlan,
-  fetchUsersWithAssignments,
 } from '@/lib/api'
-import { isWorkerOnDuty } from '@/lib/shifts'
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -86,15 +85,13 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
     onRefresh()
   }
 
-  type ItemFormData = Omit<WorkPlanItemWithVehicles, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order' | 'vehicles' | 'cross_requests'>
-
-  const handleSaveItem = async (data: ItemFormData) => {
+  const handleSaveItem = async (data: PlanItemFormData, _cross: CrossServiceDraft | null) => {
     await createWorkPlanItem({ plan_id: plan.id, sort_order: plan.items.length, ...data })
     setShowAddItem(false)
     onRefresh()
   }
 
-  const handleUpdateItem = async (itemId: string, data: ItemFormData) => {
+  const handleUpdateItem = async (itemId: string, data: PlanItemFormData, _cross: CrossServiceDraft | null) => {
     await updateWorkPlanItem(itemId, data)
     setEditingItemId(null)
     onRefresh()
@@ -131,7 +128,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 key={item.id}
                 initial={item}
                 serviceId={plan.service_id}
-                onSave={(data) => handleUpdateItem(item.id, data)}
+                onSave={(data, cross) => handleUpdateItem(item.id, data, cross)}
                 onCancel={() => setEditingItemId(null)}
               />
             ) : (
@@ -355,307 +352,6 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
   )
 }
 
-// ── Item edit / create form ─────────────────────────────────────────────────
-
-type ItemFormData = Omit<WorkPlanItemWithVehicles, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order' | 'vehicles' | 'cross_requests'>
-
-// Grouping for worker picker
-const ROLE_GROUPS: Array<{ key: string; label: string; levels: string[] }> = [
-  { key: 'foreman',  label: 'Мастера / Бригадиры', levels: ['FOREMAN'] },
-  { key: 'itr',      label: 'ИТР / Специалисты',   levels: ['HEAD', 'SPECIALIST', 'CHIEF_ENGINEER', 'ZAMPORAB', 'DISPATCHER', 'HR', 'SAFETY_ENGINEER'] },
-  { key: 'worker',   label: 'Рабочие',              levels: ['WORKER'] },
-  { key: 'driver',   label: 'Водители',             levels: ['DRIVER'] },
-]
-
-function PlanItemForm({ initial, serviceId, onSave, onCancel }: {
-  initial?: WorkPlanItem
-  serviceId: string
-  onSave: (data: ItemFormData) => void
-  onCancel: () => void
-}) {
-  const [location, setLocation]   = useState(initial?.location || '')
-  const [workDesc, setWorkDesc]   = useState(initial?.work_description || '')
-  const [timeStart, setTimeStart] = useState(initial?.time_start || '')
-  const [timeEnd, setTimeEnd]     = useState(initial?.time_end || '')
-  const [notes, setNotes]         = useState(initial?.notes || '')
-  const [reqWorkers,    setReqWorkers]    = useState(initial?.required_workers    ?? 0)
-  const [reqBrigadiers, setReqBrigadiers] = useState(initial?.required_brigadiers ?? 0)
-  const [reqMasters,    setReqMasters]    = useState(initial?.required_masters    ?? 0)
-  const [reqForemen,    setReqForemen]    = useState(initial?.required_foremen    ?? 0)
-
-  // Vehicle type requirements (replaces single count stepper)
-  const [vehicleReqs, setVehicleReqs] = useState<VehicleRequirement[]>(
-    initial?.required_vehicle_types ?? []
-  )
-  const [showVehicleMenu, setShowVehicleMenu] = useState(false)
-
-  // Named workers (smart picker)
-  const [selectedWorkers, setSelectedWorkers] = useState<string[]>(initial?.workers ?? [])
-  const [showWorkerPicker, setShowWorkerPicker] = useState(false)
-  const [pickerWorkers, setPickerWorkers] = useState<UserWithAssignment[]>([])
-  const [pickerLoading, setPickerLoading] = useState(false)
-
-  // Vehicle type helpers
-  const addVehicleType = (type: VehicleType) => {
-    setShowVehicleMenu(false)
-    if (vehicleReqs.find(r => r.type === type)) return
-    setVehicleReqs(prev => [...prev, { type, count: 1 }])
-  }
-  const changeVehicleCount = (type: VehicleType, delta: number) => {
-    setVehicleReqs(prev => prev.map(r =>
-      r.type === type ? { ...r, count: Math.max(1, r.count + delta) } : r
-    ))
-  }
-  const removeVehicleType = (type: VehicleType) => {
-    setVehicleReqs(prev => prev.filter(r => r.type !== type))
-  }
-
-  // Worker picker helpers
-  const loadWorkers = useCallback(async () => {
-    if (pickerWorkers.length > 0 || pickerLoading) return
-    setPickerLoading(true)
-    const today = new Date()
-    const all = await fetchUsersWithAssignments()
-    const onDuty = all.filter(u => {
-      if (u.service_id !== serviceId) return false
-      if (!u.assignment) return false
-      return isWorkerOnDuty({
-        shift_num: u.assignment.shift_num,
-        schedule_code: u.assignment.schedule_code ?? '',
-        shift_reference_date: u.assignment.shift_reference_date,
-        rotation_group: u.assignment.rotation_group,
-      }, today)
-    })
-    setPickerWorkers(onDuty)
-    setPickerLoading(false)
-  }, [serviceId, pickerWorkers.length, pickerLoading])
-
-  const toggleWorkerPicker = () => {
-    if (!showWorkerPicker) loadWorkers()
-    setShowWorkerPicker(prev => !prev)
-  }
-
-  const toggleWorker = (name: string) => {
-    setSelectedWorkers(prev =>
-      prev.includes(name) ? prev.filter(w => w !== name) : [...prev, name]
-    )
-  }
-
-  const handleSave = () => {
-    if (!location.trim() || !workDesc.trim()) return
-    const totalVehicles = vehicleReqs.reduce((s, r) => s + r.count, 0)
-    onSave({
-      location: location.trim(),
-      work_description: workDesc.trim(),
-      workers: selectedWorkers,
-      time_start: timeStart || null,
-      time_end: timeEnd || null,
-      notes: notes.trim() || null,
-      required_workers:       reqWorkers,
-      required_brigadiers:    reqBrigadiers,
-      required_masters:       reqMasters,
-      required_foremen:       reqForemen,
-      required_vehicles:      totalVehicles,
-      required_vehicle_types: vehicleReqs,
-      is_redirected: false,
-      redirect_reason: null,
-    })
-  }
-
-  const inp = 'form-input w-full text-sm px-2.5 py-1.5 placeholder-white/30'
-  const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
-
-  // Vehicle types not yet selected
-  const usedTypes = new Set(vehicleReqs.map(r => r.type))
-  const availableTypes = (Object.keys(VEHICLE_TYPE_CONFIG) as VehicleType[]).filter(t => !usedTypes.has(t))
-
-  return (
-    <div className="p-3 rounded-xl bg-blue-500/8 border border-blue-500/20 space-y-3">
-
-      {/* Location + work description */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={lbl}>Место *</label>
-          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Тоннель, портал..." className={inp} />
-        </div>
-        <div>
-          <label className={lbl}>Вид работ *</label>
-          <input value={workDesc} onChange={e => setWorkDesc(e.target.value)} placeholder="Замена ламп..." className={inp} />
-        </div>
-      </div>
-
-      {/* Time + headcount steppers */}
-      <div className="flex flex-wrap gap-2 items-end">
-        <div>
-          <label className={lbl}>С</label>
-          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className="form-input text-sm px-2 py-1.5" />
-        </div>
-        <div>
-          <label className={lbl}>До</label>
-          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="form-input text-sm px-2 py-1.5" />
-        </div>
-        <div className="flex items-end gap-2 ml-2 flex-wrap">
-          <MiniStepper label="👷" value={reqWorkers}    onChange={setReqWorkers} />
-          <MiniStepper label="⭐" value={reqBrigadiers} onChange={setReqBrigadiers} />
-          <MiniStepper label="🎓" value={reqMasters}    onChange={setReqMasters} />
-          <MiniStepper label="📋" value={reqForemen}    onChange={setReqForemen} />
-        </div>
-        <div className="flex-1 min-w-32">
-          <label className={lbl}>Примечание</label>
-          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="..." className={inp} />
-        </div>
-      </div>
-
-      {/* ── Vehicle type picker ── */}
-      <div>
-        <label className={lbl}>🚛 Спецтехника</label>
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {vehicleReqs.map(vr => {
-            const cfg = VEHICLE_TYPE_CONFIG[vr.type]
-            return (
-              <div key={vr.type} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-200 text-xs">
-                <span>{cfg.emoji}</span>
-                <span>{cfg.label}</span>
-                <button onClick={() => changeVehicleCount(vr.type, -1)} className="w-4 h-4 flex items-center justify-center hover:bg-amber-500/20 rounded text-[10px] font-bold">−</button>
-                <span className="font-mono font-semibold">{vr.count}</span>
-                <button onClick={() => changeVehicleCount(vr.type, +1)} className="w-4 h-4 flex items-center justify-center hover:bg-amber-500/20 rounded text-[10px] font-bold">+</button>
-                <button onClick={() => removeVehicleType(vr.type)} className="ml-0.5 hover:text-red-400 text-amber-400/60 text-[11px] leading-none">✕</button>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Add vehicle button + dropdown */}
-        {availableTypes.length > 0 && (
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={() => setShowVehicleMenu(v => !v)}
-              className="text-xs px-2.5 py-1 rounded-lg border border-dashed border-amber-500/30 text-amber-400/70 hover:text-amber-300 hover:border-amber-500/50 transition-colors"
-            >
-              + Добавить технику
-            </button>
-            {showVehicleMenu && (
-              <div className="absolute z-20 top-full mt-1 left-0 glass rounded-xl border border-white/10 shadow-2xl py-1 min-w-[180px]">
-                {availableTypes.map(type => {
-                  const cfg = VEHICLE_TYPE_CONFIG[type]
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => addVehicleType(type)}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/8 text-left text-sm text-white/80 hover:text-white transition-colors"
-                    >
-                      <span>{cfg.emoji}</span>
-                      <span>{cfg.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Smart worker picker ── */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className={lbl + ' mb-0'}>👷 Работники поимённо</label>
-          <button
-            type="button"
-            onClick={toggleWorkerPicker}
-            className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${
-              showWorkerPicker
-                ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
-                : 'border-white/15 text-white/40 hover:text-white/60 hover:border-white/25'
-            }`}
-          >
-            {showWorkerPicker ? '▲ Скрыть' : '▼ Выбрать со смены'}
-          </button>
-        </div>
-
-        {/* Selected workers chips */}
-        {selectedWorkers.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {selectedWorkers.map((w, i) => (
-              <span
-                key={i}
-                onClick={() => toggleWorker(w)}
-                className="flex items-center gap-1 text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 px-2 py-0.5 rounded-full cursor-pointer hover:bg-red-500/15 hover:text-red-300 hover:border-red-500/25 transition-colors"
-                title="Нажмите чтобы убрать"
-              >
-                {w} <span className="text-[9px] opacity-60">✕</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Worker picker panel */}
-        {showWorkerPicker && (
-          <div className="rounded-xl bg-white/4 border border-white/8 p-3 space-y-3 max-h-64 overflow-y-auto">
-            {pickerLoading && (
-              <div className="text-xs text-white/30 text-center py-2">Загрузка сотрудников...</div>
-            )}
-            {!pickerLoading && pickerWorkers.length === 0 && (
-              <div className="text-xs text-white/25 text-center py-2 italic">
-                Нет сотрудников на смене сегодня
-              </div>
-            )}
-            {!pickerLoading && ROLE_GROUPS.map(group => {
-              const groupWorkers = pickerWorkers.filter(u => group.levels.includes(u.role_level))
-              if (groupWorkers.length === 0) return null
-              return (
-                <div key={group.key}>
-                  <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5 font-medium">
-                    {group.label} · {groupWorkers.length}
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    {groupWorkers.map(u => {
-                      const selected = selectedWorkers.includes(u.full_name)
-                      return (
-                        <button
-                          key={u.user_id}
-                          type="button"
-                          onClick={() => toggleWorker(u.full_name)}
-                          className={`text-left flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                            selected
-                              ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
-                              : 'bg-white/4 border border-transparent hover:bg-white/8 text-white/70 hover:text-white'
-                          }`}
-                        >
-                          <span className={`w-3 h-3 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
-                            selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20'
-                          }`}>
-                            {selected ? '✓' : ''}
-                          </span>
-                          <span className="truncate">{u.full_name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          onClick={handleSave}
-          disabled={!location.trim() || !workDesc.trim()}
-          className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium transition-colors"
-        >
-          Сохранить
-        </button>
-        <button onClick={onCancel} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm transition-colors">
-          Отмена
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function TotalRow({ icon, label, count }: { icon: string; label: string; count: number }) {
   return (
     <div className="flex items-center justify-between">
@@ -665,15 +361,3 @@ function TotalRow({ icon, label, count }: { icon: string; label: string; count: 
   )
 }
 
-function MiniStepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[11px]">{label}</span>
-      <div className="flex items-center gap-0.5">
-        <button onClick={() => onChange(Math.max(0, value - 1))} className="w-5 h-5 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center transition-colors">−</button>
-        <span className="w-6 text-center text-sm text-white font-semibold">{value}</span>
-        <button onClick={() => onChange(Math.min(50, value + 1))} className="w-5 h-5 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center transition-colors">+</button>
-      </div>
-    </div>
-  )
-}
