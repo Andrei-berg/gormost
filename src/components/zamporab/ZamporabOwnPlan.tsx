@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession, Service } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
+import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems,
   createWorkPlan, submitWorkPlan,
@@ -170,13 +171,13 @@ function OwnPlanCard({ plan, session, onRefresh }: {
     onRefresh()
   }
 
-  const handleSaveItem = async (data: ItemFormData) => {
+  const handleSaveItem = async (data: PlanItemFormData) => {
     await createWorkPlanItem({ plan_id: plan.id, sort_order: plan.items.length, ...data })
     setShowAddItem(false)
     onRefresh()
   }
 
-  const handleUpdateItem = async (itemId: string, data: ItemFormData) => {
+  const handleUpdateItem = async (itemId: string, data: PlanItemFormData) => {
     await updateWorkPlanItem(itemId, data)
     setEditingItemId(null)
     onRefresh()
@@ -260,9 +261,10 @@ function OwnPlanCard({ plan, session, onRefresh }: {
 
           {plan.items.map(item =>
             editingItemId === item.id ? (
-              <OwnItemForm
+              <SharedPlanItemForm
                 key={item.id}
                 initial={item}
+                serviceId={plan.service_id}
                 onSave={(data) => handleUpdateItem(item.id, data)}
                 onCancel={() => setEditingItemId(null)}
               />
@@ -279,7 +281,8 @@ function OwnPlanCard({ plan, session, onRefresh }: {
 
           {isEditable && (
             showAddItem ? (
-              <OwnItemForm
+              <SharedPlanItemForm
+                serviceId={plan.service_id}
                 onSave={handleSaveItem}
                 onCancel={() => setShowAddItem(false)}
               />

@@ -665,6 +665,14 @@ export const VEHICLE_STATUS_CONFIG: Record<VehicleStatus, { label: string; color
   MAINTENANCE: { label: 'ТО / Ремонт',  color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
 }
 
+export interface CrossServiceDraft {
+  to_service_id: string
+  description: string
+  needed_count: number
+  time_start: string
+  time_end: string
+}
+
 export interface VehicleRequirement {
   type: VehicleType
   count: number

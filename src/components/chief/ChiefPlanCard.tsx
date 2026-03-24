@@ -6,6 +6,7 @@ import {
   approveWorkPlan, rejectWorkPlan,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
 } from '@/lib/api'
+import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
 
 interface Props {
   plan: WorkPlanWithItems
@@ -49,13 +50,13 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
     onRefresh()
   }
 
-  const handleSaveItem = async (data: ItemFormData) => {
+  const handleSaveItem = async (data: PlanItemFormData) => {
     await createWorkPlanItem({ plan_id: plan.id, sort_order: plan.items.length, ...data })
     setShowAddItem(false)
     onRefresh()
   }
 
-  const handleUpdateItem = async (itemId: string, data: ItemFormData) => {
+  const handleUpdateItem = async (itemId: string, data: PlanItemFormData) => {
     await updateWorkPlanItem(itemId, data)
     setEditingItemId(null)
     onRefresh()
@@ -153,9 +154,10 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
 
         {plan.items.map(item =>
           editingItemId === item.id ? (
-            <ItemForm
+            <SharedPlanItemForm
               key={item.id}
               initial={item}
+              serviceId={plan.service_id}
               onSave={(data) => handleUpdateItem(item.id, data)}
               onCancel={() => setEditingItemId(null)}
             />
@@ -172,7 +174,8 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
 
         {canEdit && (
           showAddItem ? (
-            <ItemForm
+            <SharedPlanItemForm
+              serviceId={plan.service_id}
               onSave={handleSaveItem}
               onCancel={() => setShowAddItem(false)}
             />
@@ -227,91 +230,3 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
   )
 }
 
-type ItemFormData = Omit<WorkPlanItem, 'id' | 'plan_id' | 'created_at' | 'updated_at' | 'sort_order'>
-
-function ItemForm({ initial, onSave, onCancel }: {
-  initial?: WorkPlanItem
-  onSave: (data: ItemFormData) => void
-  onCancel: () => void
-}) {
-  const [location, setLocation] = useState(initial?.location || '')
-  const [workDesc, setWorkDesc] = useState(initial?.work_description || '')
-  const [workersText, setWorkersText] = useState(initial?.workers.join('\n') || '')
-  const [timeStart, setTimeStart] = useState(initial?.time_start || '')
-  const [timeEnd, setTimeEnd] = useState(initial?.time_end || '')
-  const [notes, setNotes] = useState(initial?.notes || '')
-
-  const handleSave = () => {
-    if (!location.trim() || !workDesc.trim()) return
-    onSave({
-      location: location.trim(),
-      work_description: workDesc.trim(),
-      workers: workersText.split('\n').map(w => w.trim()).filter(Boolean),
-      time_start: timeStart || null,
-      time_end: timeEnd || null,
-      notes: notes.trim() || null,
-      required_workers: 0,
-      required_brigadiers: 0,
-      required_masters: 0,
-      required_foremen: 0,
-      required_vehicles: 0,
-      required_vehicle_types: [],
-      is_redirected: false,
-      redirect_reason: null,
-    })
-  }
-
-  const inputCls = 'w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50'
-  const labelCls = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
-
-  return (
-    <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Место / Объект *</label>
-          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Тоннель №3..." className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Вид работ *</label>
-          <input value={workDesc} onChange={e => setWorkDesc(e.target.value)} placeholder="Замена ламп..." className={inputCls} />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>С</label>
-          <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>До</label>
-          <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Примечание</label>
-          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="..." className={inputCls} />
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Работники (каждый с новой строки)</label>
-        <textarea
-          value={workersText}
-          onChange={e => setWorkersText(e.target.value)}
-          rows={2}
-          placeholder={'Иванов И.И.\nПетров П.П.'}
-          className={`${inputCls} resize-none`}
-        />
-      </div>
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={handleSave}
-          disabled={!location.trim() || !workDesc.trim()}
-          className="px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-sm font-medium"
-        >
-          Сохранить
-        </button>
-        <button onClick={onCancel} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm">
-          Отмена
-        </button>
-      </div>
-    </div>
-  )
-}
