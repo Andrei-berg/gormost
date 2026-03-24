@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import type { WorkPlan, WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
-import WorkPlanModal from '@/components/head/WorkPlanModal'
+import CreatePlanModal from '@/components/head/CreatePlanModal'
 import CancelPlanModal from '@/components/shared/CancelPlanModal'
 
 interface Props {
@@ -186,7 +186,7 @@ export default function ZamporabPlanBoard({
       })}
 
       {showCreate && (
-        <WorkPlanModal
+        <CreatePlanModal
           session={session}
           existingPlans={allPlans.filter(p => p.service_id === session.service_id)}
           onClose={() => setShowCreate(false)}

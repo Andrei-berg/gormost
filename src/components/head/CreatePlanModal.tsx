@@ -28,14 +28,10 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
     options.push({ date: dateStr, shift, label: `${dayNames[d.getDay()]} ${dd}.${mm} · ${shiftLabel}` })
   }
 
-  add(0, 'NIGHT')
-  add(1, 'DAY')
-  add(1, 'NIGHT')
-
-  // Friday → also plan for Saturday and Sunday
-  if (dow === 5) {
-    add(2, 'DAY'); add(2, 'NIGHT')
-    add(3, 'DAY'); add(3, 'NIGHT')
+  // Show slots for today + next 6 days (always 7 days ahead)
+  for (let offset = 0; offset <= 6; offset++) {
+    add(offset, 'DAY')
+    add(offset, 'NIGHT')
   }
 
   return options
