@@ -7,7 +7,7 @@ import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests } fro
 import type { WorkPlanWithItems, WorkPlan, AuthSession, CrossServiceRequest } from '@/types'
 import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
-import WorkPlanModal from '@/components/head/WorkPlanModal'
+import CreatePlanModal from '@/components/head/CreatePlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import AlertBanner from '@/components/AlertBanner'
@@ -125,7 +125,7 @@ function Content({ session }: { session: AuthSession }) {
             onCreatePlan={() => setShowCreate(true)}
           />
           {showCreate && (
-            <WorkPlanModal
+            <CreatePlanModal
               session={session}
               existingPlans={rawPlans}
               onClose={() => setShowCreate(false)}
