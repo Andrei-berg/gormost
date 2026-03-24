@@ -31,7 +31,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showPermit, setShowPermit] = useState(false)
 
-  const canEdit = plan.status === 'DRAFT' || plan.status === 'REJECTED'
+  const canEdit = ['DRAFT', 'REJECTED', 'SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)
   const canSubmit = canEdit && plan.items.length > 0
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'

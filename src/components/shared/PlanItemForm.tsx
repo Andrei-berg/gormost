@@ -182,10 +182,10 @@ export default function PlanItemForm({
           <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="form-input text-sm px-2 py-1.5" />
         </div>
         <div className="flex items-end gap-2 ml-2 flex-wrap">
-          <MiniStepper label="👷" title="Рабочие"    value={reqWorkers}    onChange={setReqWorkers} />
-          <MiniStepper label="⭐" title="Бригадиры"  value={reqBrigadiers} onChange={setReqBrigadiers} />
-          <MiniStepper label="🎓" title="Мастера"    value={reqMasters}    onChange={setReqMasters} />
-          <MiniStepper label="📋" title="ИТР"        value={reqForemen}    onChange={setReqForemen} />
+          <MiniStepper emoji="👷" label="Рабочие"   value={reqWorkers}    onChange={setReqWorkers} />
+          <MiniStepper emoji="⭐" label="Бригадир"  value={reqBrigadiers} onChange={setReqBrigadiers} />
+          <MiniStepper emoji="🎓" label="Мастер"    value={reqMasters}    onChange={setReqMasters} />
+          <MiniStepper emoji="📋" label="ИТР"       value={reqForemen}    onChange={setReqForemen} />
         </div>
         <div className="flex-1 min-w-32">
           <label className={lbl}>Примечание</label>
@@ -370,15 +370,16 @@ export default function PlanItemForm({
   )
 }
 
-function MiniStepper({ label, title, value, onChange }: { label: string; title: string; value: number; onChange: (v: number) => void }) {
+function MiniStepper({ emoji, label, value, onChange }: { emoji: string; label: string; value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex flex-col items-center gap-0.5" title={title}>
-      <span className="text-[11px]">{label}</span>
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[10px] text-white/40 leading-none">{label}</span>
       <div className="flex items-center gap-0.5">
         <button onClick={() => onChange(Math.max(0, value - 1))} className="w-5 h-5 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">−</button>
         <span className="w-6 text-center text-sm text-white font-semibold">{value}</span>
         <button onClick={() => onChange(Math.min(50, value + 1))} className="w-5 h-5 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">+</button>
       </div>
+      <span className="text-[11px] leading-none">{emoji}</span>
     </div>
   )
 }
