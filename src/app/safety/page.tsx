@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
+import AlertsTab from '@/components/safety/AlertsTab'
+import EmployeesTab from '@/components/safety/EmployeesTab'
 import CoverageOverview from '@/components/safety/CoverageOverview'
 import CertMatrix from '@/components/safety/CertMatrix'
 import CertJournal from '@/components/safety/CertJournal'
@@ -14,7 +16,7 @@ import {
 } from '@/lib/api'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
-type Tab = 'overview' | 'journal' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
+type Tab = 'alerts' | 'employees' | 'overview' | 'journal' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
 
 export default function SafetyPage() {
   return (
@@ -25,7 +27,10 @@ export default function SafetyPage() {
 }
 
 function Content({ session }: { session: AuthSession }) {
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState<Tab>('alerts')
+  const [settingsMode, setSettingsMode] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'unlinked' | 'catalog' | 'requirements'>('unlinked')
+
   const [certTypes, setCertTypes]       = useState<CertType[]>([])
   const [allCerts, setAllCerts]         = useState<EmployeeCert[]>([])
   const [unlinked, setUnlinked]         = useState<EmployeeCert[]>([])
@@ -55,39 +60,120 @@ function Content({ session }: { session: AuthSession }) {
   useEffect(() => { loadData() }, [loadData])
 
   const TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
-    { id: 'overview',      label: 'Обзор',        emoji: '📊' },
-    { id: 'journal',       label: 'Журнал',        emoji: '📖' },
-    { id: 'matrix',        label: 'Матрица',       emoji: '📋' },
-    { id: 'unlinked',      label: 'Несвязанные',   emoji: '🔗', badge: unlinked.length },
-    { id: 'catalog',       label: 'Каталог',       emoji: '📝' },
-    { id: 'requirements',  label: 'Требования',    emoji: '⚙️' },
+    { id: 'alerts',       label: 'Тревоги',      emoji: '🚨' },
+    { id: 'employees',    label: 'Сотрудники',   emoji: '👤' },
+    { id: 'overview',     label: 'Обзор',        emoji: '📊' },
+    { id: 'journal',      label: 'Журнал',       emoji: '📖' },
+    { id: 'matrix',       label: 'Матрица',      emoji: '📋' },
+    { id: 'unlinked',     label: 'Несвязанные',  emoji: '🔗', badge: unlinked.length },
+    { id: 'catalog',      label: 'Каталог',      emoji: '📝' },
+    { id: 'requirements', label: 'Требования',   emoji: '⚙️' },
   ]
+
+  const SETTINGS_TABS: { id: 'unlinked' | 'catalog' | 'requirements'; label: string; badge?: number }[] = [
+    { id: 'unlinked',      label: 'Несвязанные', badge: unlinked.length },
+    { id: 'catalog',       label: 'Каталог' },
+    { id: 'requirements',  label: 'Требования' },
+  ]
+
+  if (settingsMode) {
+    return (
+      <div className="min-h-screen p-4 md:p-6">
+        <Header session={session} title="ТБиОТ — Настройки" emoji="⚙️" mode="REVIEW" />
+
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => setSettingsMode(false)}
+            className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+          >
+            ← Назад
+          </button>
+          <div className="flex gap-1 p-1 glass-strong rounded-2xl">
+            {SETTINGS_TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setSettingsTab(t.id)}
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  settingsTab === t.id
+                    ? 'bg-rose-600/40 text-white border border-rose-500/40'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {t.label}
+                {t.badge !== undefined && t.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {t.badge > 99 ? '!' : t.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-2 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {settingsTab === 'unlinked' && (
+              <UnlinkedCerts unlinked={unlinked} employees={employees} session={session} onRefresh={loadData} />
+            )}
+            {settingsTab === 'catalog' && (
+              <CatalogTab certTypes={certTypes} onRefresh={loadData} />
+            )}
+            {settingsTab === 'requirements' && (
+              <RequirementsTab certTypes={certTypes} requirements={requirements} services={services} onRefresh={loadData} />
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-6">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              tab === t.id
-                ? 'bg-rose-600/40 text-white border border-rose-500/40'
-                : 'text-white/50 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <span>{t.emoji}</span>
-            <span className="hidden sm:inline">{t.label}</span>
-            {t.badge && t.badge > 0 && (
-              <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {t.badge > 99 ? '!' : t.badge}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Unlinked banner */}
+      {unlinked.length > 0 && (
+        <button
+          onClick={() => { setSettingsMode(true); setSettingsTab('unlinked') }}
+          className="w-full mb-4 flex items-center gap-3 px-4 py-3 glass-strong rounded-2xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors text-left"
+        >
+          <span className="text-lg">⚠️</span>
+          <span className="text-sm text-amber-300 font-medium">
+            {unlinked.length} записей не привязано к сотрудникам
+          </span>
+          <span className="text-xs text-white/40">— нажмите, чтобы разобрать →</span>
+        </button>
+      )}
+
+      {/* Tabs + Settings button */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex gap-1 p-1 glass-strong rounded-2xl flex-wrap">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                tab === t.id
+                  ? 'bg-rose-600/40 text-white border border-rose-500/40'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>{t.emoji}</span>
+              <span className="hidden sm:inline">{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setSettingsMode(true)}
+          className="ml-auto p-2.5 glass-strong rounded-xl text-white/30 hover:text-white/70 transition-colors"
+          title="Настройки: несвязанные записи, каталог, требования"
+        >
+          ⚙️
+        </button>
       </div>
 
       {loading ? (
@@ -96,6 +182,26 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       ) : (
         <>
+          {tab === 'alerts' && (
+            <AlertsTab
+              allCerts={allCerts}
+              certTypes={certTypes}
+              employees={employees}
+              services={services}
+              session={session}
+              onRefresh={loadData}
+            />
+          )}
+          {tab === 'employees' && (
+            <EmployeesTab
+              certTypes={certTypes}
+              allCerts={allCerts}
+              employees={employees}
+              services={services}
+              session={session}
+              onRefresh={loadData}
+            />
+          )}
           {tab === 'overview' && (
             <CoverageOverview
               allCerts={allCerts}
