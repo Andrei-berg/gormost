@@ -10,7 +10,7 @@ import PrintPanel from './PrintPanel'
 import DriversScheduleTab from './DriversScheduleTab'
 import ScheduleCheckTab from './ScheduleCheckTab'
 import TimesheetExport from './TimesheetExport'
-import DriverPlannerBoard from './DriverPlannerBoard'
+import ShiftPlannerBoard from './ShiftPlannerBoard'
 
 export type ViewMode = 'roster' | 'tabel' | 'coverage' | 'stroevaya' | 'drivers' | 'check' | 'planner'
 type PeriodPreset = 'week' | 'prev_week' | 'month' | 'prev_month' | 'custom'
@@ -221,7 +221,7 @@ export default function HRToolsShell({ session }: Props) {
           {view === 'stroevaya' && <StroevayaView      users={data.users} phases={data.phases} services={data.services} />}
           {view === 'drivers'   && <DriversScheduleTab users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} onPhasesChanged={load} />}
           {view === 'check'     && <ScheduleCheckTab   users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} />}
-          {view === 'planner'   && <DriverPlannerBoard users={data.users} phases={data.phases} session={session} />}
+          {view === 'planner'   && <ShiftPlannerBoard users={data.users} phases={data.phases} services={data.services} schedules={data.schedules} session={session} />}
         </>
       )}
     </div>
