@@ -1426,6 +1426,59 @@ export async function deleteShiftPhase(id: string, deletedBy: string): Promise<b
   return !error
 }
 
+/**
+ * Save a shift phase — create new or replace existing.
+ * If existingPhaseId provided: deletes it first.
+ * Auto-closes any other open phases before inserting.
+ * Supports explicit valid_to (closed phase) unlike openShiftPhase.
+ */
+export async function saveShiftPhase(
+  employeeId: string,
+  data: {
+    phase: 'day' | 'night'
+    anchor_date: string
+    valid_from: string
+    valid_to: string | null
+    schedule_code: string
+    is_alternating?: boolean
+    notes?: string
+  },
+  createdBy: string,
+  existingPhaseId?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  // Delete existing phase if editing
+  if (existingPhaseId) {
+    await supabase.from('shift_phases').delete().eq('id', existingPhaseId)
+  }
+
+  // Auto-close any open phase that would overlap
+  const prevDay = new Date(data.valid_from)
+  prevDay.setDate(prevDay.getDate() - 1)
+  const prevDayStr = prevDay.toISOString().split('T')[0]
+
+  await supabase
+    .from('shift_phases')
+    .update({ valid_to: prevDayStr })
+    .eq('employee_id', employeeId)
+    .is('valid_to', null)
+
+  const { error } = await supabase.from('shift_phases').insert({
+    employee_id: employeeId,
+    phase: data.phase,
+    anchor_date: data.anchor_date,
+    valid_from: data.valid_from,
+    valid_to: data.valid_to ?? null,
+    schedule_code: data.schedule_code,
+    is_alternating: data.is_alternating ?? false,
+    notes: data.notes ?? null,
+    created_by: createdBy,
+  })
+
+  if (error) return { ok: false, error: error.message }
+  await logAction(createdBy, 'OPEN_SHIFT_PHASE', 'user', employeeId, data as Record<string, unknown>)
+  return { ok: true }
+}
+
 // ============ WORK ASSIGNMENTS (brigade formation) ============
 
 /**

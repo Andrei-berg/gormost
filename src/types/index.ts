@@ -271,6 +271,13 @@ export const PANELS: PanelConfig[] = [
     color: 'from-rose-600/40 to-rose-800/40 border-rose-500/30',
     roleLabel: 'Инженер ТБиОТ',
   },
+  {
+    id: 'planner', path: '/planner', title: 'Планировщик',
+    subtitle: 'Графики смен · Фазы · Ручные правки', emoji: '🗓',
+    roles: ['ADMIN', 'HR', 'HEAD', 'BOSS', 'ZAMPORAB', 'DISPATCHER', 'CHIEF_ENGINEER', 'FOREMAN', 'TRANSPORT', 'COMPLAINTS', 'SAFETY_ENGINEER', 'DRIVER', 'WORKER', 'SPECIALIST'],
+    color: 'from-indigo-600/40 to-indigo-800/40 border-indigo-500/30',
+    roleLabel: 'Планировщик смен',
+  },
 ]
 
 // ============================================
