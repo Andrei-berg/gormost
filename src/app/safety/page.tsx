@@ -14,7 +14,11 @@ import {
 } from '@/lib/api'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
-type Tab = 'overview' | 'journal' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
+type Tab = 'overview' | 'journal' | 'settings'
+type SettingsSubTab = 'catalog' | 'requirements' | 'matrix' | 'unlinked'
+
+// Filter state passed from Overview → Journal
+type JournalFilter = { status: string; service: string; version: number }
 
 export default function SafetyPage() {
   return (
@@ -25,7 +29,10 @@ export default function SafetyPage() {
 }
 
 function Content({ session }: { session: AuthSession }) {
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab]                       = useState<Tab>('overview')
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('catalog')
+  const [journalFilter, setJournalFilter]   = useState<JournalFilter>({ status: 'ALL', service: 'ALL', version: 0 })
+
   const [certTypes, setCertTypes]       = useState<CertType[]>([])
   const [allCerts, setAllCerts]         = useState<EmployeeCert[]>([])
   const [unlinked, setUnlinked]         = useState<EmployeeCert[]>([])
@@ -54,22 +61,36 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  const TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
-    { id: 'overview',      label: 'Обзор',        emoji: '📊' },
-    { id: 'journal',       label: 'Журнал',        emoji: '📖' },
-    { id: 'matrix',        label: 'Матрица',       emoji: '📋' },
-    { id: 'unlinked',      label: 'Несвязанные',   emoji: '🔗', badge: unlinked.length },
-    { id: 'catalog',       label: 'Каталог',       emoji: '📝' },
-    { id: 'requirements',  label: 'Требования',    emoji: '⚙️' },
+  // Navigate from Overview KPI → Journal with pre-applied filter
+  function navigateToJournal(status?: string, service?: string) {
+    setJournalFilter(prev => ({
+      status:  status  ?? 'ALL',
+      service: service ?? 'ALL',
+      version: prev.version + 1,
+    }))
+    setTab('journal')
+  }
+
+  const MAIN_TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
+    { id: 'overview',  label: 'Обзор',      emoji: '📊' },
+    { id: 'journal',   label: 'Журнал',     emoji: '📖' },
+    { id: 'settings',  label: 'Настройки',  emoji: '⚙️', badge: unlinked.length },
+  ]
+
+  const SETTINGS_TABS: { id: SettingsSubTab; label: string; emoji: string; badge?: number }[] = [
+    { id: 'catalog',      label: 'Каталог',     emoji: '📝' },
+    { id: 'requirements', label: 'Требования',  emoji: '🎯' },
+    { id: 'matrix',       label: 'Матрица',     emoji: '📋' },
+    { id: 'unlinked',     label: 'Несвязанные', emoji: '🔗', badge: unlinked.length },
   ]
 
   return (
     <div className="min-h-screen p-4 md:p-6">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
 
-      {/* Tabs */}
+      {/* Main tabs */}
       <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">
-        {TABS.map((t) => (
+        {MAIN_TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -81,7 +102,7 @@ function Content({ session }: { session: AuthSession }) {
           >
             <span>{t.emoji}</span>
             <span className="hidden sm:inline">{t.label}</span>
-            {t.badge && t.badge > 0 && (
+            {t.badge !== undefined && t.badge > 0 && (
               <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                 {t.badge > 99 ? '!' : t.badge}
               </span>
@@ -96,6 +117,7 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       ) : (
         <>
+          {/* OVERVIEW — clickable KPIs drill into journal */}
           {tab === 'overview' && (
             <CoverageOverview
               allCerts={allCerts}
@@ -103,46 +125,75 @@ function Content({ session }: { session: AuthSession }) {
               requirements={requirements}
               employees={employees}
               services={services}
+              onNavigate={navigateToJournal}
             />
           )}
+
+          {/* JOURNAL — accepts filter from overview */}
           {tab === 'journal' && (
             <CertJournal
               allCerts={allCerts}
               employees={employees}
               services={services}
+              externalFilter={journalFilter}
             />
           )}
-          {tab === 'matrix' && (
-            <CertMatrix
-              certTypes={certTypes}
-              allCerts={allCerts}
-              employees={employees}
-              services={services}
-              session={session}
-              onRefresh={loadData}
-            />
-          )}
-          {tab === 'unlinked' && (
-            <UnlinkedCerts
-              unlinked={unlinked}
-              employees={employees}
-              session={session}
-              onRefresh={loadData}
-            />
-          )}
-          {tab === 'catalog' && (
-            <CatalogTab
-              certTypes={certTypes}
-              onRefresh={loadData}
-            />
-          )}
-          {tab === 'requirements' && (
-            <RequirementsTab
-              certTypes={certTypes}
-              requirements={requirements}
-              services={services}
-              onRefresh={loadData}
-            />
+
+          {/* SETTINGS — sub-nav for admin/config tasks */}
+          {tab === 'settings' && (
+            <div className="space-y-4">
+              <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit flex-wrap">
+                {SETTINGS_TABS.map(st => (
+                  <button
+                    key={st.id}
+                    onClick={() => setSettingsSubTab(st.id)}
+                    className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      settingsSubTab === st.id
+                        ? 'bg-slate-600/50 text-white border border-white/20'
+                        : 'text-white/40 hover:text-white/70'
+                    }`}
+                  >
+                    <span>{st.emoji}</span>
+                    <span>{st.label}</span>
+                    {st.badge !== undefined && st.badge > 0 && (
+                      <span className="ml-1 bg-amber-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                        {st.badge > 99 ? '!' : st.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {settingsSubTab === 'catalog' && (
+                <CatalogTab certTypes={certTypes} onRefresh={loadData} />
+              )}
+              {settingsSubTab === 'requirements' && (
+                <RequirementsTab
+                  certTypes={certTypes}
+                  requirements={requirements}
+                  services={services}
+                  onRefresh={loadData}
+                />
+              )}
+              {settingsSubTab === 'matrix' && (
+                <CertMatrix
+                  certTypes={certTypes}
+                  allCerts={allCerts}
+                  employees={employees}
+                  services={services}
+                  session={session}
+                  onRefresh={loadData}
+                />
+              )}
+              {settingsSubTab === 'unlinked' && (
+                <UnlinkedCerts
+                  unlinked={unlinked}
+                  employees={employees}
+                  session={session}
+                  onRefresh={loadData}
+                />
+              )}
+            </div>
           )}
         </>
       )}

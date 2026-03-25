@@ -1,12 +1,15 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { EmployeeCert, User, Service, CertStatus } from '@/types'
 import { certStatusFromDates, CERT_STATUS_CONFIG, CERT_CATEGORY_CONFIG } from '@/types'
+
+type ExternalFilter = { status: string; service: string; version: number }
 
 interface Props {
   allCerts: EmployeeCert[]
   employees: User[]
   services: Service[]
+  externalFilter?: ExternalFilter
 }
 
 function formatDate(dateStr: string | null): string {
@@ -24,11 +27,18 @@ type FilterStatus = 'ALL' | CertStatus
 
 const STATUS_ORDER: Record<string, number> = { EXPIRED: 0, EXPIRING_SOON: 1, NOT_ASSIGNED: 2, VALID: 3 }
 
-export default function CertJournal({ allCerts, employees, services }: Props) {
-  const [search, setSearch]             = useState('')
-  const [serviceFilter, setService]     = useState('ALL')
-  const [statusFilter, setStatus]       = useState<FilterStatus>('ALL')
-  const [sortKey, setSortKey]           = useState<SortKey>('status')
+export default function CertJournal({ allCerts, employees, services, externalFilter }: Props) {
+  const [search, setSearch]         = useState('')
+  const [serviceFilter, setService] = useState('ALL')
+  const [statusFilter, setStatus]   = useState<FilterStatus>('ALL')
+  const [sortKey, setSortKey]       = useState<SortKey>('status')
+
+  // Apply filter when navigating here from Overview
+  useEffect(() => {
+    if (!externalFilter) return
+    setStatus((externalFilter.status as FilterStatus) ?? 'ALL')
+    setService(externalFilter.service ?? 'ALL')
+  }, [externalFilter?.version]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const empMap = useMemo(() => new Map(employees.map(e => [e.user_id, e])), [employees])
 

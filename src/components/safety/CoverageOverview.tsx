@@ -9,6 +9,7 @@ interface Props {
   requirements: CertRequirement[]
   employees: User[]
   services: Service[]
+  onNavigate?: (status?: string, service?: string) => void
 }
 
 interface ServiceCoverage {
@@ -24,7 +25,7 @@ function daysUntilExpiry(expiresAt: string | null): number | null {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000)
 }
 
-export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirements, employees, services }: Props) {
+export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirements, employees, services, onNavigate }: Props) {
   // Index certs by employee+certType for O(1) lookup
   const certIndex = useMemo(() => {
     const map = new Map<string, EmployeeCert>()
@@ -80,13 +81,21 @@ export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirem
 
   return (
     <div className="space-y-6">
-      {/* KPI row */}
+      {/* KPI row — clickable where it makes sense */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <KpiCard label="Всего записей" value={allCerts.length + unlinkedCount} color="text-white" />
-        <KpiCard label="Действует" value={totalValid} color="text-green-400" />
-        <KpiCard label="Истекает (≤30д)" value={totalExpiringSoon} color="text-orange-400" />
-        <KpiCard label="Просрочено" value={totalExpired} color="text-red-400" />
-        <KpiCard label="Не привязано" value={unlinkedCount} color={unlinkedCount > 0 ? 'text-amber-400' : 'text-white/30'} />
+        <KpiCard label="Действует" value={totalValid} color="text-green-400"
+          onClick={totalValid > 0 ? () => onNavigate?.('VALID') : undefined}
+        />
+        <KpiCard label="Истекает (≤30д)" value={totalExpiringSoon} color="text-orange-400"
+          onClick={totalExpiringSoon > 0 ? () => onNavigate?.('EXPIRING_SOON') : undefined}
+        />
+        <KpiCard label="Просрочено" value={totalExpired} color="text-red-400"
+          onClick={totalExpired > 0 ? () => onNavigate?.('EXPIRED') : undefined}
+        />
+        <KpiCard label="Не привязано" value={unlinkedCount}
+          color={unlinkedCount > 0 ? 'text-amber-400' : 'text-white/30'}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -101,14 +110,24 @@ export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirem
             <div className="space-y-3">
               {coverage.map(({ service, total, filled, expired, expiringSoon }) => {
                 const pct = total > 0 ? Math.round((filled / total) * 100) : 0
+                const hasIssues = expired > 0 || expiringSoon > 0
                 return (
-                  <div key={service.service_id}>
+                  <button
+                    key={service.service_id}
+                    onClick={() => onNavigate?.(undefined, service.service_id)}
+                    disabled={!onNavigate}
+                    className={`w-full text-left transition-all rounded-xl p-2 -m-2 ${
+                      onNavigate ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'
+                    }`}
+                  >
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-white/80">{service.service_name}</span>
+                      <span className={`${hasIssues ? 'text-white/90' : 'text-white/70'}`}>
+                        {service.service_name}
+                      </span>
                       <div className="flex items-center gap-3 text-xs">
-                        {expired > 0 && <span className="text-red-400">{expired} просроч.</span>}
+                        {expired > 0 && <span className="text-red-400 font-medium">{expired} просроч.</span>}
                         {expiringSoon > 0 && <span className="text-orange-400">{expiringSoon} истекает</span>}
-                        <span className="text-white/50">{filled}/{total}</span>
+                        <span className="text-white/40">{filled}/{total}</span>
                         <span className={`font-bold ${pct >= 80 ? 'text-green-400' : pct >= 50 ? 'text-orange-400' : 'text-red-400'}`}>
                           {pct}%
                         </span>
@@ -120,7 +139,7 @@ export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirem
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -165,11 +184,27 @@ export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirem
   )
 }
 
-function KpiCard({ label, value, color }: { label: string; value: number; color: string }) {
+function KpiCard({ label, value, color, onClick }: {
+  label: string; value: number; color: string; onClick?: () => void
+}) {
+  const clickable = !!onClick
   return (
-    <div className="glass-strong rounded-2xl p-4">
+    <button
+      onClick={onClick}
+      disabled={!clickable}
+      className={`glass-strong rounded-2xl p-4 text-left w-full transition-all ${
+        clickable
+          ? 'hover:scale-[1.03] hover:shadow-lg cursor-pointer group'
+          : 'cursor-default'
+      }`}
+    >
       <p className="text-xs text-white/40 mb-1">{label}</p>
       <p className={`text-3xl font-bold ${color}`}>{value}</p>
-    </div>
+      {clickable && (
+        <p className="text-[10px] text-white/20 group-hover:text-white/40 mt-1 transition-colors">
+          показать в журнале →
+        </p>
+      )}
+    </button>
   )
 }
