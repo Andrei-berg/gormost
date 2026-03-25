@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
+import AlertsTab from '@/components/safety/AlertsTab'
+import EmployeesTab from '@/components/safety/EmployeesTab'
 import CoverageOverview from '@/components/safety/CoverageOverview'
 import CertMatrix from '@/components/safety/CertMatrix'
 import CertJournal from '@/components/safety/CertJournal'
@@ -14,10 +16,8 @@ import {
 } from '@/lib/api'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
-type Tab = 'overview' | 'journal' | 'settings'
-type SettingsSubTab = 'catalog' | 'requirements' | 'matrix' | 'unlinked'
-
-// Filter state passed from Overview → Journal
+type Tab = 'alerts' | 'employees' | 'overview' | 'journal' | 'settings'
+type SettingsSubTab = 'matrix' | 'catalog' | 'requirements' | 'unlinked'
 type JournalFilter = { status: string; service: string; version: number }
 
 export default function SafetyPage() {
@@ -29,7 +29,7 @@ export default function SafetyPage() {
 }
 
 function Content({ session }: { session: AuthSession }) {
-  const [tab, setTab]                       = useState<Tab>('overview')
+  const [tab, setTab]                       = useState<Tab>('alerts')
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('catalog')
   const [journalFilter, setJournalFilter]   = useState<JournalFilter>({ status: 'ALL', service: 'ALL', version: 0 })
 
@@ -61,7 +61,6 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Navigate from Overview KPI → Journal with pre-applied filter
   function navigateToJournal(status?: string, service?: string) {
     setJournalFilter(prev => ({
       status:  status  ?? 'ALL',
@@ -72,6 +71,8 @@ function Content({ session }: { session: AuthSession }) {
   }
 
   const MAIN_TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
+    { id: 'alerts',    label: 'Тревоги',    emoji: '🚨' },
+    { id: 'employees', label: 'Сотрудники', emoji: '👤' },
     { id: 'overview',  label: 'Обзор',      emoji: '📊' },
     { id: 'journal',   label: 'Журнал',     emoji: '📖' },
     { id: 'settings',  label: 'Настройки',  emoji: '⚙️', badge: unlinked.length },
@@ -88,7 +89,6 @@ function Content({ session }: { session: AuthSession }) {
     <div className="min-h-screen p-4 md:p-6">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
 
-      {/* Main tabs */}
       <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">
         {MAIN_TABS.map((t) => (
           <button
@@ -117,7 +117,26 @@ function Content({ session }: { session: AuthSession }) {
         </div>
       ) : (
         <>
-          {/* OVERVIEW — clickable KPIs drill into journal */}
+          {tab === 'alerts' && (
+            <AlertsTab
+              allCerts={allCerts}
+              certTypes={certTypes}
+              employees={employees}
+              services={services}
+              session={session}
+              onRefresh={loadData}
+            />
+          )}
+          {tab === 'employees' && (
+            <EmployeesTab
+              certTypes={certTypes}
+              allCerts={allCerts}
+              employees={employees}
+              services={services}
+              session={session}
+              onRefresh={loadData}
+            />
+          )}
           {tab === 'overview' && (
             <CoverageOverview
               allCerts={allCerts}
@@ -128,8 +147,6 @@ function Content({ session }: { session: AuthSession }) {
               onNavigate={navigateToJournal}
             />
           )}
-
-          {/* JOURNAL — accepts filter from overview */}
           {tab === 'journal' && (
             <CertJournal
               allCerts={allCerts}
@@ -138,8 +155,6 @@ function Content({ session }: { session: AuthSession }) {
               externalFilter={journalFilter}
             />
           )}
-
-          {/* SETTINGS — sub-nav for admin/config tasks */}
           {tab === 'settings' && (
             <div className="space-y-4">
               <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit flex-wrap">
@@ -156,42 +171,24 @@ function Content({ session }: { session: AuthSession }) {
                     <span>{st.emoji}</span>
                     <span>{st.label}</span>
                     {st.badge !== undefined && st.badge > 0 && (
-                      <span className="ml-1 bg-amber-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                      <span className="ml-0.5 bg-amber-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
                         {st.badge > 99 ? '!' : st.badge}
                       </span>
                     )}
                   </button>
                 ))}
               </div>
-
               {settingsSubTab === 'catalog' && (
                 <CatalogTab certTypes={certTypes} onRefresh={loadData} />
               )}
               {settingsSubTab === 'requirements' && (
-                <RequirementsTab
-                  certTypes={certTypes}
-                  requirements={requirements}
-                  services={services}
-                  onRefresh={loadData}
-                />
+                <RequirementsTab certTypes={certTypes} requirements={requirements} services={services} onRefresh={loadData} />
               )}
               {settingsSubTab === 'matrix' && (
-                <CertMatrix
-                  certTypes={certTypes}
-                  allCerts={allCerts}
-                  employees={employees}
-                  services={services}
-                  session={session}
-                  onRefresh={loadData}
-                />
+                <CertMatrix certTypes={certTypes} allCerts={allCerts} employees={employees} services={services} session={session} onRefresh={loadData} />
               )}
               {settingsSubTab === 'unlinked' && (
-                <UnlinkedCerts
-                  unlinked={unlinked}
-                  employees={employees}
-                  session={session}
-                  onRefresh={loadData}
-                />
+                <UnlinkedCerts unlinked={unlinked} employees={employees} session={session} onRefresh={loadData} />
               )}
             </div>
           )}
