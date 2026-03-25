@@ -39,6 +39,7 @@ export interface PhaseEditorState {
   userId: string
   userName: string
   scheduleCode: string
+  rotationGroup: string | null
   clickedDate: string
   existingPhase: ShiftPhase | null
   posX: number

@@ -40,19 +40,18 @@ const STANDARD_FACTORS =
 
 interface Measure { num: number; text: string; deadline: string }
 
-function buildMeasuresBefore(supervisor: string): Measure[] {
+function buildMeasuresBefore(): Measure[] {
   return [
-    { num: 1, deadline: '',                        text: 'Проверить и подготовить технику, оборудование и средства ограждения. Получить и проверить средства индивидуальной защиты и ТГС-3.' },
-    { num: 2, deadline: '',                        text: 'Проверить наличие и работу проблесковых маячков на машинах, состояние и работу импульсных дорожных знаков, наличие воды и медицинской аптечки.' },
-    { num: 3, deadline: '',                        text: 'Провести целевой инструктаж по инструкциям №\u202014,\u202015,\u202023,\u202041,\u202059,\u202065,\u202066,\u2020103,\u2020190 и требованиям «Временного порядка…» с указанием особенностей места и времени работы. Довести сигналы оповещения о возникновении опасности и определить порядок действий по ним.' },
-    { num: 4, deadline: '',                        text: 'Получить разрешение (оповестить) отдела ГИБДД на выполнение работ. Доложить диспетчеру ГБУ «Гормост» о выходе на выполнение работ.' },
+    { num: 1, deadline: '',                           text: 'Проверить и подготовить технику, оборудование и средства ограждения. Получить и проверить средства индивидуальной защиты и ТГС-3.' },
+    { num: 2, deadline: '',                           text: 'Проверить наличие и работу проблесковых маячков на машинах, состояние и работу импульсных дорожных знаков, наличие воды и медицинской аптечки.' },
+    { num: 3, deadline: '',                           text: 'Провести целевой инструктаж по инструкциям №\u202014,\u202015,\u202023,\u202041,\u202059,\u202065,\u202066,\u2020103,\u2020190 и требованиям «Временного порядка…» с указанием особенностей места и времени работы. Довести сигналы оповещения о возникновении опасности и определить порядок действий по ним.' },
+    { num: 4, deadline: '',                           text: 'Получить разрешение (оповестить) отдела ГИБДД на выполнение работ. Доложить диспетчеру ГБУ «Гормост» о выходе на выполнение работ.' },
     { num: 5, deadline: 'По прибытии на место работ', text: 'Установить ограждение зоны производства работ согласно типовой схеме.' },
     { num: 6, deadline: 'По прибытии на место работ', text: 'Указать маршруты безопасного передвижения в зоне производства работ.' },
   ]
 }
 
-function buildMeasuresDuring(supervisor: string, executor: string): Measure[] {
-  const resp = [supervisor, executor].filter(Boolean).join(', ')
+function buildMeasuresDuring(): Measure[] {
   return [
     { num: 1, deadline: 'Постоянно, в ходе работы', text: 'Контролировать обстановку на проезжей части вблизи зоны производства работ. Немедленно подать сигнал при возникновении опасности.' },
     { num: 2, deadline: 'Постоянно, в ходе работы', text: 'Соблюдать технологию выполнения работ, правила выполнения работ на высоте, использовать комплект защитных средств.' },
@@ -66,23 +65,23 @@ function buildMeasuresDuring(supervisor: string, executor: string): Measure[] {
 // ─── HTML generator ────────────────────────────────────────────────────────
 
 interface PermitFields {
-  permitNumber: string
-  issueDate: string      // YYYY-MM-DD
-  validUntil: string     // YYYY-MM-DD
-  supervisor: string
-  supervisorPosition: string
-  executor: string
-  executorPosition: string
-  workLocation: string
-  workDescription: string
-  startTime: string
-  startDate: string
-  endTime: string
-  endDate: string
-  issuedBy: string
-  issuedByPosition: string
-  workers: string[]
-  vehicles: string[]
+  permitNumber:        string
+  issueDate:           string      // YYYY-MM-DD
+  validUntil:          string      // YYYY-MM-DD
+  supervisor:          string
+  supervisorPosition:  string
+  executor:            string
+  executorPosition:    string
+  workItems:           Array<{ location: string; description: string; timeStart?: string; timeEnd?: string }>
+  startTime:           string
+  startDate:           string
+  endTime:             string
+  endDate:             string
+  issuedBy:            string
+  issuedByPosition:    string
+  workers:             string[]
+  vehicles:            string[]
+  vehicleNotes:        string
 }
 
 function generateHTML(f: PermitFields): string {
@@ -96,12 +95,13 @@ function generateHTML(f: PermitFields): string {
   const startD = fmtDate(f.startDate)
   const endD   = fmtDate(f.endDate)
 
-  const measuresBefore = buildMeasuresBefore(f.supervisor)
-  const measuresDuring = buildMeasuresDuring(f.supervisor, f.executor)
+  const measuresBefore = buildMeasuresBefore()
+  const measuresDuring = buildMeasuresDuring()
 
-  const supervisorShort = f.supervisor ? f.supervisor.split(' ').map((p, i) => i === 0 ? p : p[0] + '.').join(' ') : '______'
-  const executorShort   = f.executor   ? f.executor.split(' ').map((p, i) => i === 0 ? p : p[0] + '.').join(' ') : '______'
-  const bothShort = [supervisorShort, executorShort].filter(s => s !== '______').join(', ') || '______'
+  const supervisorShort = f.supervisor
+    ? f.supervisor.split(' ').map((p, i) => i === 0 ? p : p[0] + '.').join(' ')
+    : '______'
+  const bothShort = supervisorShort
 
   const measureBeforeRows = measuresBefore.map(m => `
     <tr>
@@ -119,6 +119,17 @@ function generateHTML(f: PermitFields): string {
       ${td(bothShort, 'width:120px')}
     </tr>`).join('')
 
+  // Work items table (point 5 — перечень работ из плана)
+  const workItemRows = f.workItems.map((item, i) => {
+    const time = item.timeStart ? `${item.timeStart}${item.timeEnd ? `–${item.timeEnd}` : ''}` : ''
+    return `<tr>
+      ${td(String(i + 1), 'text-align:center;width:30px')}
+      ${td(item.location || '', 'width:180px')}
+      ${td(item.description || '')}
+      ${td(time, 'width:80px;text-align:center')}
+    </tr>`
+  }).join('')
+
   // Workers table — 8 rows minimum
   const workerRows = Array.from({ length: Math.max(8, f.workers.length + 2) }, (_, i) => {
     const name = f.workers[i] ?? ''
@@ -131,9 +142,9 @@ function generateHTML(f: PermitFields): string {
     </tr>`
   }).join('')
 
-  // Vehicles table — 8 rows minimum
-  const vehicleRows = Array.from({ length: Math.max(8, f.vehicles.length + 2) }, (_, i) => {
-    const v = f.vehicles[i] ?? ''
+  // Vehicle table — 5 rows minimum, vehicle notes in last
+  const vehicleRows = Array.from({ length: Math.max(5, f.vehicles.length + 2) }, (_, i) => {
+    const v = f.vehicles[i] ?? (i === f.vehicles.length && f.vehicleNotes ? f.vehicleNotes : '')
     return `<tr style="height:22px">
       ${td(String(i + 1), 'text-align:center;width:30px')}
       ${td(v, 'min-width:140px')}
@@ -141,13 +152,6 @@ function generateHTML(f: PermitFields): string {
       ${td('', 'min-width:140px')}
     </tr>`
   }).join('')
-
-  const sig = (label: string) =>
-    `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
-       <span style="white-space:nowrap">${label}</span>
-       <span style="flex:1;border-bottom:1px solid #000;min-width:120px"></span>
-       <span style="white-space:nowrap;font-size:10px;color:#666">(подпись)</span>
-     </div>`
 
   return `<!DOCTYPE html>
 <html lang="ru">
@@ -191,16 +195,13 @@ function generateHTML(f: PermitFields): string {
     <br><span style="font-size:9pt;color:#555;padding-left:200px">(Ф.И.О, должность)</span>
   </p>
 
-  <p><b>2.&nbsp;На выполнение работ:</b>&nbsp;${f.workDescription || '________________________________________________'}</p>
-  <p style="font-size:9pt;color:#555;padding-left:16px">(наименование работ, место, условия их выполнения)</p>
-
-  <p style="margin-top:6px">
+  <p style="margin-top:8px">
     <b>Опасные производственные факторы</b>, которые действуют или могут возникнуть независимо от выполняемой работы в местах её производства:
     &nbsp;${STANDARD_FACTORS}
   </p>
 
   <p class="section-title" style="margin-top:8px">
-    До начала производства работ необходимо выполнить следующие мероприятия:
+    4.&nbsp;До начала производства работ необходимо выполнить следующие мероприятия:
   </p>
   <p>
     Начало работ в&nbsp;<b><span class="underline">&nbsp;${f.startTime || '__'}&nbsp;</span></b>&nbsp;
@@ -222,6 +223,18 @@ function generateHTML(f: PermitFields): string {
     &laquo;<span class="underline">&nbsp;${endD.day}&nbsp;</span>&raquo;&nbsp;${endD.month}&nbsp;${endD.year}&nbsp;г.
   </p>
 
+  ${f.workItems.length > 0 ? `
+  <p class="section-title">5.&nbsp;Наименование мероприятий (виды работ из плана):</p>
+  <table>
+    <thead><tr>
+      ${th('№', 'width:30px')}
+      ${th('Место / Объект', 'width:180px')}
+      ${th('Наименование работ')}
+      ${th('Время', 'width:80px')}
+    </tr></thead>
+    <tbody>${workItemRows}</tbody>
+  </table>` : ''}
+
   <p class="section-title">В процессе производства работ необходимо выполнить следующие мероприятия:</p>
 
   <table>
@@ -229,12 +242,12 @@ function generateHTML(f: PermitFields): string {
       ${th('№<br>п/п', 'width:30px')}
       ${th('Наименование мероприятия')}
       ${th('Срок выполнения', 'width:140px')}
-      ${th('Руководитель работ,<br>(отв. исполнитель) фамилия, инициалы', 'width:140px')}
+      ${th('Руководитель работ<br>(фамилия, инициалы)', 'width:140px')}
     </tr></thead>
     <tbody>${measureDuringRows}</tbody>
   </table>
 
-  <p class="section-title">Состав исполнителей работ:</p>
+  <p class="section-title">6.&nbsp;Состав исполнителей работ:</p>
   <table>
     <thead><tr>
       ${th('№<br>п/п', 'width:30px')}
@@ -259,7 +272,7 @@ function generateHTML(f: PermitFields): string {
 
   <div class="sig-block">
     <p>
-      <b>Наряд-допуск выдал</b>&nbsp;${f.issuedBy || '___________________________'},&nbsp;${f.issuedByPosition || '________________________'}
+      <b>7.&nbsp;Наряд-допуск выдал:</b>&nbsp;${f.issuedBy || '___________________________'},&nbsp;${f.issuedByPosition || '________________________'}
       <br><span style="font-size:9pt;color:#555;padding-left:160px">(уполномоченный приказом руководителя организации, Ф.И.О, должность, подпись)</span>
     </p>
     <div style="display:flex;gap:60px;align-items:flex-end;margin-top:6px">
@@ -281,7 +294,10 @@ function generateHTML(f: PermitFields): string {
     <p style="font-size:9pt;color:#555">(должность, Ф.И.О., подпись уполномоченного представителя действующего предприятия или эксплуатирующей организации)</p>
 
     <p style="margin-top:8px">Рабочее место и условия труда проверил. Мероприятия по безопасности работ, указанные в наряде-допуске, выполнены.</p>
-    <p><b>Разрешаю приступить к выполнению работ:</b>&nbsp;${f.supervisor || '______________________'},&nbsp;${f.supervisorPosition || '______________________'}</p>
+    <p>
+      <b>9.&nbsp;Разрешаю приступить к выполнению работ.</b><br>
+      Руководитель работ:&nbsp;${f.supervisor || '______________________'},&nbsp;${f.supervisorPosition || '______________________'}
+    </p>
     <div style="display:flex;gap:60px;align-items:flex-end;margin-top:4px">
       <span style="white-space:nowrap;font-size:9pt;color:#666">(Ф.И.О., должность, подпись, дата)</span>
       <span style="flex:1;border-bottom:1px solid #000"></span>
@@ -314,6 +330,16 @@ function generateHTML(f: PermitFields): string {
 </html>`
 }
 
+// ─── Issuer role cascade ───────────────────────────────────────────────────
+
+type IssuerRole = 'head' | 'energetik' | 'chief'
+
+const ISSUER_OPTIONS: Array<{ key: IssuerRole; label: string; position: string }> = [
+  { key: 'head',       label: 'Начальник службы',  position: 'начальник службы' },
+  { key: 'energetik',  label: 'Главный энергетик',  position: 'главный энергетик' },
+  { key: 'chief',      label: 'Главный инженер',    position: 'главный инженер' },
+]
+
 // ─── Modal component ───────────────────────────────────────────────────────
 
 interface Props {
@@ -323,36 +349,51 @@ interface Props {
 }
 
 export default function WorkPermitModal({ plan, session, onClose }: Props) {
-  // Derive defaults from plan
+  // Theme toggle
+  const [lightMode, setLightMode] = useState(false)
+
   const nextDay = addDay(plan.plan_date)
-  const firstStart = plan.items.find(i => i.time_start)?.time_start ?? '07:40'
-  const lastEnd    = plan.items.find(i => i.time_end)?.time_end   ?? '08:00'
 
-  const combinedLocation = plan.items.map(i => i.location).filter(Boolean).join('; ')
-  const combinedWork     = plan.items.map(i =>
-    i.location && i.work_description ? `${i.location}: ${i.work_description}` : (i.work_description || i.location)
-  ).filter(Boolean).join('. ')
+  // Default times: 09:00 start, 06:30 next day end
+  const [issuerRole,         setIssuerRole]         = useState<IssuerRole>('head')
+  const [permitNumber,       setPermitNumber]       = useState('')
+  const [issueDate,          setIssueDate]          = useState(plan.plan_date)
+  const [validUntil,         setValidUntil]         = useState(nextDay)
+  const [supervisor,         setSupervisor]         = useState('')
+  const [supervisorPosition, setSupervisorPosition] = useState(
+    plan.shift_type === 'NIGHT' ? 'сменный инженер' : 'мастер участка'
+  )
+  const [executor,           setExecutor]           = useState('')
+  const [executorPosition,   setExecutorPosition]   = useState('бригадир')
+  const [startTime,          setStartTime]          = useState('09:00')
+  const [startDate,          setStartDate]          = useState(plan.plan_date)
+  const [endTime,            setEndTime]            = useState('06:30')
+  const [endDate,            setEndDate]            = useState(nextDay)
+  const [vehicleNotes,       setVehicleNotes]       = useState('')
 
-  const allWorkers = [...new Set(plan.items.flatMap(i => i.workers))]
+  // Issuer (point 7) — cascade: HEAD → Энергетик → Гл. инженер
+  const [issuedBy,           setIssuedBy]           = useState(session.full_name ?? '')
+  const [issuedByPosition,   setIssuedByPosition]   = useState(
+    ISSUER_OPTIONS.find(o => o.key === 'head')?.position ?? ''
+  )
+
+  const handleIssuerRoleChange = (role: IssuerRole) => {
+    setIssuerRole(role)
+    const opt = ISSUER_OPTIONS.find(o => o.key === role)!
+    setIssuedByPosition(opt.position)
+    if (role === 'head') {
+      setIssuedBy(session.full_name ?? '')
+    } else {
+      setIssuedBy('') // user fills in manually
+    }
+  }
+
+  const allWorkers  = [...new Set(plan.items.flatMap(i => i.workers))]
   const allVehicles: string[] = plan.items.flatMap(i =>
     (i as WorkPlanWithItems['items'][number] & { vehicles?: Array<{ name: string; plate?: string }> }).vehicles?.map(v =>
       [v.name, v.plate].filter(Boolean).join(' ')
     ) ?? []
   )
-
-  // Editable fields
-  const [permitNumber,       setPermitNumber]       = useState('')
-  const [issueDate,          setIssueDate]          = useState(plan.plan_date)
-  const [validUntil,         setValidUntil]         = useState(nextDay)
-  const [supervisor,         setSupervisor]         = useState('')
-  const [supervisorPosition, setSupervisorPosition] = useState('мастер участка')
-  const [executor,           setExecutor]           = useState('')
-  const [executorPosition,   setExecutorPosition]   = useState('бригадир')
-  const [workDesc,           setWorkDesc]           = useState(combinedWork)
-  const [startTime,          setStartTime]          = useState(firstStart)
-  const [startDate,          setStartDate]          = useState(plan.plan_date)
-  const [endTime,            setEndTime]            = useState(lastEnd)
-  const [endDate,            setEndDate]            = useState(nextDay)
 
   const handlePrint = () => {
     const html = generateHTML({
@@ -363,16 +404,21 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
       supervisorPosition,
       executor,
       executorPosition,
-      workLocation: combinedLocation,
-      workDescription: workDesc,
+      workItems: plan.items.map(i => ({
+        location:    i.location,
+        description: i.work_description,
+        timeStart:   i.time_start ?? undefined,
+        timeEnd:     i.time_end   ?? undefined,
+      })),
       startTime,
       startDate,
       endTime,
       endDate,
-      issuedBy:         session.full_name ?? '',
-      issuedByPosition: session.position  ?? '',
-      workers:  allWorkers,
-      vehicles: allVehicles,
+      issuedBy,
+      issuedByPosition,
+      workers:      allWorkers,
+      vehicles:     allVehicles,
+      vehicleNotes,
     })
     const win = window.open('', '_blank')
     if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
@@ -382,10 +428,22 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
     setTimeout(() => win.print(), 400)
   }
 
-  const inp = 'bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white/80 focus:outline-none focus:border-blue-500/50 w-full'
-  const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
-  const serviceName = SERVICE_NAMES[plan.service_id] ?? plan.service_id
-  const issueDateFmt = fmtDate(issueDate)
+  // ── Dynamic styles based on light/dark mode ─────────────────────────────
+  const panelBg   = lightMode ? 'bg-white text-gray-900'                         : 'bg-[rgba(15,20,40,0.97)] text-white'
+  const headerBg  = lightMode ? 'border-b border-gray-200'                       : 'border-b border-white/10'
+  const footerBg  = lightMode ? 'border-t border-gray-200 bg-gray-50'            : 'border-t border-white/10'
+  const inp       = lightMode
+    ? 'bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 w-full'
+    : 'bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white/80 focus:outline-none focus:border-blue-500/50 w-full'
+  const lbl       = lightMode
+    ? 'block text-[10px] text-gray-500 uppercase tracking-wider mb-1'
+    : 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
+  const sectionBg = lightMode ? 'rounded-xl p-3 border border-gray-200 bg-gray-50' : 'rounded-xl p-3 border border-white/8 bg-white/4'
+  const titleText = lightMode ? 'text-gray-700' : 'text-white/70'
+  const subtitleText = lightMode ? 'text-gray-400' : 'text-white/40'
+
+  const serviceName   = SERVICE_NAMES[plan.service_id] ?? plan.service_id
+  const issueDateFmt  = fmtDate(issueDate)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -394,16 +452,38 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl border border-white/15 overflow-hidden"
-        style={{ background: 'rgba(15, 20, 40, 0.97)' }}
+        className={`relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className={`flex items-center justify-between px-5 py-4 ${headerBg}`}>
           <div>
-            <div className="text-sm font-bold text-white">🖨 Наряд-допуск на производство работ</div>
-            <div className="text-[11px] text-white/40 mt-0.5">{serviceName} · {plan.plan_date}</div>
+            <div className={`text-sm font-bold ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              🖨 Наряд-допуск на производство работ
+            </div>
+            <div className={`text-[11px] mt-0.5 ${subtitleText}`}>
+              {serviceName} · {plan.plan_date} · {plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'}
+            </div>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white text-lg transition-colors">✕</button>
+          <div className="flex items-center gap-2">
+            {/* Light/Dark toggle */}
+            <button
+              onClick={() => setLightMode(v => !v)}
+              title={lightMode ? 'Тёмный интерфейс' : 'Светлый интерфейс'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                lightMode
+                  ? 'bg-gray-900 border-gray-700 text-white hover:bg-gray-800'
+                  : 'bg-white/10 border-white/15 text-white/60 hover:bg-white/15 hover:text-white'
+              }`}
+            >
+              {lightMode ? '🌙 Тёмный' : '☀️ Светлый'}
+            </button>
+            <button
+              onClick={onClose}
+              className={`text-lg transition-colors ${lightMode ? 'text-gray-400 hover:text-gray-700' : 'text-white/40 hover:text-white'}`}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -425,104 +505,208 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
             </div>
           </div>
 
-          {/* Row 2: supervisor */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Руководитель работ — ФИО</label>
-              <input value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Иванов Александр Сергеевич" className={inp} />
+          {/* Supervisor (Руководитель работ) */}
+          <div className={sectionBg}>
+            <div className={`text-[10px] uppercase tracking-wider mb-3 flex items-center gap-1.5 ${subtitleText}`}>
+              <span>Руководитель работ</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded ${lightMode ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/10 text-blue-400'}`}>
+                {plan.shift_type === 'NIGHT' ? 'ночная смена → сменный инженер / мастер (1/3)' : 'дневной наряд → мастер / инженер службы'}
+              </span>
             </div>
-            <div>
-              <label className={lbl}>Должность руководителя</label>
-              <input value={supervisorPosition} onChange={e => setSupervisorPosition(e.target.value)} className={inp} />
-            </div>
-          </div>
-
-          {/* Row 3: executor */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Ответственный исполнитель — ФИО</label>
-              <input value={executor} onChange={e => setExecutor(e.target.value)} placeholder="Гончаров Валерий Викторович" className={inp} />
-            </div>
-            <div>
-              <label className={lbl}>Должность исполнителя</label>
-              <input value={executorPosition} onChange={e => setExecutorPosition(e.target.value)} className={inp} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>ФИО руководителя работ</label>
+                <input value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Иванов Александр Сергеевич" className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Должность</label>
+                <input value={supervisorPosition} onChange={e => setSupervisorPosition(e.target.value)} className={inp} />
+              </div>
             </div>
           </div>
 
-          {/* Work description */}
+          {/* Executor (п.1 — Ответственный исполнитель = бригадир) */}
+          <div className={sectionBg}>
+            <div className={`text-[10px] uppercase tracking-wider mb-3 flex items-center gap-1.5 ${subtitleText}`}>
+              <span>1. Ответственный исполнитель работ</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded ${lightMode ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                бригадир службы
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>ФИО исполнителя</label>
+                <input value={executor} onChange={e => setExecutor(e.target.value)} placeholder="Гончаров Валерий Викторович" className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Должность</label>
+                <input value={executorPosition} onChange={e => setExecutorPosition(e.target.value)} className={inp} />
+              </div>
+            </div>
+          </div>
+
+          {/* Time (п.4) */}
           <div>
-            <label className={lbl}>Наименование и место работ</label>
+            <label className={`${lbl} mb-2`}>4. Время производства работ</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Начало работ</label>
+                <div className="flex gap-2">
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={`${inp} w-28`} />
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inp} />
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Окончание работ</label>
+                <div className="flex gap-2">
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={`${inp} w-28`} />
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inp} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Work items (п.5 — из плана) */}
+          {plan.items.length > 0 && (
+            <div>
+              <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>5. Наименование мероприятий (из плана работ)</div>
+              <div className={`rounded-xl border divide-y ${lightMode ? 'border-gray-200 divide-gray-100' : 'border-white/8 divide-white/5'}`}>
+                {plan.items.map((item, i) => (
+                  <div key={item.id} className={`flex items-start gap-2 px-3 py-2 text-xs ${lightMode ? 'text-gray-700' : 'text-white/70'}`}>
+                    <span className={`shrink-0 font-mono mt-px ${lightMode ? 'text-gray-400' : 'text-white/30'}`}>{i + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{item.location}</span>
+                      {item.work_description && <span className={lightMode ? 'text-gray-500' : 'text-white/50'}> — {item.work_description}</span>}
+                    </div>
+                    {item.time_start && (
+                      <span className={`shrink-0 font-mono text-[10px] ${lightMode ? 'text-blue-600' : 'text-cyan-400'}`}>
+                        {item.time_start}{item.time_end ? `–${item.time_end}` : ''}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Workers (п.6 — автоматически из плана) */}
+          {allWorkers.length > 0 && (
+            <div>
+              <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>
+                6. Состав исполнителей — инструктаж проводит руководитель работ
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {allWorkers.map((w, i) => (
+                  <span key={i} className={`text-[11px] px-2 py-0.5 rounded-full ${
+                    lightMode ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-emerald-500/15 text-emerald-300'
+                  }`}>
+                    {w}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Vehicle notes (п.6.1 — editable) */}
+          <div>
+            <label className={lbl}>6.1 Используемый транспорт / техника (вписать вручную при необходимости)</label>
             <textarea
-              value={workDesc}
-              onChange={e => setWorkDesc(e.target.value)}
-              rows={3}
+              value={vehicleNotes}
+              onChange={e => setVehicleNotes(e.target.value)}
+              rows={2}
+              placeholder="КамАЗ-5511 а/м АВ123, экскаватор Hitachi..."
               className={`${inp} resize-none`}
             />
-          </div>
-
-          {/* Start / end time */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Начало работ</label>
-              <div className="flex gap-2">
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={`${inp} w-28`} />
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inp} />
-              </div>
-            </div>
-            <div>
-              <label className={lbl}>Окончание работ</label>
-              <div className="flex gap-2">
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={`${inp} w-28`} />
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inp} />
-              </div>
-            </div>
-          </div>
-
-          {/* Workers & vehicles info */}
-          <div className="rounded-xl p-3 border border-white/8 space-y-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
-            <div className="text-[10px] text-white/40 uppercase tracking-wider">Из плана работ (автоматически)</div>
-            <div className="flex flex-wrap gap-2">
-              <div className="text-xs text-white/60">
-                <span className="text-white/30">Выдал наряд:</span> {session.full_name} — {session.position}
-              </div>
-            </div>
-            {allWorkers.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                <span className="text-[11px] text-white/30">Исполнители:</span>
-                {allWorkers.map((w, i) => (
-                  <span key={i} className="text-[11px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full">{w}</span>
-                ))}
-              </div>
-            )}
             {allVehicles.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                <span className="text-[11px] text-white/30">Техника:</span>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {allVehicles.map((v, i) => (
-                  <span key={i} className="text-[11px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-full">{v}</span>
+                  <span key={i} className={`text-[11px] px-2 py-0.5 rounded-full ${
+                    lightMode ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/15 text-amber-300'
+                  }`}>
+                    {v}
+                  </span>
                 ))}
               </div>
             )}
-            {allWorkers.length === 0 && allVehicles.length === 0 && (
-              <div className="text-[11px] text-white/25 italic">Список исполнителей и техники из позиций плана</div>
-            )}
           </div>
 
-          {/* Standard measures notice */}
-          <div className="rounded-xl p-3 border border-blue-500/15 bg-blue-500/5">
-            <div className="text-[10px] text-blue-400/70 uppercase tracking-wider mb-1.5">Стандартные мероприятия (6 + 6)</div>
-            <div className="text-[11px] text-white/50 leading-relaxed">
+          {/* Issuer (п.7) — cascade: Начальник → Гл. энергетик → Гл. инженер */}
+          <div className={sectionBg}>
+            <div className={`text-[10px] uppercase tracking-wider mb-3 ${subtitleText}`}>
+              7. Наряд-допуск выдал — выберите кто подписывает
+            </div>
+
+            {/* Cascade toggle */}
+            <div className="flex gap-1.5 mb-3 flex-wrap">
+              {ISSUER_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => handleIssuerRoleChange(opt.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    issuerRole === opt.key
+                      ? lightMode
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-blue-500/25 border-blue-500/50 text-blue-300'
+                      : lightMode
+                        ? 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                        : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {issuerRole !== 'head' && (
+              <div className={`text-[10px] mb-3 px-2 py-1.5 rounded-lg ${
+                lightMode ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/8 text-amber-400/80 border border-amber-500/15'
+              }`}>
+                {issuerRole === 'energetik'
+                  ? 'Главный энергетик подписывает при отсутствии начальника службы'
+                  : 'Главный инженер подписывает при отсутствии начальника службы и главного энергетика'}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>ФИО подписывающего</label>
+                <input
+                  value={issuedBy}
+                  onChange={e => setIssuedBy(e.target.value)}
+                  placeholder={issuerRole === 'head' ? session.full_name ?? 'Фамилия И.О.' : 'Фамилия И.О.'}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className={lbl}>Должность</label>
+                <input value={issuedByPosition} onChange={e => setIssuedByPosition(e.target.value)} className={inp} />
+              </div>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className={`rounded-xl p-3 border ${lightMode ? 'border-blue-200 bg-blue-50' : 'border-blue-500/15 bg-blue-500/5'}`}>
+            <div className={`text-[10px] uppercase tracking-wider mb-1.5 ${lightMode ? 'text-blue-600' : 'text-blue-400/70'}`}>
+              Стандартные мероприятия (6 + 6)
+            </div>
+            <div className={`text-[11px] leading-relaxed ${lightMode ? 'text-blue-700/70' : 'text-white/50'}`}>
               Мероприятия до начала и в ходе работ подставляются автоматически по типовому шаблону для работ в тоннеле (ПБО, ограждения, инструктаж, ГИБДД, маячки, ТГС-3).
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
-          <div className="text-[11px] text-white/30">
-            Выдан: «{issueDateFmt.day}» {issueDateFmt.month} {issueDateFmt.year} · Смена: {plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'}
+        <div className={`px-5 py-4 flex items-center justify-between gap-3 ${footerBg}`}>
+          <div className={`text-[11px] ${subtitleText}`}>
+            Выдан: «{issueDateFmt.day}» {issueDateFmt.month} {issueDateFmt.year}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm transition-colors">
+            <button
+              onClick={onClose}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' : 'bg-white/5 hover:bg-white/10 text-white/50'
+              }`}
+            >
               Отмена
             </button>
             <button

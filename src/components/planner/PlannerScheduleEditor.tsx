@@ -24,7 +24,6 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
   const [refDate,         setRefDate]          = useState(a?.shift_reference_date ?? '')
   const [rotationGroup,   setRotationGroup]    = useState(a?.rotation_group ?? '')
   const [isDriver,        setIsDriver]         = useState(a?.is_driver ?? false)
-  const [driverGroup,     setDriverGroup]      = useState<string>(String(a?.driver_group_number ?? ''))
   const [customWork,      setCustomWork]       = useState<string>(String(a?.custom_work_days ?? ''))
   const [customRest,      setCustomRest]       = useState<string>(String(a?.custom_rest_days ?? ''))
   const [saving, setSaving] = useState(false)
@@ -59,7 +58,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
         is_driver: isDriver,
         custom_work_days: isCustom ? (Number(customWork) || null) : null,
         custom_rest_days: isCustom ? (Number(customRest) || null) : null,
-        driver_group_number: isDriver && driverGroup ? (Number(driverGroup) || null) : null,
+        driver_group_number: a?.driver_group_number ?? null, // preserve existing value
       },
       session.user_id,
     )
@@ -70,7 +69,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
   return (
     <div
       ref={ref}
-      className="w-72 glass-strong rounded-2xl border border-white/10 shadow-2xl p-4 space-y-3"
+      className="w-72 glass-popup rounded-2xl shadow-2xl p-4 space-y-3"
       // Positioned by parent (inline)
     >
       {/* Header */}
@@ -150,30 +149,15 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       )}
 
       {/* Driver toggle */}
-      <div className="flex items-center gap-3 py-1">
-        <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={isDriver}
-            onChange={e => setIsDriver(e.target.checked)}
-            className="w-3.5 h-3.5 accent-amber-500"
-          />
-          Водитель
-        </label>
-        {isDriver && (
-          <div className="flex items-center gap-1.5">
-            <label className="text-white/35 text-[10px]">Группа</label>
-            <input
-              type="number"
-              min={1} max={20}
-              value={driverGroup}
-              onChange={e => setDriverGroup(e.target.value)}
-              className="form-input text-xs w-14"
-              placeholder="№"
-            />
-          </div>
-        )}
-      </div>
+      <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer select-none py-1">
+        <input
+          type="checkbox"
+          checked={isDriver}
+          onChange={e => setIsDriver(e.target.checked)}
+          className="w-3.5 h-3.5 accent-amber-500"
+        />
+        Водитель (группа назначается в разделе Водители)
+      </label>
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1 border-t border-white/5">

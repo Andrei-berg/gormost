@@ -190,6 +190,7 @@ export default function PlannerShell({ session }: Props) {
       userId: user.user_id,
       userName: user.full_name,
       scheduleCode: user.assignment?.schedule_code ?? '',
+      rotationGroup: user.assignment?.rotation_group ?? null,
       clickedDate: toDateStr(date),
       existingPhase,
       posX: e.clientX,

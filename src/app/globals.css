@@ -20,85 +20,166 @@ body {
 }
 
 /* Прокрутка */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* ── Glassmorphism ────────────────────────────────────────────────
-   .glass        — карточки и контейнеры (лёгкая прозрачность)
-   .glass-strong — панели с акцентом (чуть плотнее)
-   .glass-popup  — выпадающие меню, попапы, тултипы (тёмный opaque)
-   ───────────────────────────────────────────────────────────────── */
+/* ── Glassmorphism ──────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255,255,255,0.06);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255,255,255,0.12);
 }
-
 .glass-strong {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255,255,255,0.10);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.20);
+  border: 1px solid rgba(255,255,255,0.20);
 }
-
-/* Для плавающих элементов: dropdown, popup, tooltip, context menu */
 .glass-popup {
-  background: rgba(8, 12, 28, 0.96);
+  background: rgba(8,12,28,0.96);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
 }
 
-/* ── Form controls ────────────────────────────────────────────────
-   Глобальный стиль для select/input — тёмный фон + читаемый текст.
-   Tailwind-классы bg-white/5 на input переопределяют это,
-   поэтому здесь только color-scheme и базовый цвет текста.
-   ───────────────────────────────────────────────────────────────── */
-select,
-input[type="date"],
-input[type="time"],
-input[type="number"] {
-  color-scheme: dark;
-}
+/* ── Form controls ──────────────────────────────────────────────── */
+select, input[type="date"], input[type="time"], input[type="number"] { color-scheme: dark; }
 
-/* Когда select/input используют класс .form-select или .form-input
-   (для консистентных стилей без дублирования в каждом компоненте) */
-.form-select,
-.form-input {
-  background: rgba(10, 16, 38, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.85);
+.form-select, .form-input {
+  background: rgba(10,16,38,0.94);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
   border-radius: 0.5rem;
   outline: none;
   color-scheme: dark;
   transition: border-color 0.15s, background 0.15s;
 }
+.form-select:focus, .form-input:focus {
+  border-color: rgba(99,102,241,0.6);
+  background: rgba(10,16,44,0.98);
+}
+.form-select option { background: #0d1424; color: rgba(255,255,255,0.85); }
 
-.form-select:focus,
-.form-input:focus {
-  border-color: rgba(99, 102, 241, 0.6);
-  background: rgba(10, 16, 44, 0.98);
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT MODE — applies when html does NOT have .dark class
+   ═══════════════════════════════════════════════════════════════════ */
+
+html:not(.dark) body {
+  background:
+    linear-gradient(160deg, #d4dff0 0%, #dde8f5 35%, #cfd9ec 65%, #d8e4f0 100%);
+  color: #0f172a;
 }
 
-.form-select option {
-  background: #0d1424;
-  color: rgba(255, 255, 255, 0.85);
+/* Scrollbar */
+html:not(.dark) ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+html:not(.dark) ::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.22); border-radius: 4px; }
+html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: rgba(15,23,42,0.34); }
+
+/* Glass — white cards that lift off the blue-grey background */
+html:not(.dark) .glass {
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(15,23,42,0.13);
+  box-shadow: 0 2px 8px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04);
 }
+html:not(.dark) .glass-strong {
+  background: rgba(255,255,255,0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(15,23,42,0.16);
+  box-shadow: 0 4px 16px rgba(15,23,42,0.09), 0 2px 4px rgba(15,23,42,0.05);
+}
+html:not(.dark) .glass-popup {
+  background: rgba(251,253,255,0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(15,23,42,0.16);
+  box-shadow: 0 12px 40px rgba(15,23,42,0.18), 0 4px 12px rgba(15,23,42,0.09);
+}
+
+/* Form controls */
+html:not(.dark) select,
+html:not(.dark) input[type="date"],
+html:not(.dark) input[type="time"],
+html:not(.dark) input[type="number"] { color-scheme: light; }
+html:not(.dark) .form-select,
+html:not(.dark) .form-input {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(15,23,42,0.2);
+  color: rgba(15,23,42,0.85);
+  color-scheme: light;
+}
+html:not(.dark) .form-select:focus,
+html:not(.dark) .form-input:focus { border-color: rgba(59,130,246,0.6); background: #fff; }
+html:not(.dark) .form-select option { background: #fff; color: rgba(15,23,42,0.85); }
+
+/* ── text-white/* → slate-900 at same opacity ── */
+html:not(.dark) .text-white    { color: #0f172a; }
+html:not(.dark) .text-white\/90 { color: rgb(15 23 42/0.9); }
+html:not(.dark) .text-white\/85 { color: rgb(15 23 42/0.85); }
+html:not(.dark) .text-white\/80 { color: rgb(15 23 42/0.8); }
+html:not(.dark) .text-white\/70 { color: rgb(15 23 42/0.7); }
+html:not(.dark) .text-white\/60 { color: rgb(15 23 42/0.6); }
+html:not(.dark) .text-white\/55 { color: rgb(15 23 42/0.55); }
+html:not(.dark) .text-white\/50 { color: rgb(15 23 42/0.5); }
+html:not(.dark) .text-white\/45 { color: rgb(15 23 42/0.45); }
+html:not(.dark) .text-white\/40 { color: rgb(15 23 42/0.4); }
+html:not(.dark) .text-white\/35 { color: rgb(15 23 42/0.35); }
+html:not(.dark) .text-white\/30 { color: rgb(15 23 42/0.3); }
+html:not(.dark) .text-white\/25 { color: rgb(15 23 42/0.25); }
+html:not(.dark) .text-white\/20 { color: rgb(15 23 42/0.2); }
+html:not(.dark) .text-white\/15 { color: rgb(15 23 42/0.15); }
+html:not(.dark) .text-white\/10 { color: rgb(15 23 42/0.1); }
+html:not(.dark) .text-white\/8  { color: rgb(15 23 42/0.08); }
+html:not(.dark) .text-white\/5  { color: rgb(15 23 42/0.05); }
+
+/* ── hover:text-white/* ── */
+html:not(.dark) .hover\:text-white:hover    { color: #0f172a; }
+html:not(.dark) .hover\:text-white\/50:hover { color: rgb(15 23 42/0.5); }
+html:not(.dark) .hover\:text-white\/60:hover { color: rgb(15 23 42/0.6); }
+html:not(.dark) .hover\:text-white\/70:hover { color: rgb(15 23 42/0.7); }
+
+/* ── border-white/* → slate-900 — boosted for blue-grey bg ── */
+html:not(.dark) .border-white     { border-color: #0f172a; }
+html:not(.dark) .border-white\/5  { border-color: rgb(15 23 42/0.08); }
+html:not(.dark) .border-white\/8  { border-color: rgb(15 23 42/0.11); }
+html:not(.dark) .border-white\/10 { border-color: rgb(15 23 42/0.14); }
+html:not(.dark) .border-white\/12 { border-color: rgb(15 23 42/0.16); }
+html:not(.dark) .border-white\/15 { border-color: rgb(15 23 42/0.19); }
+html:not(.dark) .border-white\/18 { border-color: rgb(15 23 42/0.22); }
+html:not(.dark) .border-white\/20 { border-color: rgb(15 23 42/0.24); }
+html:not(.dark) .border-white\/25 { border-color: rgb(15 23 42/0.29); }
+html:not(.dark) .border-white\/30 { border-color: rgb(15 23 42/0.34); }
+
+/* ── divide-white/* — boosted ── */
+html:not(.dark) .divide-white\/5  > :not([hidden]) ~ :not([hidden]) { border-color: rgb(15 23 42/0.08); }
+html:not(.dark) .divide-white\/8  > :not([hidden]) ~ :not([hidden]) { border-color: rgb(15 23 42/0.11); }
+html:not(.dark) .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: rgb(15 23 42/0.14); }
+
+/* ── bg-white/* → invert to dark tint — boosted for blue-grey bg ── */
+html:not(.dark) .bg-white\/2  { background-color: rgb(15 23 42/0.04); }
+html:not(.dark) .bg-white\/3  { background-color: rgb(15 23 42/0.05); }
+html:not(.dark) .bg-white\/4  { background-color: rgb(15 23 42/0.07); }
+html:not(.dark) .bg-white\/5  { background-color: rgb(15 23 42/0.08); }
+html:not(.dark) .bg-white\/6  { background-color: rgb(15 23 42/0.09); }
+html:not(.dark) .bg-white\/8  { background-color: rgb(15 23 42/0.11); }
+html:not(.dark) .bg-white\/10 { background-color: rgb(15 23 42/0.14); }
+html:not(.dark) .bg-white\/12 { background-color: rgb(15 23 42/0.16); }
+html:not(.dark) .bg-white\/15 { background-color: rgb(15 23 42/0.19); }
+
+/* ── hover:bg-white/* ── */
+html:not(.dark) .hover\:bg-white\/5:hover  { background-color: rgb(15 23 42/0.08); }
+html:not(.dark) .hover\:bg-white\/8:hover  { background-color: rgb(15 23 42/0.11); }
+html:not(.dark) .hover\:bg-white\/10:hover { background-color: rgb(15 23 42/0.14); }
+html:not(.dark) .hover\:bg-white\/15:hover { background-color: rgb(15 23 42/0.19); }
+
+/* ── placeholder-white/* ── */
+html:not(.dark) .placeholder-white\/25::placeholder { color: rgb(15 23 42/0.25); }
+html:not(.dark) .placeholder-white\/30::placeholder { color: rgb(15 23 42/0.30); }
+html:not(.dark) .placeholder-white\/40::placeholder { color: rgb(15 23 42/0.40); }

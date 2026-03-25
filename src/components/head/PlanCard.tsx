@@ -1,13 +1,21 @@
 'use client'
-import { useState } from 'react'
-import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement } from '@/types'
+import { useState, useEffect } from 'react'
+import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement, WorkAssignmentWithUser } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG, VehicleType } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan, recallWorkPlan,
+  fetchWorkAssignmentsForItems,
 } from '@/lib/api'
+
+const BRIGADE_ROLE_ICONS: Record<string, string> = {
+  WORKER: '👷', BRIGADIER: '⭐', MASTER: '🦺', ITR: '📋', DRIVER: '🚗',
+}
+const BRIGADE_ROLE_LABELS: Record<string, string> = {
+  WORKER: 'Рабочий', BRIGADIER: 'Бригадир', MASTER: 'Мастер', ITR: 'ИТР', DRIVER: 'Водитель',
+}
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -35,6 +43,22 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const canSubmit = canEdit && plan.items.length > 0
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
+
+  // Load brigade assignments when plan is in execution phase
+  const [brigadeMap, setBrigadeMap] = useState<Map<string, WorkAssignmentWithUser[]>>(new Map())
+  useEffect(() => {
+    if (!['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(plan.status)) return
+    const ids = plan.items.map(i => i.id)
+    if (!ids.length) return
+    fetchWorkAssignmentsForItems(ids).then(list => {
+      const map = new Map<string, WorkAssignmentWithUser[]>()
+      for (const a of list) {
+        if (!map.has(a.plan_item_id)) map.set(a.plan_item_id, [])
+        map.get(a.plan_item_id)!.push(a)
+      }
+      setBrigadeMap(map)
+    })
+  }, [plan.id, plan.status]) // eslint-disable-line
 
   // Totals
   const totalWorkers    = plan.items.reduce((s, it) => s + (it.required_workers    ?? 0), 0)
@@ -128,6 +152,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 key={item.id}
                 initial={item}
                 serviceId={plan.service_id}
+                allPlanWorkers={plan.items.filter(i => i.id !== item.id).flatMap(i => i.workers)}
                 onSave={(data, cross) => handleUpdateItem(item.id, data, cross)}
                 onCancel={() => setEditingItemId(null)}
               />
@@ -136,6 +161,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 key={item.id}
                 item={item}
                 canEdit={canEdit}
+                brigadeAssignments={brigadeMap.get(item.id)}
                 onEdit={() => setEditingItemId(item.id)}
                 onDelete={() => handleDeleteItem(item.id)}
               />
@@ -146,6 +172,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
             showAddItem ? (
               <PlanItemForm
                 serviceId={plan.service_id}
+                allPlanWorkers={plan.items.flatMap(i => i.workers)}
                 onSave={handleSaveItem}
                 onCancel={() => setShowAddItem(false)}
               />
@@ -251,9 +278,10 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
 
 // ── Item row ───────────────────────────────────────────────────────────────
 
-function ItemRow({ item, canEdit, onEdit, onDelete }: {
+function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
   item: WorkPlanItemWithVehicles
   canEdit: boolean
+  brigadeAssignments?: WorkAssignmentWithUser[]
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -340,6 +368,25 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
         )}
 
         {item.notes && <div className="text-[11px] text-white/30 mt-1 italic">{item.notes}</div>}
+
+        {/* Brigade assignments — shown when plan is ASSIGNED/IN_PROGRESS/DONE */}
+        {brigadeAssignments && brigadeAssignments.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-white/8">
+            <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1.5">Бригада</div>
+            <div className="flex flex-wrap gap-1">
+              {brigadeAssignments.map(a => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/8 border border-white/12"
+                >
+                  <span>{BRIGADE_ROLE_ICONS[a.role] ?? '👤'}</span>
+                  <span className="text-white/75 font-medium">{a.user?.full_name?.split(' ').slice(0, 2).join(' ') ?? '—'}</span>
+                  <span className="text-white/35">·{BRIGADE_ROLE_LABELS[a.role] ?? a.role}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {canEdit && (

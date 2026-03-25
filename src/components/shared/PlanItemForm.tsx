@@ -3,9 +3,10 @@ import { useState, useCallback } from 'react'
 import type {
   WorkPlanItem, WorkPlanItemWithVehicles, VehicleRequirement, VehicleType,
   CrossServiceDraft, UserWithAssignment, CrossServiceRequest,
+  EmployeeStatusType,
 } from '@/types'
-import { VEHICLE_TYPE_CONFIG, SERVICE_META } from '@/types'
-import { fetchUsersWithAssignments } from '@/lib/api'
+import { VEHICLE_TYPE_CONFIG, SERVICE_META, EMPLOYEE_STATUS_CONFIG } from '@/types'
+import { fetchUsersWithAssignments, fetchAllCurrentStatuses } from '@/lib/api'
 import { isWorkerOnDuty } from '@/lib/shifts'
 
 // ── Exported type used by all callers ──────────────────────────────────────
@@ -23,6 +24,12 @@ const SERVICE_NAMES: Record<string, string> = {
   'SRV-CCTV': 'Видеонаблюдение',
 }
 
+// Statuses that mean the employee cannot work (absent/sick/leave)
+const BLOCKED_STATUSES = new Set<EmployeeStatusType>([
+  'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka',
+  'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+])
+
 const ROLE_GROUPS = [
   { key: 'foreman', label: 'Мастера / Бригадиры', levels: ['FOREMAN'] },
   { key: 'itr',     label: 'ИТР / Специалисты',   levels: ['HEAD', 'SPECIALIST', 'CHIEF_ENGINEER', 'ZAMPORAB', 'DISPATCHER', 'HR', 'SAFETY_ENGINEER'] },
@@ -30,17 +37,25 @@ const ROLE_GROUPS = [
   { key: 'driver',  label: 'Водители',             levels: ['DRIVER'] },
 ]
 
+type WorkerWithStatus = UserWithAssignment & {
+  onDuty: boolean
+  currentStatus: EmployeeStatusType
+}
+
 interface Props {
   initial?: WorkPlanItem
   serviceId: string
   existingCrossRequest?: CrossServiceRequest | null
   withCrossService?: boolean
+  /** Names already picked in OTHER work items of this plan (informational) */
+  allPlanWorkers?: string[]
   onSave: (data: PlanItemFormData, crossDraft: CrossServiceDraft | null) => void
   onCancel: () => void
 }
 
 export default function PlanItemForm({
   initial, serviceId, existingCrossRequest, withCrossService = false,
+  allPlanWorkers = [],
   onSave, onCancel,
 }: Props) {
   const [location,  setLocation]  = useState(initial?.location || '')
@@ -61,7 +76,7 @@ export default function PlanItemForm({
   // Smart worker picker
   const [selectedWorkers,  setSelectedWorkers]  = useState<string[]>(initial?.workers ?? [])
   const [showWorkerPicker, setShowWorkerPicker] = useState(false)
-  const [pickerWorkers,    setPickerWorkers]    = useState<UserWithAssignment[]>([])
+  const [pickerWorkers,    setPickerWorkers]    = useState<WorkerWithStatus[]>([])
   const [pickerLoading,    setPickerLoading]    = useState(false)
 
   // Cross-service
@@ -99,28 +114,40 @@ export default function PlanItemForm({
 
   // ── Worker picker helpers ──────────────────────────────────────────────
   const loadWorkers = useCallback(async () => {
-    if (pickerWorkers.length > 0 || pickerLoading) return
+    if (pickerLoading) return
     setPickerLoading(true)
     const today = new Date()
-    const all = await fetchUsersWithAssignments()
-    const onDuty = all.filter(u => {
-      if (u.service_id !== serviceId || !u.assignment) return false
-      return isWorkerOnDuty({
-        shift_num:            u.assignment.shift_num,
-        schedule_code:        u.assignment.schedule_code ?? '',
-        shift_reference_date: u.assignment.shift_reference_date,
-        rotation_group:       u.assignment.rotation_group,
-      }, today)
+    const [usersWithAssign, statuses] = await Promise.all([
+      fetchUsersWithAssignments(),
+      fetchAllCurrentStatuses(),
+    ])
+    const serviceWorkers = usersWithAssign.filter(u => u.service_id === serviceId && u.is_active)
+    const enriched: WorkerWithStatus[] = serviceWorkers.map(u => {
+      const onDuty = u.assignment
+        ? isWorkerOnDuty({
+            shift_num:            u.assignment.shift_num,
+            schedule_code:        u.assignment.schedule_code ?? '',
+            shift_reference_date: u.assignment.shift_reference_date,
+            rotation_group:       u.assignment.rotation_group,
+            active_phase:         u.assignment.active_phase ?? null,
+            custom_work_days:     u.assignment.custom_work_days,
+            custom_rest_days:     u.assignment.custom_rest_days,
+          }, today)
+        : false
+      const statusRecord = statuses.find(s => s.user.user_id === u.user_id)
+      const currentStatus: EmployeeStatusType = statusRecord?.currentStatus ?? 'Na_rabote'
+      return { ...u, onDuty, currentStatus }
     })
-    setPickerWorkers(onDuty)
+    setPickerWorkers(enriched)
     setPickerLoading(false)
-  }, [serviceId, pickerWorkers.length, pickerLoading])
+  }, [serviceId, pickerLoading])
 
   const toggleWorkerPicker = () => {
     if (!showWorkerPicker) loadWorkers()
     setShowWorkerPicker(p => !p)
   }
-  const toggleWorker = (name: string) => {
+  const toggleWorker = (name: string, blocked: boolean) => {
+    if (blocked) return
     setSelectedWorkers(prev => prev.includes(name) ? prev.filter(w => w !== name) : [...prev, name])
   }
 
@@ -155,6 +182,11 @@ export default function PlanItemForm({
   const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
   const usedTypes = new Set(vehicleReqs.map(r => r.type))
   const availableTypes = (Object.keys(VEHICLE_TYPE_CONFIG) as VehicleType[]).filter(t => !usedTypes.has(t))
+
+  // Group workers for picker
+  const dutyWorkers    = pickerWorkers.filter(w => w.onDuty && !BLOCKED_STATUSES.has(w.currentStatus))
+  const offDayWorkers  = pickerWorkers.filter(w => !w.onDuty && !BLOCKED_STATUSES.has(w.currentStatus))
+  const absentWorkers  = pickerWorkers.filter(w => BLOCKED_STATUSES.has(w.currentStatus))
 
   return (
     <div className="p-3 rounded-xl bg-blue-500/8 border border-blue-500/20 space-y-3">
@@ -241,52 +273,89 @@ export default function PlanItemForm({
             className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${
               showWorkerPicker ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300' : 'border-white/15 text-white/40 hover:text-white/60'
             }`}>
-            {showWorkerPicker ? '▲ Скрыть' : '▼ Выбрать со смены'}
+            {showWorkerPicker ? '▲ Скрыть' : '▼ Выбрать из состава'}
           </button>
         </div>
+
+        {/* Selected workers */}
         {selectedWorkers.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
-            {selectedWorkers.map((w, i) => (
-              <span key={i} onClick={() => toggleWorker(w)}
-                className="flex items-center gap-1 text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 px-2 py-0.5 rounded-full cursor-pointer hover:bg-red-500/15 hover:text-red-300 transition-colors"
-                title="Нажмите чтобы убрать">
-                {w} <span className="text-[9px] opacity-60">✕</span>
-              </span>
-            ))}
-          </div>
-        )}
-        {showWorkerPicker && (
-          <div className="rounded-xl bg-white/4 border border-white/8 p-3 space-y-3 max-h-64 overflow-y-auto">
-            {pickerLoading && <div className="text-xs text-white/30 text-center py-2">Загрузка...</div>}
-            {!pickerLoading && pickerWorkers.length === 0 && (
-              <div className="text-xs text-white/25 text-center py-2 italic">Нет сотрудников на смене сегодня</div>
-            )}
-            {!pickerLoading && ROLE_GROUPS.map(group => {
-              const gw = pickerWorkers.filter(u => group.levels.includes(u.role_level))
-              if (gw.length === 0) return null
+            {selectedWorkers.map((w, i) => {
+              const alreadyInOther = allPlanWorkers.includes(w)
               return (
-                <div key={group.key}>
-                  <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">{group.label} · {gw.length}</div>
-                  <div className="grid grid-cols-2 gap-1">
-                    {gw.map(u => {
-                      const sel = selectedWorkers.includes(u.full_name)
-                      return (
-                        <button key={u.user_id} type="button" onClick={() => toggleWorker(u.full_name)}
-                          className={`text-left flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                            sel ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
-                                : 'bg-white/4 border border-transparent hover:bg-white/8 text-white/70'
-                          }`}>
-                          <span className={`w-3 h-3 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
-                            sel ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20'
-                          }`}>{sel ? '✓' : ''}</span>
-                          <span className="truncate">{u.full_name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+                <span key={i} onClick={() => setSelectedWorkers(prev => prev.filter(x => x !== w))}
+                  className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                    alreadyInOther
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/25 hover:bg-red-500/15 hover:text-red-300'
+                      : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 hover:bg-red-500/15 hover:text-red-300'
+                  }`}
+                  title={alreadyInOther ? 'Уже назначен на другую работу. Нажмите чтобы убрать' : 'Нажмите чтобы убрать'}
+                >
+                  {alreadyInOther && <span className="text-[9px]">⚠</span>}
+                  {w}
+                  <span className="text-[9px] opacity-60">✕</span>
+                </span>
               )
             })}
+          </div>
+        )}
+
+        {showWorkerPicker && (
+          <div className="rounded-xl bg-white/4 border border-white/8 p-3 space-y-3 max-h-72 overflow-y-auto">
+            {pickerLoading && <div className="text-xs text-white/30 text-center py-2">Загрузка...</div>}
+            {!pickerLoading && pickerWorkers.length === 0 && (
+              <div className="text-xs text-white/25 text-center py-2 italic">Нет сотрудников в службе</div>
+            )}
+
+            {/* On duty today */}
+            {!pickerLoading && dutyWorkers.length > 0 && (
+              <WorkerGroup
+                title="На смене сегодня"
+                workers={dutyWorkers}
+                selectedWorkers={selectedWorkers}
+                allPlanWorkers={allPlanWorkers}
+                onToggle={toggleWorker}
+                dotColor="bg-emerald-400"
+              />
+            )}
+
+            {/* Not on duty (but at work, not absent) */}
+            {!pickerLoading && offDayWorkers.length > 0 && (
+              <WorkerGroup
+                title="Не дежурят / без графика"
+                workers={offDayWorkers}
+                selectedWorkers={selectedWorkers}
+                allPlanWorkers={allPlanWorkers}
+                onToggle={toggleWorker}
+                dotColor="bg-white/30"
+                dimmed
+              />
+            )}
+
+            {/* Absent / blocked */}
+            {!pickerLoading && absentWorkers.length > 0 && (
+              <div>
+                <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+                  Отсутствуют (нельзя добавить) · {absentWorkers.length}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {absentWorkers.map(u => {
+                    const stCfg = EMPLOYEE_STATUS_CONFIG[u.currentStatus]
+                    return (
+                      <div key={u.user_id}
+                        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/3 border border-white/5 opacity-50 cursor-not-allowed"
+                        title={`${stCfg.label} — недоступен для назначения`}
+                      >
+                        <span className="w-3 h-3 rounded-sm border border-white/15 flex-shrink-0" />
+                        <span className="text-xs text-white/50 truncate flex-1">{u.full_name}</span>
+                        <span className="text-[10px] shrink-0" style={{ color: stCfg.color }}>{stCfg.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -365,6 +434,54 @@ export default function PlanItemForm({
         <button onClick={onCancel} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 text-sm transition-colors">
           Отмена
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Worker group sub-component ──────────────────────────────────────────────
+function WorkerGroup({
+  title, workers, selectedWorkers, allPlanWorkers, onToggle, dotColor, dimmed = false,
+}: {
+  title: string
+  workers: WorkerWithStatus[]
+  selectedWorkers: string[]
+  allPlanWorkers: string[]
+  onToggle: (name: string, blocked: boolean) => void
+  dotColor: string
+  dimmed?: boolean
+}) {
+  return (
+    <div>
+      <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${dotColor}`} />
+        {title} · {workers.length}
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        {workers.map(u => {
+          const sel           = selectedWorkers.includes(u.full_name)
+          const inOtherItem   = allPlanWorkers.includes(u.full_name)
+          const roleGroups    = ROLE_GROUPS.find(g => g.levels.includes(u.role_level))
+          return (
+            <button key={u.user_id} type="button" onClick={() => onToggle(u.full_name, false)}
+              className={`text-left flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                sel         ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                : dimmed    ? 'bg-white/2 border border-transparent hover:bg-white/6 text-white/45'
+                :             'bg-white/4 border border-transparent hover:bg-white/8 text-white/70'
+              }`}>
+              <span className={`w-3 h-3 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                sel ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20'
+              }`}>{sel ? '✓' : ''}</span>
+              <span className="truncate flex-1">{u.full_name}</span>
+              {inOtherItem && (
+                <span className="text-[9px] text-amber-400/80 shrink-0" title="Уже в другой работе">⚠</span>
+              )}
+              {roleGroups && !sel && (
+                <span className="text-[9px] text-white/25 shrink-0">{roleGroups.label.split(' ')[0]}</span>
+              )}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

@@ -6,6 +6,7 @@ import { logout, hasRole } from '@/lib/auth'
 import type { AuthSession } from '@/types'
 import { PANELS } from '@/types'
 import { useAlertCount } from '@/components/AlertBanner'
+import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {
   session: AuthSession
@@ -19,6 +20,7 @@ interface Props {
 export default function Header({ session, title, emoji, mode = 'LIVE', showTimer, lastUpdated }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const { theme, toggleTheme } = useTheme()
   const [now, setNow] = useState(new Date())
   const [menuOpen, setMenuOpen] = useState(false)
   const [secondsAgo, setSecondsAgo] = useState(0)
@@ -139,6 +141,23 @@ export default function Header({ session, title, emoji, mode = 'LIVE', showTimer
               </span>
             </div>
           )}
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/50 hover:text-white"
+          >
+            {theme === 'dark' ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
 
           {/* Nav menu */}
           <div className="relative" ref={menuRef}>

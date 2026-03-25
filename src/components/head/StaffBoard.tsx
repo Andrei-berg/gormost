@@ -1,27 +1,67 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchAllCurrentStatuses } from '@/lib/api'
-import type { WorkPlanWithItems, EnrichedEmployee } from '@/types'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchAllCurrentStatuses, fetchUsersWithAssignments } from '@/lib/api'
+import type { WorkPlanWithItems, EnrichedEmployee, EmployeeStatusType } from '@/types'
 import { EMPLOYEE_STATUS_CONFIG, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { isWorkerOnDuty } from '@/lib/shifts'
+
+type FilterMode = 'all' | 'on_duty' | 'absent'
+
+const FILTER_LABELS: Record<FilterMode, string> = {
+  all:     'Вся служба',
+  on_duty: 'Сегодня на смене',
+  absent:  'Отсутствуют',
+}
+
+// Statuses that mean the employee is unavailable/absent today
+const ABSENT_STATUSES = new Set<EmployeeStatusType>([
+  'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka',
+  'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+])
 
 interface Props {
   serviceId: string
 }
 
+type EnrichedWithDuty = EnrichedEmployee & { onDuty: boolean }
+
 export default function StaffBoard({ serviceId }: Props) {
-  const [employees, setEmployees] = useState<EnrichedEmployee[]>([])
-  const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
-  const [loading, setLoading] = useState(true)
+  const [employees, setEmployees] = useState<EnrichedWithDuty[]>([])
+  const [plans, setPlans]         = useState<WorkPlanWithItems[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [filter, setFilter]       = useState<FilterMode>('all')
 
   const load = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
-    const [emps, raw] = await Promise.all([
+    setLoading(true)
+    const today    = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+
+    const [emps, raw, userAssignments] = await Promise.all([
       fetchAllCurrentStatuses(),
-      fetchWorkPlans({ planDate: today }),
+      fetchWorkPlans({ planDate: todayStr }),
+      fetchUsersWithAssignments(),
     ])
+
     const myEmps = emps.filter(e => e.user.service_id === serviceId)
+
+    const myEmpsWithDuty: EnrichedWithDuty[] = myEmps.map(emp => {
+      const ua = userAssignments.find(u => u.user_id === emp.user.user_id)
+      const onDuty = ua?.assignment
+        ? isWorkerOnDuty({
+            shift_num:            ua.assignment.shift_num,
+            schedule_code:        ua.assignment.schedule_code ?? '',
+            shift_reference_date: ua.assignment.shift_reference_date,
+            rotation_group:       ua.assignment.rotation_group,
+            active_phase:         ua.assignment.active_phase ?? null,
+            custom_work_days:     ua.assignment.custom_work_days,
+            custom_rest_days:     ua.assignment.custom_rest_days,
+          }, today)
+        : false
+      return { ...emp, onDuty }
+    })
+
     const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setEmployees(myEmps)
+    setEmployees(myEmpsWithDuty)
     setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
     setLoading(false)
   }, [serviceId])
@@ -30,12 +70,20 @@ export default function StaffBoard({ serviceId }: Props) {
 
   if (loading) return <div className="text-center text-white/40 py-8 text-sm">Загрузка...</div>
 
-  const empAssignments = employees.map(emp => {
+  // Apply filter
+  const filteredEmps = employees.filter(e => {
+    if (filter === 'on_duty') return e.onDuty && !ABSENT_STATUSES.has(e.currentStatus)
+    if (filter === 'absent')  return ABSENT_STATUSES.has(e.currentStatus)
+    return true
+  })
+
+  // Build assignment map
+  const empAssignments = filteredEmps.map(emp => {
     const assignments: Array<{ plan: WorkPlanWithItems; location: string; work: string; time: string }> = []
     for (const plan of plans) {
       if (!['PLANNED', 'IN_PROGRESS', 'DONE', 'APPROVED', 'BOSS_CONFIRMED', 'ASSIGNED'].includes(plan.status)) continue
       for (const item of plan.items) {
-        const lastName = emp.user.last_name?.toLowerCase() ?? ''
+        const lastName      = emp.user.last_name?.toLowerCase() ?? ''
         const firstNamePart = emp.user.full_name.toLowerCase().split(' ')[0]
         const match = item.workers.some(w =>
           (lastName && w.toLowerCase().includes(lastName)) ||
@@ -45,8 +93,8 @@ export default function StaffBoard({ serviceId }: Props) {
           assignments.push({
             plan,
             location: item.location,
-            work: item.work_description,
-            time: item.time_start ? `${item.time_start}${item.time_end ? `–${item.time_end}` : ''}` : '',
+            work:     item.work_description,
+            time:     item.time_start ? `${item.time_start}${item.time_end ? `–${item.time_end}` : ''}` : '',
           })
         }
       }
@@ -57,46 +105,89 @@ export default function StaffBoard({ serviceId }: Props) {
   const assigned   = empAssignments.filter(e => e.assignments.length > 0)
   const unassigned = empAssignments.filter(e => e.assignments.length === 0)
 
+  // Counts for filter badges
+  const countAll     = employees.length
+  const countOnDuty  = employees.filter(e => e.onDuty && !ABSENT_STATUSES.has(e.currentStatus)).length
+  const countAbsent  = employees.filter(e => ABSENT_STATUSES.has(e.currentStatus)).length
+
   if (employees.length === 0) {
     return <div className="text-center text-white/20 py-12 text-sm">Нет сотрудников в службе</div>
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
 
-      {/* ── Summary ── */}
-      <div className="glass rounded-xl px-5 py-4 flex items-center gap-8">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white">{employees.length}</div>
-          <div className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">всего</div>
+      {/* ── Filter bar ── */}
+      <div className="glass rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
+        {(['all', 'on_duty', 'absent'] as FilterMode[]).map(mode => {
+          const count = mode === 'all' ? countAll : mode === 'on_duty' ? countOnDuty : countAbsent
+          const active = filter === mode
+          return (
+            <button
+              key={mode}
+              onClick={() => setFilter(mode)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                active
+                  ? mode === 'absent'
+                    ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
+                    : mode === 'on_duty'
+                    ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                    : 'bg-blue-500/20 border border-blue-500/30 text-blue-300'
+                  : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+              }`}
+            >
+              {FILTER_LABELS[mode]}
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                active
+                  ? 'bg-white/20 text-current'
+                  : 'bg-white/8 text-white/30'
+              }`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+
+        {/* Summary counters */}
+        <div className="ml-auto flex items-center gap-4">
+          <div className="text-center">
+            <div className="text-lg font-bold text-white leading-none">{assigned.length}</div>
+            <div className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">в работах</div>
+          </div>
+          <div className="w-px h-7 bg-white/10" />
+          <div className="text-center">
+            <div className="text-lg font-bold text-white/30 leading-none">{unassigned.length}</div>
+            <div className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">свободны</div>
+          </div>
+          <button onClick={load} className="text-white/25 hover:text-white/50 text-lg transition-colors ml-2">↻</button>
         </div>
-        <div className="w-px h-8 bg-white/10" />
-        <div className="text-center">
-          <div className="text-2xl font-bold text-emerald-400">{assigned.length}</div>
-          <div className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">назначены</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white/30">{unassigned.length}</div>
-          <div className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">свободны</div>
-        </div>
-        <button onClick={load} className="ml-auto text-white/25 hover:text-white/50 text-lg transition-colors">↻</button>
       </div>
+
+      {/* Empty state for filter */}
+      {filteredEmps.length === 0 && (
+        <div className="text-center text-white/25 py-10 text-sm">
+          {filter === 'on_duty' ? 'Никто не дежурит сегодня' : 'Нет отсутствующих'}
+        </div>
+      )}
 
       {/* ── Assigned ── */}
       {assigned.length > 0 && (
         <div>
           <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3 px-1">
-            Назначены на работы
+            Назначены на работы · {assigned.length}
           </div>
           <div className="space-y-2">
             {assigned.map(({ emp, assignments }) => {
-              const stCfg = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+              const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+              const absent = ABSENT_STATUSES.has(emp.currentStatus)
               return (
                 <div key={emp.user.user_id} className="glass rounded-xl overflow-hidden border border-white/8">
                   {/* Employee header */}
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
                     <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-[11px] font-bold text-emerald-300 shrink-0">
+                      <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                        absent ? 'bg-orange-500/15 border-orange-500/25 text-orange-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                      }`}>
                         {emp.user.full_name.charAt(0)}
                       </div>
                       <div>
@@ -106,12 +197,19 @@ export default function StaffBoard({ serviceId }: Props) {
                         )}
                       </div>
                     </div>
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 shrink-0"
-                      style={{ color: stCfg.color }}
-                    >
-                      {stCfg.label}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {emp.onDuty && !absent && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+                          на смене
+                        </span>
+                      )}
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-white/10"
+                        style={{ color: stCfg.color }}
+                      >
+                        {stCfg.label}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Work assignments */}
@@ -154,13 +252,20 @@ export default function StaffBoard({ serviceId }: Props) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {unassigned.map(({ emp }) => {
-              const stCfg = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+              const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+              const absent = ABSENT_STATUSES.has(emp.currentStatus)
               return (
                 <div
                   key={emp.user.user_id}
-                  className="glass rounded-xl px-3 py-2.5 border border-white/5 flex items-center gap-2.5"
+                  className={`glass rounded-xl px-3 py-2.5 border flex items-center gap-2.5 ${
+                    absent ? 'border-orange-500/15' : 'border-white/5'
+                  }`}
                 >
-                  <div className="w-6 h-6 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white/40 shrink-0">
+                  <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                    absent        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                    : emp.onDuty  ? 'bg-emerald-500/12 border-emerald-500/20 text-emerald-400'
+                    :               'bg-white/8 border-white/10 text-white/40'
+                  }`}>
                     {emp.user.full_name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -169,9 +274,12 @@ export default function StaffBoard({ serviceId }: Props) {
                       <div className="text-[10px] text-white/30 truncate">{emp.user.position}</div>
                     )}
                   </div>
-                  <span className="text-[10px] shrink-0" style={{ color: stCfg.color }}>
-                    {stCfg.label}
-                  </span>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <span className="text-[10px]" style={{ color: stCfg.color }}>{stCfg.label}</span>
+                    {emp.onDuty && !absent && (
+                      <span className="text-[9px] text-emerald-400/70">на смене</span>
+                    )}
+                  </div>
                 </div>
               )
             })}
