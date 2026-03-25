@@ -110,7 +110,7 @@ export default function RosterTable({ users, services, showService }: Props) {
   })
 
   const th  = 'px-3 py-2 text-left text-xs text-white/40 font-medium cursor-pointer hover:text-white/60 select-none whitespace-nowrap'
-  const sel = 'bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none'
+  const sel = 'form-select text-xs px-2 py-1'
 
   return (
     <div className="space-y-3">

@@ -186,7 +186,7 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as VehicleType | 'ALL')}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/60 text-xs focus:outline-none focus:border-white/25"
+          className="form-select text-xs px-3 py-2"
         >
           <option value="ALL">Все типы</option>
           {usedTypes.map(t => (

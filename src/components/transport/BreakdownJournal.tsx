@@ -63,7 +63,7 @@ function AddBreakdownModal({
           <select
             value={vehicleId}
             onChange={e => setVehicleId(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/30"
+            className="form-select w-full text-sm px-3 py-2"
           >
             <option value="">— выберите ТС —</option>
             {vehicles.map(v => (

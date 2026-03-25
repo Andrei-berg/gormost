@@ -106,7 +106,7 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
                     {needsVehicle && (
                       <select
                         onChange={e => { if (e.target.value) handleAssign(item.id, e.target.value) }}
-                        className="w-full bg-white/5 border border-dashed border-white/20 rounded-lg px-3 py-2 text-sm text-white/50 focus:outline-none focus:border-white/30"
+                        className="form-select w-full text-sm px-3 py-2 border-dashed"
                         value=""
                       >
                         <option value="" disabled>

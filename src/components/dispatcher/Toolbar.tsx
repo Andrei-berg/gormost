@@ -27,7 +27,7 @@ export default function Toolbar({ view, onViewChange, filterService, onFilterCha
         <select
           value={filterService}
           onChange={e => onFilterChange(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+          className="form-select text-sm px-3 py-1.5"
         >
           <option value="">Все службы</option>
           {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}

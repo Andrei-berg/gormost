@@ -139,7 +139,7 @@ function Content({ session }: { session: AuthSession }) {
             <div>
               <label className="block text-xs text-white/50 mb-1">Приоритет</label>
               <select value={priority} onChange={e => setPriority(e.target.value as any)}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                className="form-select text-sm px-3 py-2">
                 <option value="LOW">Низкий</option>
                 <option value="MEDIUM">Средний</option>
                 <option value="HIGH">Высокий</option>

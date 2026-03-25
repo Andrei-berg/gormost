@@ -220,7 +220,7 @@ function UsersTab({ session }: { session: AuthSession }) {
     await deleteUser(u.user_id); load()
   }
 
-  const inp = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50'
+  const inp = 'form-select w-full text-sm px-3 py-2'
 
   const filteredUsers = users.filter(u => {
     const q = search.toLowerCase()
@@ -496,7 +496,7 @@ function CrudTab<T extends Record<string, any>>({
     await onDelete(String(item[idKey])); onFetch()
   }
 
-  const inp = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50'
+  const inp = 'form-select w-full text-sm px-3 py-2'
 
   return (
     <div>

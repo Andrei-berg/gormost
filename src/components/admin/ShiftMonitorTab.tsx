@@ -606,11 +606,11 @@ function InlineAssignmentForm({
     else setError('Ошибка сохранения')
   }
 
-  const sel = 'bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50'
-  const inp = 'bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50 w-full'
+  const sel   = 'form-select text-xs px-2 py-1.5'
+  const inp   = 'form-input text-xs px-2 py-1.5 w-full'
   // Highlight the field that corresponds to the specific error
-  const hlSel = 'bg-gray-900 border border-blue-400/60 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none ring-1 ring-blue-500/30'
-  const hlInp = 'bg-gray-900 border border-blue-400/60 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none ring-1 ring-blue-500/30 w-full'
+  const hlSel = 'form-select text-xs px-2 py-1.5 border-blue-400/60 ring-1 ring-blue-500/30'
+  const hlInp = 'form-input text-xs px-2 py-1.5 w-full border-blue-400/60 ring-1 ring-blue-500/30'
 
   const scheduleHl = errorCode === 'NO_ASSIGNMENT' ? hlSel : sel
   const shiftHl    = errorCode === 'MISSING_SHIFT_NUM' ? hlSel : sel

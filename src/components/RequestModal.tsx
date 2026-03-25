@@ -126,7 +126,7 @@ export default function RequestModal({ session, existingRequest, defaultServiceI
     setSelectedUsers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid])
   }
 
-  const selectClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none'
+  const selectClass = 'form-select w-full text-sm px-3 py-2'
   const labelClass = 'block text-xs text-white/50 mb-1'
 
   return (

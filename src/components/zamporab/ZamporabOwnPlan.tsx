@@ -95,7 +95,7 @@ export default function ZamporabOwnPlan({ session, services }: Props) {
                 type="date"
                 value={newDate}
                 onChange={e => setNewDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+                className="form-select w-full text-sm px-2.5 py-1.5"
               />
             </div>
             <div>
@@ -103,7 +103,7 @@ export default function ZamporabOwnPlan({ session, services }: Props) {
               <select
                 value={newShift}
                 onChange={e => setNewShift(e.target.value as 'DAY' | 'NIGHT')}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+                className="form-select w-full text-sm px-2.5 py-1.5"
               >
                 <option value="DAY">☀️ День (07:30–19:00)</option>
                 <option value="NIGHT">🌙 Ночь (21:00–07:00)</option>
