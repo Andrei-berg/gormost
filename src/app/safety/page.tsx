@@ -4,6 +4,7 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import CoverageOverview from '@/components/safety/CoverageOverview'
 import CertMatrix from '@/components/safety/CertMatrix'
+import CertJournal from '@/components/safety/CertJournal'
 import CatalogTab from '@/components/safety/CatalogTab'
 import RequirementsTab from '@/components/safety/RequirementsTab'
 import UnlinkedCerts from '@/components/safety/UnlinkedCerts'
@@ -13,7 +14,7 @@ import {
 } from '@/lib/api'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
-type Tab = 'overview' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
+type Tab = 'overview' | 'journal' | 'matrix' | 'unlinked' | 'catalog' | 'requirements'
 
 export default function SafetyPage() {
   return (
@@ -55,7 +56,8 @@ function Content({ session }: { session: AuthSession }) {
 
   const TABS: { id: Tab; label: string; emoji: string; badge?: number }[] = [
     { id: 'overview',      label: 'Обзор',        emoji: '📊' },
-    { id: 'matrix',        label: 'Допуски',       emoji: '📋' },
+    { id: 'journal',       label: 'Журнал',        emoji: '📖' },
+    { id: 'matrix',        label: 'Матрица',       emoji: '📋' },
     { id: 'unlinked',      label: 'Несвязанные',   emoji: '🔗', badge: unlinked.length },
     { id: 'catalog',       label: 'Каталог',       emoji: '📝' },
     { id: 'requirements',  label: 'Требования',    emoji: '⚙️' },
@@ -99,6 +101,13 @@ function Content({ session }: { session: AuthSession }) {
               allCerts={allCerts}
               unlinkedCount={unlinked.length}
               requirements={requirements}
+              employees={employees}
+              services={services}
+            />
+          )}
+          {tab === 'journal' && (
+            <CertJournal
+              allCerts={allCerts}
               employees={employees}
               services={services}
             />

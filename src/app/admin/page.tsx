@@ -24,6 +24,7 @@ const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'FOREMAN',         label: 'Мастер/Бригадир',    defaultPosition: 'Мастер участка' },
   { value: 'TRANSPORT',       label: 'Гл. механик',        defaultPosition: 'Главный механик' },
   { value: 'COMPLAINTS',      label: 'Диспетчер жалоб',    defaultPosition: 'Диспетчер жалоб' },
+  { value: 'SAFETY_ENGINEER', label: 'ТБиОТ',              defaultPosition: 'Инженер по охране труда' },
   { value: 'HR',              label: 'Кадровик (HR)',       defaultPosition: 'Специалист по кадрам' },
   { value: 'SPECIALIST',      label: 'Специалист (ИТР)',    defaultPosition: 'Специалист' },
   { value: 'WORKER',          label: 'Рабочий',            defaultPosition: '' },
