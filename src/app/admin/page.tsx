@@ -163,7 +163,7 @@ function InlineSelect({ value, options, emptyLabel, displayValue, onSave }: {
         await onSave(e.target.value || null)
       }}
       onBlur={() => setEditing(false)}
-      className="bg-gray-900 border border-blue-500/50 rounded px-1.5 py-0.5 text-white text-sm focus:outline-none max-w-[180px]"
+      className="form-select text-sm px-1.5 py-0.5 max-w-[180px] border-blue-500/50"
     >
       {emptyLabel && <option value="">{emptyLabel}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -256,7 +256,7 @@ function UsersTab({ session }: { session: AuthSession }) {
         <select
           value={filterRole}
           onChange={e => setFilterRole(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+          className="form-select text-sm px-3 py-1.5"
         >
           <option value="">Все роли</option>
           {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -264,7 +264,7 @@ function UsersTab({ session }: { session: AuthSession }) {
         <select
           value={filterService}
           onChange={e => setFilterService(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 focus:outline-none"
+          className="form-select text-sm px-3 py-1.5"
         >
           <option value="">Все службы</option>
           {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name}</option>)}
