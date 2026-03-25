@@ -269,7 +269,7 @@ export default function PlannerGrid({
                   const userPhases  = phasesByUser.get(user.user_id) ?? []
                   const { working, day, night, overrides } = userSummary(user)
                   const rowBg = ri % 2 === 0 ? '' : 'bg-white/[0.012]'
-                  const hasIssue = hasCyclic && userPhases.length === 0
+                  const hasIssue = hasCyclic && userPhases.length === 0 && canEdit
 
                   return (
                     <>
@@ -362,9 +362,15 @@ export default function PlannerGrid({
                             const mb = monthBoundaries.find(b => b.idx === di)
                             const isStart = phase?.valid_from === dateStr
 
+                            // Only color when the worker is actually on duty that day
+                            const cell = getCell(user, d)
+                            const isWorking = (cell.manual ?? cell.auto) !== null
+
                             let bgCls = 'bg-transparent'
-                            if (phase?.phase === 'day')   bgCls = 'bg-amber-500/35'
-                            if (phase?.phase === 'night') bgCls = 'bg-blue-500/35'
+                            if (phase && isWorking) {
+                              if (phase.phase === 'day')   bgCls = 'bg-amber-500/35'
+                              if (phase.phase === 'night') bgCls = 'bg-blue-500/35'
+                            }
 
                             return (
                               <td
@@ -410,6 +416,7 @@ export default function PlannerGrid({
           userId={phaseEditorState.userId}
           userName={phaseEditorState.userName}
           scheduleCode={phaseEditorState.scheduleCode}
+          rotationGroup={phaseEditorState.rotationGroup}
           clickedDate={phaseEditorState.clickedDate}
           existingPhase={phaseEditorState.existingPhase}
           posX={phaseEditorState.posX}

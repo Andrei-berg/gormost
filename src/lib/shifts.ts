@@ -204,14 +204,7 @@ export function isWorkerOnDuty(
   }
 
   if (code === '15/15') {
-    if (anchorStr) {
-      // Variant B: rolling 30-day cycle from anchor date (day 31 handled naturally)
-      const ref = new Date(anchorStr); ref.setHours(0, 0, 0, 0)
-      const days = Math.floor((target.getTime() - ref.getTime()) / 86400000)
-      const pos = ((days % 30) + 30) % 30
-      return rotation_group === '2' ? pos >= 15 : pos < 15
-    }
-    // Legacy fallback: calendar-based (no anchor set yet)
+    // Always calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
     const day = target.getDate()
     return rotation_group === '2' ? day >= 16 : day <= 15
   }
@@ -361,21 +354,18 @@ export function resolveShiftStatus(
   }
 
   if (schedule_code === '15/15') {
-    let working: boolean
-    if (active_phase.anchor_date) {
-      // Variant B: rolling 30-day cycle from anchor date
-      const pos = ((daysElapsed % 30) + 30) % 30
-      working = rotation_group === '2' ? pos >= 15 : pos < 15
-    } else {
-      // Legacy fallback: calendar-based
-      const day = target.getDate()
-      working = rotation_group === '2' ? day >= 16 : day <= 15
-    }
-    // Auto-alternating: flip phase every 30-day cycle
+    // Calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
+    const day = target.getDate()
+    const working = rotation_group === '2' ? day >= 16 : day <= 15
+    // Auto-alternating: flip phase every calendar month relative to anchor
     let effectivePhase = phase
     if (active_phase.is_alternating) {
-      const cycleIdx = Math.floor(daysElapsed / 30)
-      if (cycleIdx % 2 !== 0) effectivePhase = phase === 'day' ? 'night' : 'day'
+      const anchorD = new Date(active_phase.anchor_date)
+      anchorD.setHours(0, 0, 0, 0)
+      const monthsElapsed =
+        (target.getFullYear() - anchorD.getFullYear()) * 12 +
+        (target.getMonth() - anchorD.getMonth())
+      if (monthsElapsed % 2 !== 0) effectivePhase = phase === 'day' ? 'night' : 'day'
     }
     const effectiveTimes = SHIFT_TIMES[effectivePhase]
     return { working, phase: working ? effectivePhase : null, shift_start: working ? effectiveTimes.start : null, shift_end: working ? effectiveTimes.end : null }
@@ -458,18 +448,9 @@ export function resolveShiftForDate(
   }
 
   if (schedule_code === '15/15') {
-    let isWorking: boolean
-    if (shift_reference_date) {
-      // Variant B: rolling 30-day cycle from anchor date
-      const pos = ((daysElapsed % 30) + 30) % 30
-      isWorking = rotation_group === '2' ? pos >= 15 : pos < 15
-    } else if (rotation_group === '2_1') {
-      isWorking = daysElapsed % 30 < 15
-    } else {
-      // Legacy fallback: calendar-based
-      const dayOfMonth = target.getDate()
-      isWorking = rotation_group === '2' ? dayOfMonth >= 16 : dayOfMonth <= 15
-    }
+    // Calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
+    const dayOfMonth = target.getDate()
+    const isWorking = rotation_group === '2' ? dayOfMonth >= 16 : dayOfMonth <= 15
     return { isWorking, shiftType: isWorking ? 'DAY' : null }
   }
 

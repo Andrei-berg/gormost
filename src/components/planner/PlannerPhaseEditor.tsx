@@ -7,6 +7,7 @@ interface Props {
   userId: string
   userName: string
   scheduleCode: string
+  rotationGroup: string | null
   clickedDate: string
   existingPhase: ShiftPhase | null
   posX: number
@@ -16,13 +17,20 @@ interface Props {
   onSaved: () => void
 }
 
+
 export default function PlannerPhaseEditor({
-  userId, userName, scheduleCode, clickedDate,
+  userId, userName, scheduleCode, rotationGroup, clickedDate,
   existingPhase, posX, posY, session, onClose, onSaved,
 }: Props) {
   const [phase, setPhase]               = useState<'day' | 'night'>(existingPhase?.phase ?? 'day')
   const [anchorDate, setAnchorDate]     = useState(existingPhase?.anchor_date ?? clickedDate)
   const [validFrom, setValidFrom]       = useState(existingPhase?.valid_from ?? clickedDate)
+
+  // Keep validFrom in sync with anchorDate unless user changed them independently
+  function handleAnchorChange(val: string) {
+    if (validFrom === anchorDate) setValidFrom(val)
+    setAnchorDate(val)
+  }
   const [ongoing, setOngoing]           = useState(existingPhase ? !existingPhase.valid_to : true)
   const [validTo, setValidTo]           = useState(existingPhase?.valid_to ?? '')
   const [isAlternating, setIsAlternating] = useState(existingPhase?.is_alternating ?? false)
@@ -44,7 +52,7 @@ export default function PlannerPhaseEditor({
   const style: React.CSSProperties = {
     position: 'fixed',
     zIndex: 9999,
-    top: Math.min(posY + 8, vh - 380),
+    top: Math.min(posY + 8, vh - 420),
     left: Math.min(posX + 8, vw - 300),
   }
 
@@ -78,11 +86,16 @@ export default function PlannerPhaseEditor({
 
   const is1515 = scheduleCode === '15/15'
 
+  // For 15/15: calendar-based work window description
+  const workRange1515 = is1515
+    ? (rotationGroup === '2' ? '16-е — конец месяца' : '1-е — 15-е')
+    : null
+
   return (
     <div
       ref={ref}
       style={style}
-      className="w-72 glass-strong rounded-2xl border border-white/10 shadow-2xl p-4 space-y-3"
+      className="w-72 glass-popup rounded-2xl shadow-2xl p-4 space-y-3"
     >
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -121,19 +134,33 @@ export default function PlannerPhaseEditor({
       {/* Anchor date */}
       <div>
         <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">
-          Опорная дата <span className="normal-case text-white/20">(первый рабочий день)</span>
+          Опорная дата{' '}
+          <span className="normal-case text-white/20">
+            {is1515 ? '(только для чередования день/ночь)' : '(начало цикла)'}
+          </span>
         </label>
         <input
           type="date"
           value={anchorDate}
-          onChange={e => setAnchorDate(e.target.value)}
+          onChange={e => handleAnchorChange(e.target.value)}
           className="form-input text-xs w-full"
         />
+        {/* 15/15: show calendar work window */}
+        {workRange1515 && (
+          <div className="mt-1.5 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="text-[10px] text-amber-300/70">
+              Группа {rotationGroup ?? '1'} — рабочие дни каждого месяца:
+            </div>
+            <div className="text-[11px] text-amber-200 font-medium mt-0.5">
+              {workRange1515}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Valid from */}
       <div>
-        <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Начало действия</label>
+        <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Начало действия записи</label>
         <input
           type="date"
           value={validFrom}
