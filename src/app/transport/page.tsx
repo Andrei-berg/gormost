@@ -44,7 +44,7 @@ function Content({ session }: { session: AuthSession }) {
   const loadData = useCallback(async () => {
     const [veh, approvedPlans, bd, drivers] = await Promise.all([
       fetchVehiclesWithDayAssignments(planDate),
-      fetchWorkPlans({ planDate: planDate, status: 'APPROVED' }),
+      fetchWorkPlans({ planDate: planDate, statuses: ['APPROVED', 'PLANNED', 'BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS'] }),
       fetchOpenBreakdowns(),
       fetchDriverUsers(),
     ])
