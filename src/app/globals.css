@@ -140,7 +140,9 @@ html:not(.dark) .text-white    { color: #323338; }
 html:not(.dark) .text-white\/90 { color: rgba(50,51,56,0.92); }
 html:not(.dark) .text-white\/85 { color: rgba(50,51,56,0.85); }
 html:not(.dark) .text-white\/80 { color: rgba(50,51,56,0.80); }
+html:not(.dark) .text-white\/75 { color: rgba(50,51,56,0.76); }
 html:not(.dark) .text-white\/70 { color: rgba(50,51,56,0.72); }
+html:not(.dark) .text-white\/65 { color: rgba(50,51,56,0.68); }
 html:not(.dark) .text-white\/60 { color: rgba(50,51,56,0.65); }
 html:not(.dark) .text-white\/55 { color: rgba(50,51,56,0.62); }
 html:not(.dark) .text-white\/50 { color: rgba(50,51,56,0.58); }  /* secondary text */
@@ -151,6 +153,7 @@ html:not(.dark) .text-white\/30 { color: rgba(50,51,56,0.42); }  /* hints, times
 html:not(.dark) .text-white\/25 { color: rgba(50,51,56,0.38); }
 html:not(.dark) .text-white\/20 { color: rgba(50,51,56,0.34); }
 html:not(.dark) .text-white\/15 { color: rgba(50,51,56,0.30); }  /* was nearly invisible */
+html:not(.dark) .text-white\/12 { color: rgba(50,51,56,0.27); }
 html:not(.dark) .text-white\/10 { color: rgba(50,51,56,0.24); }
 html:not(.dark) .text-white\/8  { color: rgba(50,51,56,0.20); }
 html:not(.dark) .text-white\/5  { color: rgba(50,51,56,0.14); }
