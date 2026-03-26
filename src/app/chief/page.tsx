@@ -47,9 +47,7 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // SRV-STR (СЭИС) is managed by Zamporab — skips chief engineer approval
-  const visiblePlans = plans.filter(p => p.service_id !== 'SRV-STR')
-  const visible = filter === 'ALL' ? visiblePlans : visiblePlans.filter(p => p.status === filter)
+  const visible = filter === 'ALL' ? plans : plans.filter(p => p.status === filter)
 
   const grouped = visible.reduce<Record<string, WorkPlanWithItems[]>>((acc, p) => {
     if (!acc[p.plan_date]) acc[p.plan_date] = []
@@ -63,7 +61,7 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
 
       <AlertBanner session={session} />
-      <ChiefStats plans={visiblePlans} />
+      <ChiefStats plans={plans} />
 
       {/* Main tab switcher */}
       <div className="flex items-center gap-2 mb-4">
@@ -78,9 +76,9 @@ function Content({ session }: { session: AuthSession }) {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'approvals' ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
           📋 Согласование
-          {visiblePlans.filter(p => p.status === 'SUBMITTED').length > 0 && (
+          {plans.filter(p => p.status === 'SUBMITTED').length > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {visiblePlans.filter(p => p.status === 'SUBMITTED').length}
+              {plans.filter(p => p.status === 'SUBMITTED').length}
             </span>
           )}
         </button>
@@ -119,7 +117,7 @@ function Content({ session }: { session: AuthSession }) {
                 {t.label}
                 {t.key !== 'ALL' && (
                   <span className="ml-1.5 text-xs opacity-70">
-                    {visiblePlans.filter(p => p.status === t.key).length}
+                    {plans.filter(p => p.status === t.key).length}
                   </span>
                 )}
               </button>
