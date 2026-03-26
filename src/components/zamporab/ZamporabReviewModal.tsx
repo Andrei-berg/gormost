@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type {
   WorkPlanWithItems, WorkPlanItemWithVehicles, Service, AuthSession, CrossServiceRequest,
+  UserWithAssignment, Vehicle,
 } from '@/types'
 import {
   SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG,
@@ -11,6 +12,7 @@ import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   createCrossServiceRequest,
 } from '@/lib/api'
+import { isWorkerOnDuty } from '@/lib/shifts'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -40,13 +42,15 @@ interface Props {
   plan: WorkPlanWithItems
   services: Service[]
   session: AuthSession
+  driverUsers?: UserWithAssignment[]
+  vehicles?: Vehicle[]
   onClose: () => void
   onSaved: () => void
 }
 
 // ── Main component ────────────────────────────────────────────────────────
 
-export default function ZamporabReviewModal({ plan, services, session, onClose, onSaved }: Props) {
+export default function ZamporabReviewModal({ plan, services, session, driverUsers = [], vehicles = [], onClose, onSaved }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returnNotes, setReturnNotes] = useState('')
@@ -75,6 +79,41 @@ export default function ZamporabReviewModal({ plan, services, session, onClose, 
   const totalMasters    = plan.items.reduce((s, i) => s + (i.required_masters ?? 0), 0)
   const totalForemen    = plan.items.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
   const totalVehicles   = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
+
+  // Resource availability for this plan's date
+  const planDate = new Date(plan.plan_date)
+
+  const onDutyDriverCount = useMemo(() =>
+    driverUsers.filter(u => {
+      const a = u.assignment
+      if (!a || !a.schedule_code) return false
+      const pos = (u.position ?? '').toLowerCase()
+      if (pos.includes('тракторист') || pos.includes('машинист')) return false
+      return isWorkerOnDuty({
+        shift_num: a.shift_num, schedule_code: a.schedule_code,
+        shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group,
+        active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null,
+        custom_rest_days: a.custom_rest_days ?? null,
+      }, planDate)
+    }).length
+  , [driverUsers, plan.plan_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onDutyOperatorCount = useMemo(() =>
+    driverUsers.filter(u => {
+      const a = u.assignment
+      if (!a || !a.schedule_code) return false
+      const pos = (u.position ?? '').toLowerCase()
+      if (!pos.includes('тракторист') && !pos.includes('машинист')) return false
+      return isWorkerOnDuty({
+        shift_num: a.shift_num, schedule_code: a.schedule_code,
+        shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group,
+        active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null,
+        custom_rest_days: a.custom_rest_days ?? null,
+      }, planDate)
+    }).length
+  , [driverUsers, plan.plan_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeVehicleCount = vehicles.filter(v => v.status === 'ACTIVE').length
 
   const handleConfirm = async () => {
     setConfirming(true)
@@ -236,6 +275,30 @@ export default function ZamporabReviewModal({ plan, services, session, onClose, 
             <TotalBadge icon="🎓" count={totalMasters}    label="мастер" />
             {totalForemen > 0 && <TotalBadge icon="📋" count={totalForemen} label="ИТР" />}
             <TotalBadge icon="🚗" count={totalVehicles}   label="техника" />
+          </div>
+        )}
+
+        {/* ── Resource availability ── */}
+        {(driverUsers.length > 0 || vehicles.length > 0) && (
+          <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/8 flex items-center gap-5 flex-wrap">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest shrink-0">Смена</span>
+
+            <ResourceMetric
+              icon="🚗"
+              value={onDutyDriverCount}
+              label="вод."
+            />
+            <ResourceMetric
+              icon="🚜"
+              value={onDutyOperatorCount}
+              label="трактор."
+            />
+            <ResourceMetric
+              icon="🔧"
+              value={activeVehicleCount}
+              label="исправна"
+              needed={totalVehicles}
+            />
           </div>
         )}
 
@@ -420,6 +483,32 @@ function HeadcountBadge({ icon, count, label, color }: { icon: string; count: nu
     <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${BADGE_COLORS[color]}`}>
       {icon} {count} {label}
     </span>
+  )
+}
+
+// ── ResourceMetric ─────────────────────────────────────────────────────────
+
+function ResourceMetric({ icon, value, label, needed }: {
+  icon: string
+  value: number
+  label: string
+  needed?: number
+}) {
+  const hasNeed = needed !== undefined && needed > 0
+  const ok = !hasNeed || value >= needed
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <span>{icon}</span>
+      <span className={hasNeed ? (ok ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold') : 'text-white font-semibold'}>
+        {value}
+      </span>
+      <span className="text-white/35 text-xs">{label}</span>
+      {hasNeed && (
+        <span className={`text-[10px] px-1.5 py-px rounded-full border ${ok ? 'border-emerald-500/30 text-emerald-400/70' : 'border-red-500/30 text-red-400/70'}`}>
+          нужно {needed} {ok ? '✓' : '✗'}
+        </span>
+      )}
+    </div>
   )
 }
 

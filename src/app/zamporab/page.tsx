@@ -8,16 +8,19 @@ import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
   fetchServices, fetchUsers, approveRequest,
   fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
+  fetchDriverUsers, fetchVehicles,
 } from '@/lib/api'
 import type {
   Request, Category, GObject, Construction, WorkType, Service,
   User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
+  UserWithAssignment, Vehicle,
 } from '@/types'
 import { SERVICE_META } from '@/types'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabPlanBoard from '@/components/zamporab/ZamporabPlanBoard'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
 import ShiftOverview from '@/components/zamporab/ShiftOverview'
+import ResourceBar from '@/components/zamporab/ResourceBar'
 import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
 // HEAD components
@@ -45,6 +48,8 @@ function Content({ session }: { session: AuthSession }) {
   // all plans (board view — no items needed)
   const [allPlans, setAllPlans] = useState<WorkPlan[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
+  const [driverUsers, setDriverUsers] = useState<UserWithAssignment[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   // plans awaiting zamporab confirmation (with items — for review modal)
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
   const [reviewPlan, setReviewPlan] = useState<WorkPlanWithItems | null>(null)
@@ -55,16 +60,19 @@ function Content({ session }: { session: AuthSession }) {
   const [timerText, setTimerText] = useState('')
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw, drvUsers, vehs] = await Promise.all([
       fetchRequests(), fetchCategories(), fetchObjects(), fetchConstructions(),
       fetchWorkTypes(), fetchServices(), fetchUsers(),
       fetchWorkPlans({ status: 'APPROVED' }),
       fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }),
       fetchWorkPlans(), // all plans for board (no items)
+      fetchDriverUsers(),
+      fetchVehicles(true),
     ])
     setRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
     setAllUsers(usrs); setAllPlans(allRaw)
+    setDriverUsers(drvUsers); setVehicles(vehs)
 
     // Pending plans awaiting zamporab confirmation (load with items for review modal)
     const allPending = [...rawApproved, ...rawSubmittedStr]
@@ -172,6 +180,7 @@ function Content({ session }: { session: AuthSession }) {
       {/* Tab: Pending confirmation */}
       {tab === 'pending' && (
         <div className="space-y-3">
+          <ResourceBar driverUsers={driverUsers} vehicles={vehicles} />
           {pendingPlans.length === 0 ? (
             <EmptyState message="Нет планов, ожидающих подтверждения" />
           ) : (
@@ -192,6 +201,8 @@ function Content({ session }: { session: AuthSession }) {
           plan={reviewPlan}
           services={services}
           session={session}
+          driverUsers={driverUsers}
+          vehicles={vehicles}
           onClose={() => setReviewPlan(null)}
           onSaved={() => { setReviewPlan(null); loadData() }}
         />
