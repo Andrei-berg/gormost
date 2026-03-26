@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests } from '@/lib/api'
-import type { WorkPlanWithItems, WorkPlan, AuthSession, CrossServiceRequest } from '@/types'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests, fetchServices } from '@/lib/api'
+import type { WorkPlanWithItems, WorkPlan, AuthSession, CrossServiceRequest, Service } from '@/types'
 import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
 import CreatePlanModal from '@/components/head/CreatePlanModal'
@@ -12,6 +12,7 @@ import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import AlertBanner from '@/components/AlertBanner'
 import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
+import HeadTransportTab from '@/components/head/HeadTransportTab'
 
 export default function HeadPage() {
   return (
@@ -35,15 +36,20 @@ function getDeadlineTimer(): string | null {
 function Content({ session }: { session: AuthSession }) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [rawPlans, setRawPlans] = useState<WorkPlan[]>([])
+  const [services, setServices] = useState<Service[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [showTaskSheet, setShowTaskSheet] = useState(false)
-  const [tab, setTab] = useState<'plans' | 'staff' | 'incoming'>('plans')
+  const [tab, setTab] = useState<'plans' | 'staff' | 'transport' | 'incoming'>('plans')
   const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineTimer())
 
   const loadData = useCallback(async () => {
-    const raw = await fetchWorkPlans({ serviceId: session.service_id ?? undefined })
+    const [raw, svcs] = await Promise.all([
+      fetchWorkPlans({ serviceId: session.service_id ?? undefined }),
+      fetchServices(),
+    ])
     setRawPlans(raw)
+    setServices(svcs)
     const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
     setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
     if (session.service_id) {
@@ -87,6 +93,12 @@ function Content({ session }: { session: AuthSession }) {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
           👷 Состав смены
+        </button>
+        <button
+          onClick={() => setTab('transport')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'transport' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+        >
+          🚛 Транспорт
         </button>
         <button
           onClick={() => setTab('incoming')}
@@ -136,6 +148,8 @@ function Content({ session }: { session: AuthSession }) {
       )}
 
       {tab === 'staff' && <StaffBoard serviceId={session.service_id ?? ''} />}
+
+      {tab === 'transport' && <HeadTransportTab plans={plans} services={services} />}
 
       {tab === 'incoming' && <IncomingRequests session={session} />}
 
