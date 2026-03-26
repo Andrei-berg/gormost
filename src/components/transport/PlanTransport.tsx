@@ -129,6 +129,29 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
           </div>
         )
       })}
+
+      {/* Unassigned active vehicles */}
+      {(() => {
+        const assignedIds = new Set(
+          plans.flatMap(p => p.items.flatMap(i => i.vehicles.map(v => v.id)))
+        )
+        const freeVehicles = activeVehicles.filter(v => !assignedIds.has(v.id))
+        if (freeVehicles.length === 0) return null
+        return (
+          <div className="glass rounded-xl border border-white/8 p-4 mt-2">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">
+              Свободная техника · {freeVehicles.length} ед.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {freeVehicles.map(v => (
+                <span key={v.id} className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  {v.name}{v.plate ? ` · ${v.plate}` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

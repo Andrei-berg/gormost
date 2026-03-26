@@ -81,7 +81,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const totalVehicles   = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
 
   // Resource availability for this plan's date
-  const planDate = new Date(plan.plan_date)
+  const planDate = new Date(plan.plan_date + 'T00:00:00')
 
   const onDutyDriverCount = useMemo(() =>
     driverUsers.filter(u => {
@@ -280,25 +280,56 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
 
         {/* ── Resource availability ── */}
         {(driverUsers.length > 0 || vehicles.length > 0) && (
-          <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/8 flex items-center gap-5 flex-wrap">
-            <span className="text-[10px] text-white/30 uppercase tracking-widest shrink-0">Смена</span>
+          <div className="mx-5 mb-4">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2 px-1">
+              Ресурсы на {new Date(plan.plan_date + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' })}
+            </div>
+            <div className="rounded-xl border border-white/8 overflow-hidden divide-y divide-white/[0.06]">
 
-            <ResourceMetric
-              icon="🚗"
-              value={onDutyDriverCount}
-              label="вод."
-            />
-            <ResourceMetric
-              icon="🚜"
-              value={onDutyOperatorCount}
-              label="трактор."
-            />
-            <ResourceMetric
-              icon="🔧"
-              value={activeVehicleCount}
-              label="исправна"
-              needed={totalVehicles}
-            />
+              {/* Drivers row */}
+              <ResourceRow
+                icon="🚗"
+                label="Водители"
+                available={onDutyDriverCount}
+                required={totalWorkers}
+                names={driverUsers
+                  .filter(u => {
+                    const pos = (u.position ?? '').toLowerCase()
+                    if (pos.includes('тракторист') || pos.includes('машинист')) return false
+                    const a = u.assignment
+                    if (!a?.schedule_code) return false
+                    return isWorkerOnDuty({ shift_num: a.shift_num, schedule_code: a.schedule_code, shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group, active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null, custom_rest_days: a.custom_rest_days ?? null }, planDate)
+                  })
+                  .map(u => u.full_name)}
+              />
+
+              {/* Operators row */}
+              <ResourceRow
+                icon="🚜"
+                label="Трактористы"
+                available={onDutyOperatorCount}
+                required={totalForemen}
+                names={driverUsers
+                  .filter(u => {
+                    const pos = (u.position ?? '').toLowerCase()
+                    if (!pos.includes('тракторист') && !pos.includes('машинист')) return false
+                    const a = u.assignment
+                    if (!a?.schedule_code) return false
+                    return isWorkerOnDuty({ shift_num: a.shift_num, schedule_code: a.schedule_code, shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group, active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null, custom_rest_days: a.custom_rest_days ?? null }, planDate)
+                  })
+                  .map(u => u.full_name)}
+              />
+
+              {/* Vehicles row */}
+              <ResourceRow
+                icon="🔧"
+                label="Техника"
+                available={activeVehicleCount}
+                required={totalVehicles}
+                names={vehicles.filter(v => v.status === 'ACTIVE').map(v => v.name + (v.plate ? ` (${v.plate})` : ''))}
+              />
+
+            </div>
           </div>
         )}
 
@@ -486,27 +517,55 @@ function HeadcountBadge({ icon, count, label, color }: { icon: string; count: nu
   )
 }
 
-// ── ResourceMetric ─────────────────────────────────────────────────────────
+// ── ResourceRow ─────────────────────────────────────────────────────────────
 
-function ResourceMetric({ icon, value, label, needed }: {
-  icon: string
-  value: number
-  label: string
-  needed?: number
+function ResourceRow({ icon, label, available, required, names }: {
+  icon: string; label: string; available: number; required: number; names: string[]
 }) {
-  const hasNeed = needed !== undefined && needed > 0
-  const ok = !hasNeed || value >= needed
+  const [expanded, setExpanded] = useState(false)
+
+  const color = required === 0
+    ? 'text-white/40'
+    : available >= required
+      ? 'text-emerald-400'
+      : available >= required - 1
+        ? 'text-amber-400'
+        : 'text-red-400'
+
+  const statusIcon = required === 0 ? '—' : available >= required ? '✓' : available >= required - 1 ? '⚠' : '✗'
+  const statusLabel = required === 0
+    ? 'не требуется'
+    : available >= required
+      ? 'достаточно'
+      : `не хватает ${required - available}`
+
   return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <span>{icon}</span>
-      <span className={hasNeed ? (ok ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold') : 'text-white font-semibold'}>
-        {value}
-      </span>
-      <span className="text-white/35 text-xs">{label}</span>
-      {hasNeed && (
-        <span className={`text-[10px] px-1.5 py-px rounded-full border ${ok ? 'border-emerald-500/30 text-emerald-400/70' : 'border-red-500/30 text-red-400/70'}`}>
-          нужно {needed} {ok ? '✓' : '✗'}
-        </span>
+    <div>
+      <button
+        onClick={() => names.length > 0 && setExpanded(v => !v)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${names.length > 0 ? 'hover:bg-white/[0.02] cursor-pointer' : 'cursor-default'} transition-colors`}
+      >
+        <span className="text-base shrink-0">{icon}</span>
+        <span className="text-sm text-white/70 w-28 shrink-0">{label}</span>
+        <span className={`text-sm font-semibold ${color}`}>{available}</span>
+        {required > 0 && (
+          <>
+            <span className="text-white/20 text-xs">/ нужно {required}</span>
+            <span className={`ml-auto text-xs font-medium ${color}`}>{statusIcon} {statusLabel}</span>
+          </>
+        )}
+        {names.length > 0 && (
+          <span className={`text-white/20 text-xs ml-1 transition-transform ${expanded ? 'rotate-180' : ''} ${required > 0 ? '' : 'ml-auto'}`}>▾</span>
+        )}
+      </button>
+      {expanded && names.length > 0 && (
+        <div className="px-4 pb-2.5 flex flex-wrap gap-1.5">
+          {names.map((name, i) => (
+            <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/55 border border-white/8">
+              {name}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   )

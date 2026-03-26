@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import KanbanBoard from '@/components/KanbanBoard'
@@ -16,6 +16,7 @@ import type {
   UserWithAssignment, Vehicle,
 } from '@/types'
 import { SERVICE_META } from '@/types'
+import { isWorkerOnDuty } from '@/lib/shifts'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabPlanBoard from '@/components/zamporab/ZamporabPlanBoard'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
@@ -189,6 +190,8 @@ function Content({ session }: { session: AuthSession }) {
                 key={plan.id}
                 plan={plan}
                 services={services}
+                driverUsers={driverUsers}
+                vehicles={vehicles}
                 onOpen={() => setReviewPlan(plan)}
               />
             ))
@@ -289,11 +292,22 @@ function Content({ session }: { session: AuthSession }) {
   )
 }
 
+// ── Resource traffic light color helper ──────────────────────────────────
+
+function resourceColor(available: number, required: number): string {
+  if (required === 0) return 'text-white/25'
+  if (available >= required) return 'text-emerald-400'
+  if (available >= required - 1) return 'text-amber-400'
+  return 'text-red-400'
+}
+
 // ── Compact pending plan card ──────────────────────────────────────────────
 
-function PendingPlanCard({ plan, services, onOpen }: {
+function PendingPlanCard({ plan, services, driverUsers, vehicles, onOpen }: {
   plan: WorkPlanWithItems
   services: Service[]
+  driverUsers: UserWithAssignment[]
+  vehicles: Vehicle[]
   onOpen: () => void
 }) {
   const svc  = services.find(s => s.service_id === plan.service_id)
@@ -307,6 +321,31 @@ function PendingPlanCard({ plan, services, onOpen }: {
   const crossCount    = plan.items.reduce((s, i) => s + (i.cross_requests?.length ?? 0), 0)
 
   const isDirect = plan.service_id === 'SRV-STR' && plan.status === 'SUBMITTED'
+
+  const planDate = new Date(plan.plan_date + 'T00:00:00')
+
+  const onDutyDrivers = useMemo(() => driverUsers.filter(u => {
+    const pos = (u.position ?? '').toLowerCase()
+    if (pos.includes('тракторист') || pos.includes('машинист')) return false
+    const a = u.assignment
+    if (!a?.schedule_code) return false
+    return isWorkerOnDuty({ shift_num: a.shift_num, schedule_code: a.schedule_code, shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group, active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null, custom_rest_days: a.custom_rest_days ?? null }, planDate)
+  }), [driverUsers, plan.plan_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onDutyOperators = useMemo(() => driverUsers.filter(u => {
+    const pos = (u.position ?? '').toLowerCase()
+    if (!pos.includes('тракторист') && !pos.includes('машинист')) return false
+    const a = u.assignment
+    if (!a?.schedule_code) return false
+    return isWorkerOnDuty({ shift_num: a.shift_num, schedule_code: a.schedule_code, shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group, active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null, custom_rest_days: a.custom_rest_days ?? null }, planDate)
+  }), [driverUsers, plan.plan_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeVehicles = vehicles.filter(v => v.status === 'ACTIVE')
+
+  const reqWorkers  = plan.items.reduce((s, i) => s + (i.required_workers ?? 0), 0)
+  const reqVehicles = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
+  const reqForemen  = plan.items.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
+  const reqOps      = reqForemen
 
   return (
     <div
@@ -338,6 +377,25 @@ function PendingPlanCard({ plan, services, onOpen }: {
             </span>
           )}
         </div>
+        {(reqWorkers > 0 || reqVehicles > 0 || reqOps > 0) && (
+          <div className="flex items-center gap-3 mt-1.5 pt-1.5 border-t border-white/5">
+            {reqWorkers > 0 && (
+              <span className={`flex items-center gap-1 text-[11px] font-medium ${resourceColor(onDutyDrivers.length, reqWorkers)}`}>
+                🚗 {onDutyDrivers.length}<span className="text-white/25">/{reqWorkers}</span>
+              </span>
+            )}
+            {reqOps > 0 && (
+              <span className={`flex items-center gap-1 text-[11px] font-medium ${resourceColor(onDutyOperators.length, reqOps)}`}>
+                🚜 {onDutyOperators.length}<span className="text-white/25">/{reqOps}</span>
+              </span>
+            )}
+            {reqVehicles > 0 && (
+              <span className={`flex items-center gap-1 text-[11px] font-medium ${resourceColor(activeVehicles.length, reqVehicles)}`}>
+                🔧 {activeVehicles.length}<span className="text-white/25">/{reqVehicles}</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <button className="shrink-0 px-4 py-2 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-300 text-sm font-medium group-hover:bg-blue-600/50 transition-all">
         Открыть →

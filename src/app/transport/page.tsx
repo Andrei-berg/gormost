@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import FleetBoard from '@/components/transport/FleetBoard'
@@ -19,6 +19,7 @@ import type {
   AuthSession, VehicleWithAssignments, VehicleBreakdownWithVehicle,
   User, UserWithAssignment,
 } from '@/types'
+import { isWorkerOnDuty } from '@/lib/shifts'
 
 export default function TransportPage() {
   return (
@@ -36,13 +37,14 @@ function Content({ session }: { session: AuthSession }) {
   const [tab, setTab]                 = useState<'fleet' | 'plan' | 'defects' | 'drivers'>('fleet')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const today   = new Date().toISOString().slice(0, 10)
+  const [planDate, setPlanDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const todayStr = new Date().toISOString().slice(0, 10)
   const canEdit = ['TRANSPORT', 'ADMIN'].includes(session.role_level)
 
   const loadData = useCallback(async () => {
     const [veh, approvedPlans, bd, drivers] = await Promise.all([
-      fetchVehiclesWithDayAssignments(today),
-      fetchWorkPlans({ planDate: today, status: 'APPROVED' }),
+      fetchVehiclesWithDayAssignments(planDate),
+      fetchWorkPlans({ planDate: planDate, status: 'APPROVED' }),
       fetchOpenBreakdowns(),
       fetchDriverUsers(),
     ])
@@ -57,7 +59,7 @@ function Content({ session }: { session: AuthSession }) {
     setBreakdowns(bd)
     setDriverUsers(drivers)
     setLastUpdated(new Date())
-  }, [today])
+  }, [planDate])
 
   const loadAllBreakdowns = useCallback(async () => {
     const bd = await fetchVehicleBreakdowns()
@@ -87,6 +89,20 @@ function Content({ session }: { session: AuthSession }) {
   ).length
   const openDefects = breakdowns.filter(b => b.status === 'OPEN').length
 
+  // Fleet KPI
+  const activeCount      = vehicles.filter(v => v.status === 'ACTIVE').length
+  const brokenCount      = vehicles.filter(v => v.status === 'BROKEN').length
+  const maintenanceCount = vehicles.filter(v => v.status === 'MAINTENANCE').length
+  const totalVehicles    = vehicles.length
+
+  const onDutyTodayCount = useMemo(() =>
+    driverUsers.filter(u => {
+      const a = u.assignment
+      if (!a?.schedule_code) return false
+      return isWorkerOnDuty({ shift_num: a.shift_num, schedule_code: a.schedule_code, shift_reference_date: a.shift_reference_date, rotation_group: a.rotation_group, active_phase: a.active_phase ?? null, custom_work_days: a.custom_work_days ?? null, custom_rest_days: a.custom_rest_days ?? null }, new Date())
+    }).length
+  , [driverUsers])
+
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" lastUpdated={lastUpdated} />
@@ -113,6 +129,51 @@ function Content({ session }: { session: AuthSession }) {
           <div className="text-[11px] text-white/40">Нужен транспорт</div>
         </div>
       </div>
+
+      {/* Fleet KPI bar */}
+      {vehicles.length > 0 && (
+        <div className="glass rounded-xl border border-white/8 px-5 py-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest">Парк</span>
+            <span className="text-sm">
+              <span className="font-semibold text-white">{totalVehicles}</span>
+              <span className="text-white/35 ml-1">ед.</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+              <span className="font-semibold text-emerald-400">{activeCount}</span>
+              <span className="text-white/35">исправных</span>
+            </span>
+            {maintenanceCount > 0 && (
+              <span className="flex items-center gap-1.5 text-sm">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                <span className="font-semibold text-amber-400">{maintenanceCount}</span>
+                <span className="text-white/35">в ремонте</span>
+              </span>
+            )}
+            {brokenCount > 0 && (
+              <span className="flex items-center gap-1.5 text-sm">
+                <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                <span className="font-semibold text-red-400">{brokenCount}</span>
+                <span className="text-white/35">неисправных</span>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest">Водители</span>
+            <span className="font-semibold text-white text-sm">{driverUsers.length}</span>
+            <span className="text-white/35 text-sm">всего</span>
+            <span className="text-white/15 mx-1">·</span>
+            <span className="font-semibold text-blue-400 text-sm">{onDutyTodayCount}</span>
+            <span className="text-white/35 text-sm">на смене</span>
+          </div>
+          {lastUpdated && (
+            <span className="text-[10px] text-white/20 ml-2">
+              обновлено {lastUpdated.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Driver stats — TRANSPORT/ADMIN only */}
       {/* {canEdit && (
@@ -183,18 +244,40 @@ function Content({ session }: { session: AuthSession }) {
         />
       )}
       {tab === 'plan' && (
-        <PlanTransport
-          plans={plans}
-          activeVehicles={vehicles.filter(v => v.status === 'ACTIVE')}
-          userId={session.user_id}
-          onRefresh={loadData}
-        />
+        <div>
+          {/* Date navigation */}
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => { const d = new Date(planDate); d.setDate(d.getDate()-1); setPlanDate(d.toISOString().slice(0,10)) }}
+              className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
+            >←</button>
+            <span className="text-sm text-white/70 font-medium min-w-[130px] text-center">
+              {new Date(planDate + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })}
+            </span>
+            <button
+              onClick={() => { const d = new Date(planDate); d.setDate(d.getDate()+1); setPlanDate(d.toISOString().slice(0,10)) }}
+              className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
+            >→</button>
+            {planDate !== todayStr && (
+              <button onClick={() => setPlanDate(todayStr)} className="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs ml-1">
+                сегодня
+              </button>
+            )}
+            <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm ml-auto">↻</button>
+          </div>
+          <PlanTransport
+            plans={plans}
+            activeVehicles={vehicles.filter(v => v.status === 'ACTIVE')}
+            userId={session.user_id}
+            onRefresh={loadData}
+          />
+        </div>
       )}
       {tab === 'drivers' && (
         <DriverList
           drivers={driverUsers}
           vehicles={vehicles}
-          date={today}
+          date={todayStr}
         />
       )}
       {tab === 'defects' && (
