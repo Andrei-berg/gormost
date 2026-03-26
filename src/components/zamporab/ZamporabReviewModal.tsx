@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type {
   WorkPlanWithItems, WorkPlanItemWithVehicles, Service, AuthSession, CrossServiceRequest,
   UserWithAssignment, Vehicle,
@@ -10,7 +10,7 @@ import {
 import {
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-  createCrossServiceRequest,
+  createCrossServiceRequest, assignVehicle, unassignVehicle, fetchWorkPlanWithItems,
 } from '@/lib/api'
 import { isWorkerOnDuty } from '@/lib/shifts'
 
@@ -59,6 +59,30 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
+  // Local items state so vehicle assignments can refresh without full modal reload
+  const [localItems, setLocalItems] = useState<WorkPlanItemWithVehicles[]>(plan.items)
+  useEffect(() => { setLocalItems(plan.items) }, [plan.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshItems = async () => {
+    const updated = await fetchWorkPlanWithItems(plan.id)
+    if (updated) setLocalItems(updated.items)
+  }
+
+  const handleAssignVehicle = async (vehicleId: string, planItemId: string) => {
+    await assignVehicle(vehicleId, planItemId, session.user_id)
+    await refreshItems()
+  }
+
+  const handleUnassignVehicle = async (vehicleId: string, planItemId: string) => {
+    await unassignVehicle(vehicleId, planItemId)
+    await refreshItems()
+  }
+
+  const activeVehicles = useMemo(() =>
+    (vehicles ?? []).filter(v => v.status === 'ACTIVE'),
+    [vehicles]
+  )
+
   const svc = services.find(s => s.service_id === plan.service_id)
   const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
@@ -74,11 +98,11 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const dateLabel = `${d}.${m}.${y}`
 
   // Totals
-  const totalWorkers    = plan.items.reduce((s, i) => s + (i.required_workers ?? 0), 0)
-  const totalBrigadiers = plan.items.reduce((s, i) => s + (i.required_brigadiers ?? 0), 0)
-  const totalMasters    = plan.items.reduce((s, i) => s + (i.required_masters ?? 0), 0)
-  const totalForemen    = plan.items.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
-  const totalVehicles   = plan.items.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
+  const totalWorkers    = localItems.reduce((s, i) => s + (i.required_workers ?? 0), 0)
+  const totalBrigadiers = localItems.reduce((s, i) => s + (i.required_brigadiers ?? 0), 0)
+  const totalMasters    = localItems.reduce((s, i) => s + (i.required_masters ?? 0), 0)
+  const totalForemen    = localItems.reduce((s, i) => s + (i.required_foremen ?? 0), 0)
+  const totalVehicles   = localItems.reduce((s, i) => s + (i.required_vehicles ?? 0), 0)
 
   // Resource availability for this plan's date
   const planDate = new Date(plan.plan_date + 'T00:00:00')
@@ -233,11 +257,11 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
             )}
           </div>
 
-          {plan.items.length === 0 && !showAddItem && (
+          {localItems.length === 0 && !showAddItem && (
             <div className="text-center text-white/30 text-sm py-6">Нет позиций в плане</div>
           )}
 
-          {plan.items.map(item =>
+          {localItems.map(item =>
             editingItemId === item.id ? (
               <PlanItemForm
                 key={item.id}
@@ -251,8 +275,11 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
               <ReviewItemCard
                 key={item.id}
                 item={item}
+                activeVehicles={activeVehicles}
                 onEdit={() => setEditingItemId(item.id)}
                 onDelete={() => handleDeleteItem(item.id)}
+                onAssignVehicle={handleAssignVehicle}
+                onUnassignVehicle={handleUnassignVehicle}
               />
             )
           )}
@@ -377,7 +404,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
               disabled={confirming}
               className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-blue-600/20"
             >
-              {confirming ? '⏳ Подтверждается...' : `✓ Подтвердить план · ${plan.items.length} поз.`}
+              {confirming ? '⏳ Подтверждается...' : `✓ Подтвердить план · ${localItems.length} поз.`}
             </button>
             {!isDirect && (
               <button
@@ -415,10 +442,13 @@ function TotalBadge({ icon, count, label }: { icon: string; count: number; label
 
 // ── ReviewItemCard — read-only item in WorkPlanModal style ─────────────────
 
-function ReviewItemCard({ item, onEdit, onDelete }: {
+function ReviewItemCard({ item, activeVehicles, onEdit, onDelete, onAssignVehicle, onUnassignVehicle }: {
   item: WorkPlanItemWithVehicles
+  activeVehicles: Vehicle[]
   onEdit: () => void
   onDelete: () => void
+  onAssignVehicle: (vehicleId: string, planItemId: string) => Promise<void>
+  onUnassignVehicle: (vehicleId: string, planItemId: string) => Promise<void>
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden group">
@@ -492,6 +522,46 @@ function ReviewItemCard({ item, onEdit, onDelete }: {
 
         {item.notes && (
           <div className="text-xs text-white/30 italic">{item.notes}</div>
+        )}
+
+        {/* Vehicle picker — only for items that require vehicles */}
+        {item.required_vehicles > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {/* Assigned vehicle chips */}
+            {item.vehicles.map(v => (
+              <span key={v.id} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/25">
+                🚛 {v.name}
+                {v.plate && <span className="text-blue-400/60 font-mono">{v.plate}</span>}
+                <button
+                  onClick={() => onUnassignVehicle(v.id, item.id)}
+                  className="text-blue-400/50 hover:text-red-400 ml-0.5 transition-colors"
+                >×</button>
+              </span>
+            ))}
+
+            {/* Add vehicle dropdown — only if still need more */}
+            {item.vehicles.length < item.required_vehicles && (
+              <select
+                className="form-select text-xs py-1 h-auto"
+                value=""
+                onChange={e => { if (e.target.value) onAssignVehicle(e.target.value, item.id) }}
+              >
+                <option value="">+ авто ({item.vehicles.length}/{item.required_vehicles})</option>
+                {activeVehicles
+                  .filter(av => !item.vehicles.some(v => v.id === av.id))
+                  .map(av => (
+                    <option key={av.id} value={av.id}>
+                      {av.name}{av.plate ? ` · ${av.plate}` : ''}
+                    </option>
+                  ))}
+              </select>
+            )}
+
+            {/* All slots filled */}
+            {item.vehicles.length >= item.required_vehicles && item.required_vehicles > 0 && (
+              <span className="text-xs text-emerald-400/70">✓ укомплектовано</span>
+            )}
+          </div>
         )}
       </div>
     </div>
