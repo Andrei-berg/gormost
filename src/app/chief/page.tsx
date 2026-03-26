@@ -63,7 +63,7 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
 
       <AlertBanner session={session} />
-      <ChiefStats plans={plans} />
+      <ChiefStats plans={visiblePlans} />
 
       {/* Main tab switcher */}
       <div className="flex items-center gap-2 mb-4">
@@ -78,9 +78,9 @@ function Content({ session }: { session: AuthSession }) {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'approvals' ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
           📋 Согласование
-          {plans.filter(p => p.status === 'SUBMITTED').length > 0 && (
+          {visiblePlans.filter(p => p.status === 'SUBMITTED').length > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {plans.filter(p => p.status === 'SUBMITTED').length}
+              {visiblePlans.filter(p => p.status === 'SUBMITTED').length}
             </span>
           )}
         </button>
@@ -119,7 +119,7 @@ function Content({ session }: { session: AuthSession }) {
                 {t.label}
                 {t.key !== 'ALL' && (
                   <span className="ml-1.5 text-xs opacity-70">
-                    {plans.filter(p => p.status === t.key).length}
+                    {visiblePlans.filter(p => p.status === t.key).length}
                   </span>
                 )}
               </button>
