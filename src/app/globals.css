@@ -135,30 +135,33 @@ html:not(.dark) .form-input:focus { border-color: #0073ea; background: #fff; }
 html:not(.dark) .form-select option { background: #fff; color: #323338; }
 
 /* ── text-white/* → Monday primary text #323338 ── */
+/* Opacity is boosted vs dark mode: low-opacity white on dark bg ≈ high-opacity dark on white bg */
 html:not(.dark) .text-white    { color: #323338; }
 html:not(.dark) .text-white\/90 { color: rgba(50,51,56,0.92); }
 html:not(.dark) .text-white\/85 { color: rgba(50,51,56,0.85); }
 html:not(.dark) .text-white\/80 { color: rgba(50,51,56,0.80); }
-html:not(.dark) .text-white\/70 { color: rgba(50,51,56,0.70); }
-html:not(.dark) .text-white\/60 { color: rgba(50,51,56,0.60); }
-html:not(.dark) .text-white\/55 { color: rgba(50,51,56,0.55); }
-html:not(.dark) .text-white\/50 { color: rgba(50,51,56,0.50); }
-html:not(.dark) .text-white\/45 { color: rgba(50,51,56,0.45); }
-html:not(.dark) .text-white\/40 { color: rgba(50,51,56,0.40); }
-html:not(.dark) .text-white\/35 { color: rgba(50,51,56,0.35); }
-html:not(.dark) .text-white\/30 { color: rgba(50,51,56,0.30); }
-html:not(.dark) .text-white\/25 { color: rgba(50,51,56,0.25); }
-html:not(.dark) .text-white\/20 { color: rgba(50,51,56,0.20); }
-html:not(.dark) .text-white\/15 { color: rgba(50,51,56,0.15); }
-html:not(.dark) .text-white\/10 { color: rgba(50,51,56,0.10); }
-html:not(.dark) .text-white\/8  { color: rgba(50,51,56,0.08); }
-html:not(.dark) .text-white\/5  { color: rgba(50,51,56,0.05); }
+html:not(.dark) .text-white\/70 { color: rgba(50,51,56,0.72); }
+html:not(.dark) .text-white\/60 { color: rgba(50,51,56,0.65); }
+html:not(.dark) .text-white\/55 { color: rgba(50,51,56,0.62); }
+html:not(.dark) .text-white\/50 { color: rgba(50,51,56,0.58); }  /* secondary text */
+html:not(.dark) .text-white\/45 { color: rgba(50,51,56,0.54); }
+html:not(.dark) .text-white\/40 { color: rgba(50,51,56,0.50); }  /* muted labels */
+html:not(.dark) .text-white\/35 { color: rgba(50,51,56,0.46); }
+html:not(.dark) .text-white\/30 { color: rgba(50,51,56,0.42); }  /* hints, timestamps */
+html:not(.dark) .text-white\/25 { color: rgba(50,51,56,0.38); }
+html:not(.dark) .text-white\/20 { color: rgba(50,51,56,0.34); }
+html:not(.dark) .text-white\/15 { color: rgba(50,51,56,0.30); }  /* was nearly invisible */
+html:not(.dark) .text-white\/10 { color: rgba(50,51,56,0.24); }
+html:not(.dark) .text-white\/8  { color: rgba(50,51,56,0.20); }
+html:not(.dark) .text-white\/5  { color: rgba(50,51,56,0.14); }
 
 /* ── hover:text-white/* ── */
 html:not(.dark) .hover\:text-white:hover     { color: #323338; }
-html:not(.dark) .hover\:text-white\/50:hover { color: rgba(50,51,56,0.50); }
-html:not(.dark) .hover\:text-white\/60:hover { color: rgba(50,51,56,0.60); }
-html:not(.dark) .hover\:text-white\/70:hover { color: rgba(50,51,56,0.70); }
+html:not(.dark) .hover\:text-white\/50:hover { color: rgba(50,51,56,0.65); }
+html:not(.dark) .hover\:text-white\/60:hover { color: rgba(50,51,56,0.72); }
+html:not(.dark) .hover\:text-white\/70:hover { color: rgba(50,51,56,0.80); }
+html:not(.dark) .hover\:text-white\/80:hover { color: rgba(50,51,56,0.88); }
+html:not(.dark) .hover\:text-white\/90:hover { color: rgba(50,51,56,0.95); }
 
 /* ── border-white/* → Monday border #e6e9ef ── */
 html:not(.dark) .border-white     { border-color: #323338; }
