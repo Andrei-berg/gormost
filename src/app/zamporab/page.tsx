@@ -20,6 +20,7 @@ import { isWorkerOnDuty } from '@/lib/shifts'
 import PlanStats from '@/components/zamporab/PlanStats'
 import ZamporabPlanBoard from '@/components/zamporab/ZamporabPlanBoard'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
+import ZamporabOwnPlan from '@/components/zamporab/ZamporabOwnPlan'
 import ShiftOverview from '@/components/zamporab/ShiftOverview'
 import ResourceBar from '@/components/zamporab/ResourceBar'
 import EmptyState from '@/components/EmptyState'
@@ -168,14 +169,19 @@ function Content({ session }: { session: AuthSession }) {
 
       {/* Tab: All plans board */}
       {tab === 'plans' && (
-        <ZamporabPlanBoard
-          allPlans={allPlans}
-          pendingPlans={pendingPlans}
-          services={services}
-          session={session}
-          onOpenPending={setReviewPlan}
-          onRefresh={loadData}
-        />
+        <div className="space-y-4">
+          {session.service_id && (
+            <ZamporabOwnPlan session={session} services={services} />
+          )}
+          <ZamporabPlanBoard
+            allPlans={allPlans}
+            pendingPlans={pendingPlans}
+            services={services}
+            session={session}
+            onOpenPending={setReviewPlan}
+            onRefresh={loadData}
+          />
+        </div>
       )}
 
       {/* Tab: Pending confirmation */}

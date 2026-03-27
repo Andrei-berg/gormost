@@ -224,6 +224,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
                 key={item.id}
                 initial={item}
                 serviceId={plan.service_id}
+                planDate={plan.plan_date}
                 existingCrossRequest={item.cross_requests?.[0] ?? null}
                 withCrossService
                 onSave={(data, crossDraft) => handleUpdateItem(item.id, data, crossDraft)}
@@ -242,6 +243,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
           {showAddItem ? (
             <PlanItemForm
               serviceId={plan.service_id}
+              planDate={plan.plan_date}
               withCrossService
               onSave={handleSaveItem}
               onCancel={() => setShowAddItem(false)}

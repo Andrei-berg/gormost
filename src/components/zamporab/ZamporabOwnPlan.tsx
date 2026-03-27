@@ -265,6 +265,7 @@ function OwnPlanCard({ plan, session, onRefresh }: {
                 key={item.id}
                 initial={item}
                 serviceId={plan.service_id}
+                planDate={plan.plan_date}
                 onSave={(data) => handleUpdateItem(item.id, data)}
                 onCancel={() => setEditingItemId(null)}
               />
@@ -283,6 +284,7 @@ function OwnPlanCard({ plan, session, onRefresh }: {
             showAddItem ? (
               <SharedPlanItemForm
                 serviceId={plan.service_id}
+                planDate={plan.plan_date}
                 onSave={handleSaveItem}
                 onCancel={() => setShowAddItem(false)}
               />

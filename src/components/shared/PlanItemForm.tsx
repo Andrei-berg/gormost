@@ -45,6 +45,7 @@ type WorkerWithStatus = UserWithAssignment & {
 interface Props {
   initial?: WorkPlanItem
   serviceId: string
+  planDate?: string
   existingCrossRequest?: CrossServiceRequest | null
   withCrossService?: boolean
   /** Names already picked in OTHER work items of this plan (informational) */
@@ -54,7 +55,7 @@ interface Props {
 }
 
 export default function PlanItemForm({
-  initial, serviceId, existingCrossRequest, withCrossService = false,
+  initial, serviceId, planDate, existingCrossRequest, withCrossService = false,
   allPlanWorkers = [],
   onSave, onCancel,
 }: Props) {
@@ -116,7 +117,7 @@ export default function PlanItemForm({
   const loadWorkers = useCallback(async () => {
     if (pickerLoading) return
     setPickerLoading(true)
-    const today = new Date()
+    const today = planDate ? new Date(planDate + 'T00:00:00') : new Date()
     const [usersWithAssign, statuses] = await Promise.all([
       fetchUsersWithAssignments(),
       fetchAllCurrentStatuses(),
@@ -140,7 +141,7 @@ export default function PlanItemForm({
     })
     setPickerWorkers(enriched)
     setPickerLoading(false)
-  }, [serviceId, pickerLoading])
+  }, [serviceId, pickerLoading, planDate])
 
   const toggleWorkerPicker = () => {
     if (!showWorkerPicker) loadWorkers()
@@ -243,18 +244,18 @@ export default function PlanItemForm({
           })}
         </div>
         {availableTypes.length > 0 && (
-          <div className="relative inline-block">
+          <div>
             <button type="button" onClick={() => setShowVehicleMenu(v => !v)}
               className="text-xs px-2.5 py-1 rounded-lg border border-dashed border-amber-500/30 text-amber-400/70 hover:text-amber-300 hover:border-amber-500/50 transition-colors">
-              + Добавить технику
+              {showVehicleMenu ? '▲ Скрыть типы' : '+ Добавить технику'}
             </button>
             {showVehicleMenu && (
-              <div className="absolute z-20 top-full mt-1 left-0 glass rounded-xl border border-white/10 shadow-2xl py-1 min-w-[180px]">
+              <div className="mt-2 flex flex-wrap gap-1.5 p-2 rounded-xl bg-white/4 border border-amber-500/15">
                 {availableTypes.map(type => {
                   const cfg = VEHICLE_TYPE_CONFIG[type]
                   return (
                     <button key={type} type="button" onClick={() => addVehicleType(type)}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/8 text-left text-sm text-white/80 hover:text-white transition-colors">
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 text-amber-200 text-xs transition-colors">
                       <span>{cfg.emoji}</span><span>{cfg.label}</span>
                     </button>
                   )
@@ -307,16 +308,43 @@ export default function PlanItemForm({
               <div className="text-xs text-white/25 text-center py-2 italic">Нет сотрудников в службе</div>
             )}
 
-            {/* On duty today */}
+            {/* On duty - grouped by role */}
             {!pickerLoading && dutyWorkers.length > 0 && (
-              <WorkerGroup
-                title="На смене сегодня"
-                workers={dutyWorkers}
-                selectedWorkers={selectedWorkers}
-                allPlanWorkers={allPlanWorkers}
-                onToggle={toggleWorker}
-                dotColor="bg-emerald-400"
-              />
+              <div>
+                <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full inline-block bg-emerald-400" />
+                  На смене {planDate ? `· ${planDate.split('-').reverse().slice(0, 2).join('.')}` : 'сегодня'} · {dutyWorkers.length} чел.
+                </div>
+                {ROLE_GROUPS.map(rg => {
+                  const groupWorkers = dutyWorkers.filter(w => rg.levels.includes(w.role_level))
+                  if (groupWorkers.length === 0) return null
+                  return (
+                    <div key={rg.key} className="mb-2">
+                      <div className="text-[9px] text-white/20 uppercase tracking-widest mb-1 px-0.5">{rg.label} · {groupWorkers.length}</div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {groupWorkers.map(u => {
+                          const sel = selectedWorkers.includes(u.full_name)
+                          const inOtherItem = allPlanWorkers.includes(u.full_name)
+                          return (
+                            <button key={u.user_id} type="button" onClick={() => toggleWorker(u.full_name, false)}
+                              className={`text-left flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                                sel
+                                  ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                                  : 'bg-white/4 border border-transparent hover:bg-white/8 text-white/70'
+                              }`}>
+                              <span className={`w-3 h-3 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                                sel ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20'
+                              }`}>{sel ? '✓' : ''}</span>
+                              <span className="truncate flex-1">{u.full_name}</span>
+                              {inOtherItem && <span className="text-[9px] text-amber-400/80 shrink-0">⚠</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
 
             {/* Not on duty (but at work, not absent) */}
@@ -356,6 +384,40 @@ export default function PlanItemForm({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Staffing check */}
+        {(reqWorkers > 0 || reqBrigadiers > 0 || reqMasters > 0 || reqForemen > 0) && pickerWorkers.length > 0 && (
+          <div className="mt-2 p-2 rounded-lg bg-white/3 border border-white/8 text-[11px]">
+            {(() => {
+              const ITR_ROLES = ['HEAD', 'SPECIALIST', 'CHIEF_ENGINEER', 'ZAMPORAB', 'DISPATCHER', 'HR', 'SAFETY_ENGINEER']
+              const selWorkers = selectedWorkers.filter(n => pickerWorkers.find(w => w.full_name === n)?.role_level === 'WORKER').length
+              const selForemen = selectedWorkers.filter(n => pickerWorkers.find(w => w.full_name === n)?.role_level === 'FOREMAN').length
+              const selItr     = selectedWorkers.filter(n => ITR_ROLES.includes(pickerWorkers.find(w => w.full_name === n)?.role_level ?? '')).length
+              const needForemen = reqBrigadiers + reqMasters
+              const items = [
+                reqWorkers > 0  ? { label: '👷 Рабочие',         got: selWorkers,  need: reqWorkers }  : null,
+                needForemen > 0 ? { label: '🦺 Мастера/Бригад.', got: selForemen,  need: needForemen } : null,
+                reqForemen > 0  ? { label: '📋 ИТР',             got: selItr,      need: reqForemen }  : null,
+              ].filter(Boolean) as { label: string; got: number; need: number }[]
+              return (
+                <div className="space-y-0.5">
+                  {items.map(it => (
+                    <div key={it.label} className="flex items-center gap-2">
+                      <span className="text-white/35 w-36 truncate">{it.label}</span>
+                      <span className={it.got >= it.need ? 'text-emerald-400 font-medium' : 'text-amber-400 font-medium'}>
+                        {it.got}/{it.need}
+                      </span>
+                      {it.got < it.need
+                        ? <span className="text-amber-400/60">⚠ нужно ещё {it.need - it.got}</span>
+                        : <span className="text-emerald-400/40">✓</span>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>

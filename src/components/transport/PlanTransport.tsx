@@ -1,7 +1,15 @@
 'use client'
 import type { Vehicle, WorkPlan, WorkPlanItemWithVehicles } from '@/types'
-import { SERVICE_META } from '@/types'
+import { SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import { assignVehicle, unassignVehicle } from '@/lib/api'
+
+const SERVICE_NAMES: Record<string, string> = {
+  'SRV-ENG':  'Инженерные системы',
+  'SRV-STR':  'Строительная служба (СЭИС)',
+  'SRV-FIRE': 'Пожарная безопасность',
+  'SRV-VENT': 'Вентиляция',
+  'SRV-CCTV': 'Видеонаблюдение',
+}
 
 export interface PlanGroup {
   plan: WorkPlan
@@ -45,9 +53,12 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
           <div key={plan.id}>
             {/* Service header */}
             <div className="flex items-center gap-2 mb-3 px-1">
-              {meta && <span>{meta.emoji}</span>}
-              <span className="text-white/60 text-sm font-medium">{plan.service_id}</span>
-              <span className="text-white/20 text-xs">· смена {plan.shift_type === 'DAY' ? 'Д' : 'Н'}</span>
+              {meta && <span className="text-lg">{meta.emoji}</span>}
+              <span className="text-white font-semibold text-sm">{SERVICE_NAMES[plan.service_id] ?? plan.service_id}</span>
+              <span className="text-white/30 text-xs ml-1">{plan.shift_type === 'DAY' ? '☀️ 07:30–19:00' : '🌙 19:00–07:00'}</span>
+              {plan.plan_date && (
+                <span className="text-[10px] font-mono text-white/20 ml-1">{plan.plan_date.split('-').reverse().join('.')}</span>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -79,18 +90,23 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
                     {assigned.map(v => (
                       <div
                         key={v.id}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-2 text-sm ${
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-2 ${
                           v.status === 'BROKEN'
                             ? 'bg-red-500/10 border border-red-500/20'
-                            : 'bg-white/5'
+                            : 'bg-white/5 border border-transparent'
                         }`}
                       >
-                        <span>{v.status === 'BROKEN' ? '🔴' : '🟢'}</span>
-                        <span className={v.status === 'BROKEN' ? 'text-red-300' : 'text-white/70'}>
-                          {v.name}
-                        </span>
+                        <span className="text-base shrink-0">{VEHICLE_TYPE_CONFIG[v.vehicle_type]?.emoji ?? '🚛'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm font-medium ${v.status === 'BROKEN' ? 'text-red-300' : 'text-white/80'}`}>
+                            {v.name}
+                          </div>
+                          {v.plate && (
+                            <span className="font-mono text-xs bg-white/10 text-white/50 px-1.5 py-0.5 rounded tracking-wide">{v.plate}</span>
+                          )}
+                        </div>
                         {v.status === 'BROKEN' && (
-                          <span className="text-red-400 text-xs ml-1 shrink-0">— нужна замена</span>
+                          <span className="text-red-400 text-xs shrink-0">нужна замена</span>
                         )}
                         <button
                           onClick={() => handleUnassign(v.id, item.id)}
@@ -130,24 +146,46 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
         )
       })}
 
-      {/* Unassigned active vehicles */}
+      {/* Unassigned active vehicles — grouped by type */}
       {(() => {
         const assignedIds = new Set(
           plans.flatMap(p => p.items.flatMap(i => i.vehicles.map(v => v.id)))
         )
         const freeVehicles = activeVehicles.filter(v => !assignedIds.has(v.id))
         if (freeVehicles.length === 0) return null
+
+        const byType = new Map<string, typeof freeVehicles>()
+        for (const v of freeVehicles) {
+          const t = v.vehicle_type ?? 'SPECIAL'
+          if (!byType.has(t)) byType.set(t, [])
+          byType.get(t)!.push(v)
+        }
+
         return (
           <div className="glass rounded-xl border border-white/8 p-4 mt-2">
-            <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3">
               Свободная техника · {freeVehicles.length} ед.
             </div>
-            <div className="flex flex-wrap gap-2">
-              {freeVehicles.map(v => (
-                <span key={v.id} className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                  {v.name}{v.plate ? ` · ${v.plate}` : ''}
-                </span>
-              ))}
+            <div className="space-y-3">
+              {Array.from(byType.entries()).map(([type, vehicles]) => {
+                const typeCfg = VEHICLE_TYPE_CONFIG[type as keyof typeof VEHICLE_TYPE_CONFIG]
+                return (
+                  <div key={type}>
+                    <div className="text-[10px] text-white/25 mb-1.5 flex items-center gap-1">
+                      <span>{typeCfg?.emoji ?? '🚛'}</span>
+                      <span className="uppercase tracking-widest">{typeCfg?.label ?? type} · {vehicles.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {vehicles.map(v => (
+                        <span key={v.id} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
+                          <span>{v.name}</span>
+                          {v.plate && <span className="font-mono text-emerald-400/60 text-[10px]">{v.plate}</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )

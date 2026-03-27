@@ -177,24 +177,51 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
       </div>
 
       {/* Items */}
-      <div className="px-4 py-3 space-y-1.5">
+      <div className="px-4 py-3 space-y-2">
         {plan.items.map(item => (
-          <div key={item.id} className="flex items-start gap-2 text-xs">
-            {item.time_start && (
-              <span className="font-mono text-cyan-400 shrink-0 pt-0.5">
-                {item.time_start}{item.time_end ? `–${item.time_end}` : ''}
-              </span>
+          <div key={item.id} className="text-xs space-y-1">
+            <div className="flex items-start gap-2">
+              {item.time_start && (
+                <span className="font-mono text-cyan-400 shrink-0 pt-0.5 w-20">
+                  {item.time_start.slice(0, 5)}{item.time_end ? `–${item.time_end.slice(0, 5)}` : ''}
+                </span>
+              )}
+              <div className="flex-1 min-w-0">
+                <span className="font-medium text-white/80">{item.location}</span>
+                {item.work_description && <span className="text-white/50 ml-1">— {item.work_description}</span>}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-white/25">
+                {item.required_workers > 0 && <span>👷{item.required_workers}</span>}
+                {item.required_foremen > 0 && <span>🦺{item.required_foremen}</span>}
+                {(item.required_vehicles ?? 0) > 0 && (
+                  <span className={(item.vehicles?.length ?? 0) >= (item.required_vehicles ?? 0) ? 'text-emerald-400/60' : 'text-amber-400/60'}>
+                    🚛{item.vehicles?.length ?? 0}/{item.required_vehicles}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Assigned vehicles */}
+            {item.vehicles && item.vehicles.length > 0 && (
+              <div className="flex flex-wrap gap-1 ml-20 pl-2">
+                {item.vehicles.map(v => (
+                  <span key={v.id} className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${
+                    v.status === 'BROKEN'
+                      ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                      : 'bg-blue-500/8 border-blue-500/15 text-blue-200'
+                  }`}>
+                    <span>🚛</span>
+                    <span className="font-medium">{v.name}</span>
+                    {v.plate && <span className="font-mono text-white/35">{v.plate}</span>}
+                    {v.status === 'BROKEN' && <span className="text-red-400">⚠</span>}
+                  </span>
+                ))}
+              </div>
             )}
-            <div className="flex-1 min-w-0">
-              <span className="font-medium text-white/80">{item.location}</span>
-              <span className="text-white/40 mx-1">—</span>
-              <span className="text-white/60">{item.work_description}</span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0 text-white/30">
-              {item.required_workers > 0 && <span>👷×{item.required_workers}</span>}
-              {item.required_foremen > 0 && <span>🦺×{item.required_foremen}</span>}
-              {item.required_vehicles > 0 && <span>🚛×{item.required_vehicles}</span>}
-            </div>
+            {(item.required_vehicles ?? 0) > 0 && (item.vehicles?.length ?? 0) === 0 && (
+              <div className="ml-20 pl-2">
+                <span className="text-[10px] text-amber-400/50 italic">техника не назначена</span>
+              </div>
+            )}
           </div>
         ))}
         {plan.items.length === 0 && (

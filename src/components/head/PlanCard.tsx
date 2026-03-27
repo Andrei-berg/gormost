@@ -152,6 +152,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
                 key={item.id}
                 initial={item}
                 serviceId={plan.service_id}
+                planDate={plan.plan_date}
                 allPlanWorkers={plan.items.filter(i => i.id !== item.id).flatMap(i => i.workers)}
                 onSave={(data, cross) => handleUpdateItem(item.id, data, cross)}
                 onCancel={() => setEditingItemId(null)}
@@ -172,6 +173,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
             showAddItem ? (
               <PlanItemForm
                 serviceId={plan.service_id}
+                planDate={plan.plan_date}
                 allPlanWorkers={plan.items.flatMap(i => i.workers)}
                 onSave={handleSaveItem}
                 onCancel={() => setShowAddItem(false)}
