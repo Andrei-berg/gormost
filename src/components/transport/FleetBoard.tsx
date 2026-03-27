@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import type { Vehicle, VehicleStatus, VehicleType, VehicleWithAssignments, User } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
-import { updateVehicleStatus } from '@/lib/api'
+import { updateVehicleStatus, deleteVehicle } from '@/lib/api'
 import VehicleStatusModal from './VehicleStatusModal'
 import VehicleForm from './VehicleForm'
 import FleetTable from './FleetTable'
@@ -142,6 +142,12 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
     return (Object.keys(VEHICLE_TYPE_CONFIG) as VehicleType[]).filter(t => types.has(t))
   }, [vehicles])
 
+  const handleDelete = async (v: Vehicle) => {
+    if (!confirm(`Удалить «${v.name}» (${v.plate})?`)) return
+    await deleteVehicle(v.id)
+    onRefresh()
+  }
+
   const handleSaveStatus = async (
     status: VehicleStatus,
     breakdown: string | null,
@@ -248,6 +254,7 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
           canEdit={canEdit}
           onEditStatus={setStatusVehicle}
           onEditVehicle={setEditVehicle}
+          onDeleteVehicle={handleDelete}
         />
       )}
 
@@ -344,6 +351,13 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
                       className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 text-xs transition-colors"
                     >
                       Изменить
+                    </button>
+                    <button
+                      onClick={() => handleDelete(v)}
+                      className="py-1.5 px-2.5 rounded-lg bg-red-500/10 text-red-400/60 hover:bg-red-500/20 hover:text-red-400 text-xs transition-colors"
+                      title="Удалить ТС"
+                    >
+                      ✕
                     </button>
                   </div>
                 )}

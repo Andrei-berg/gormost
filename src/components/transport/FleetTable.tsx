@@ -7,9 +7,10 @@ interface Props {
   canEdit: boolean
   onEditStatus: (v: Vehicle) => void
   onEditVehicle: (v: Vehicle) => void
+  onDeleteVehicle: (v: Vehicle) => void
 }
 
-export default function FleetTable({ vehicles, canEdit, onEditStatus, onEditVehicle }: Props) {
+export default function FleetTable({ vehicles, canEdit, onEditStatus, onEditVehicle, onDeleteVehicle }: Props) {
   if (vehicles.length === 0) {
     return (
       <div className="text-center text-white/20 py-20">
@@ -120,6 +121,13 @@ export default function FleetTable({ vehicles, canEdit, onEditStatus, onEditVehi
                         className="px-2 py-1 rounded bg-white/5 text-white/40 hover:bg-white/10 text-[11px] transition-colors"
                       >
                         ✎
+                      </button>
+                      <button
+                        onClick={() => onDeleteVehicle(v)}
+                        className="px-2 py-1 rounded bg-red-500/10 text-red-400/60 hover:bg-red-500/20 hover:text-red-400 text-[11px] transition-colors"
+                        title="Удалить ТС"
+                      >
+                        ✕
                       </button>
                     </div>
                   </td>
