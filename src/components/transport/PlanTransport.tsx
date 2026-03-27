@@ -245,21 +245,22 @@ export default function PlanTransport({ plans, activeVehicles, userId, planDate,
             <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3">
               Свободная техника · {freeVehicles.length} ед.
             </div>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {Array.from(byType.entries()).map(([type, vehicles]) => {
                 const typeCfg = VEHICLE_TYPE_CONFIG[type as keyof typeof VEHICLE_TYPE_CONFIG]
                 return (
-                  <div key={type}>
-                    <div className="text-[10px] text-white/25 mb-1.5 flex items-center gap-1">
-                      <span>{typeCfg?.emoji ?? '🚛'}</span>
-                      <span className="uppercase tracking-widest">{typeCfg?.label ?? type} · {vehicles.length}</span>
+                  <div key={type} className="bg-white/3 rounded-lg p-2.5 border border-white/5">
+                    <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-white/8">
+                      <span className="text-base">{typeCfg?.emoji ?? '🚛'}</span>
+                      <span className="text-[11px] font-semibold text-white/50 truncate">{typeCfg?.label ?? type}</span>
+                      <span className="ml-auto text-[10px] text-emerald-400/60 shrink-0">{vehicles.length}</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="space-y-1">
                       {vehicles.map(v => (
-                        <span key={v.id} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
-                          <span>{v.name}</span>
-                          {v.plate && <span className="font-mono text-emerald-400/60 text-[10px]">{v.plate}</span>}
-                        </span>
+                        <div key={v.id} className="flex items-center justify-between gap-1.5 px-1.5 py-1 rounded-md bg-emerald-500/8 border border-emerald-500/15">
+                          <span className="text-xs text-emerald-200 font-medium truncate">{v.name}</span>
+                          {v.plate && <span className="font-mono text-[10px] text-emerald-400/50 shrink-0">{v.plate}</span>}
+                        </div>
                       ))}
                     </div>
                   </div>
