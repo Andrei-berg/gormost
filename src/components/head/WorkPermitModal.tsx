@@ -31,30 +31,135 @@ const SERVICE_NAMES: Record<string, string> = {
   'SRV-CCTV': 'Видеонаблюдение',
 }
 
-// ─── Standard templates ────────────────────────────────────────────────────
+// ─── Work type templates ───────────────────────────────────────────────────
 
-const STANDARD_FACTORS =
-  'Движущиеся транспортные средства; повышенный уровень загазованности; ' +
-  'отлетающие предметы; падение предметов с высоты; повышенный уровень шума; ' +
-  'недостаточная освещённость рабочей зоны.'
+interface WorkTypeConfig {
+  label: string
+  factors: string
+  instructionNums: string
+  /** road works → include маячки in measure 2, ГИБДД in measure 4 */
+  isRoadWork: boolean
+  /** work-specific PPE instruction — becomes measure 2 in "during work" table */
+  duringMeasure2: string
+}
+
+const WORK_TYPES: Record<string, WorkTypeConfig> = {
+  repair: {
+    label: 'Ремонт (мост, конструкции)',
+    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа на проезжей части, работа с АГП.',
+    instructionNums: '10, 14, 17, 20, 21, 23, 30, 35, 41, 53, 60, 65, 66, 147, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы проводить в перчатках и защитных очках.',
+  },
+  wash: {
+    label: 'Помывка / промывка',
+    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенная влажность, повышенный шум, высокое давление в шлангах и струя воды под большим давлением.',
+    instructionNums: '10, 14, 15, 21, 41, 43, 55, 65, 185, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Промывочные работы проводить в костюмах ПВХ, резиновых перчатках и защитных очках.',
+  },
+  paint: {
+    label: 'Покраска',
+    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум.',
+    instructionNums: '3, 10, 14, 15, 17, 53, 65, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Покрасочные работы проводить в покрасочных костюмах, резиновых перчатках и защитных очках, респираторах.',
+  },
+  agp: {
+    label: 'Люлька / АГП (высотные работы)',
+    factors: 'Движение автотранспорта, возможная повышенная загазованность, падение предметов с высоты, поражение электрическим током, работа на высоте, электрооборудование.',
+    instructionNums: '10, 14, 15, 21, 65, 147, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы проводить с использованием монтажных поясов с информацией о дате проверки.',
+  },
+  snow: {
+    label: 'Уборка снега / антигололёд',
+    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум, низкие температуры, скользкая поверхность.',
+    instructionNums: '10, 14, 15, 16, 41, 58, 65, 105, 109, 133, 185, 190',
+    isRoadWork: false,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Работать в утеплённой одежде, пользоваться нескользящей обувью.',
+  },
+  cover: {
+    label: 'Прикрытие места работ',
+    factors: 'Движущийся автотранспорт, отлетающие предметы, повышенный шум.',
+    instructionNums: '14, 41, 65, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать требования по безопасному размещению транспортных средств прикрытия. Работать в сигнальном жилете.',
+  },
+  load: {
+    label: 'Погрузка / выгрузка материалов',
+    factors: 'Отлетающие предметы, повышенный шум, низкие температуры.',
+    instructionNums: '6, 10, 14, 17, 41, 65, 66, 69, 190',
+    isRoadWork: false,
+    duringMeasure2: 'Соблюдать технологию выполнения погрузочно-разгрузочных работ. Работать в перчатках и защитной обуви.',
+  },
+  scaffold: {
+    label: 'Ремонт подмостей / лесов',
+    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током.',
+    instructionNums: '10, 14, 17, 20, 23, 41, 53, 60, 65, 66, 147, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы на подмостях проводить в перчатках и защитных очках.',
+  },
+  insul: {
+    label: 'Ремонт изоляции',
+    factors: 'Движущийся автотранспорт, повышенная загазованность, запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа с пневмоинструментом, работа с газовой горелкой.',
+    instructionNums: '10, 14, 15, 17, 23, 41, 42, 47, 65, 66, 82, 135, 136, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Работу с газовой горелкой и пневмоинструментом проводить в перчатках, защитных очках и огнестойкой спецодежде.',
+  },
+  teplar: {
+    label: 'Работа в тепляке',
+    factors: 'Работа в тепляке, работа с дизельной тепловой пушкой.',
+    instructionNums: '10, 14, 41, 65, 162, 164, 190',
+    isRoadWork: false,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Контролировать работу тепловой пушки, не оставлять без присмотра. Обеспечить вентиляцию рабочей зоны.',
+  },
+  roof: {
+    label: 'Очистка крыш / кровли',
+    factors: 'Повышенная загазованность, отлетающие предметы, работа на высоте, работа с АГП, низкие температуры.',
+    instructionNums: '10, 14, 15, 21, 41, 65, 66, 109, 147, 190',
+    isRoadWork: true,
+    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы на высоте выполнять с использованием монтажных поясов с информацией о дате проверки.',
+  },
+}
+
+// ─── Measure builders ──────────────────────────────────────────────────────
 
 interface Measure { num: number; text: string; deadline: string }
 
-function buildMeasuresBefore(): Measure[] {
+function buildMeasuresBefore(instructionNums: string, isRoadWork: boolean): Measure[] {
   return [
-    { num: 1, deadline: '',                           text: 'Проверить и подготовить технику, оборудование и средства ограждения. Получить и проверить средства индивидуальной защиты и ТГС-3.' },
-    { num: 2, deadline: '',                           text: 'Проверить наличие и работу проблесковых маячков на машинах, состояние и работу импульсных дорожных знаков, наличие воды и медицинской аптечки.' },
-    { num: 3, deadline: '',                           text: 'Провести целевой инструктаж по инструкциям №\u202014,\u202015,\u202023,\u202041,\u202059,\u202065,\u202066,\u2020103,\u2020190 и требованиям «Временного порядка…» с указанием особенностей места и времени работы. Довести сигналы оповещения о возникновении опасности и определить порядок действий по ним.' },
-    { num: 4, deadline: '',                           text: 'Получить разрешение (оповестить) отдела ГИБДД на выполнение работ. Доложить диспетчеру ГБУ «Гормост» о выходе на выполнение работ.' },
+    {
+      num: 1, deadline: '',
+      text: isRoadWork
+        ? 'Проверить и подготовить технику, оборудование и средства ограждения. Получить и проверить средства индивидуальной защиты и ТГС-3.'
+        : 'Проверить и подготовить технику, оборудование и средства ограждения. Получить и проверить средства индивидуальной защиты.',
+    },
+    {
+      num: 2, deadline: '',
+      text: isRoadWork
+        ? 'Проверить наличие и работу проблесковых маячков на машинах, состояние и работу импульсных дорожных знаков, наличие воды и медицинской аптечки.'
+        : 'Проверить наличие воды и медицинской аптечки.',
+    },
+    {
+      num: 3, deadline: '',
+      text: `Провести целевой инструктаж по инструкциям №\u00a0${instructionNums} и требованиям «Временного порядка…» с указанием особенностей места и времени работы. Довести сигналы оповещения о возникновении опасности и определить порядок действий по ним.`,
+    },
+    {
+      num: 4, deadline: '',
+      text: isRoadWork
+        ? 'Получить разрешение (оповестить) отдела ГИБДД (ЦОДД) на выполнение работ. Доложить диспетчеру ГБУ «Гормост» о выходе на выполнение работ.'
+        : 'Доложить диспетчеру ГБУ «Гормост» о выходе на выполнение работ.',
+    },
     { num: 5, deadline: 'По прибытии на место работ', text: 'Установить ограждение зоны производства работ согласно типовой схеме.' },
     { num: 6, deadline: 'По прибытии на место работ', text: 'Указать маршруты безопасного передвижения в зоне производства работ.' },
   ]
 }
 
-function buildMeasuresDuring(): Measure[] {
+function buildMeasuresDuring(duringMeasure2: string): Measure[] {
   return [
     { num: 1, deadline: 'Постоянно, в ходе работы', text: 'Контролировать обстановку на проезжей части вблизи зоны производства работ. Немедленно подать сигнал при возникновении опасности.' },
-    { num: 2, deadline: 'Постоянно, в ходе работы', text: 'Соблюдать технологию выполнения работ, правила выполнения работ на высоте, использовать комплект защитных средств.' },
+    { num: 2, deadline: 'Постоянно, в ходе работы', text: duringMeasure2 },
     { num: 3, deadline: 'Постоянно, в ходе работы', text: 'Работать с включёнными проблесковыми маячками на машинах и импульсными дорожными знаками.' },
     { num: 4, deadline: 'Постоянно, в ходе работы', text: 'Не выходить за пределы рабочей зоны; в зоне производства работ перемещаться только с разрешения руководителя работ.' },
     { num: 5, deadline: 'Постоянно, в ходе работы', text: 'Работать в сигнальном жилете и каске, противогазы (самоспасатели) держать в машине в рабочей зоне.' },
@@ -82,6 +187,11 @@ interface PermitFields {
   workers:             string[]
   vehicles:            string[]
   vehicleNotes:        string
+  // work-type specific
+  factors:             string
+  instructionNums:     string
+  isRoadWork:          boolean
+  duringMeasure2:      string
 }
 
 function generateHTML(f: PermitFields): string {
@@ -95,8 +205,8 @@ function generateHTML(f: PermitFields): string {
   const startD = fmtDate(f.startDate)
   const endD   = fmtDate(f.endDate)
 
-  const measuresBefore = buildMeasuresBefore()
-  const measuresDuring = buildMeasuresDuring()
+  const measuresBefore = buildMeasuresBefore(f.instructionNums, f.isRoadWork)
+  const measuresDuring = buildMeasuresDuring(f.duringMeasure2)
 
   const supervisorShort = f.supervisor
     ? f.supervisor.split(' ').map((p, i) => i === 0 ? p : p[0] + '.').join(' ')
@@ -197,7 +307,7 @@ function generateHTML(f: PermitFields): string {
 
   <p style="margin-top:8px">
     <b>Опасные производственные факторы</b>, которые действуют или могут возникнуть независимо от выполняемой работы в местах её производства:
-    &nbsp;${STANDARD_FACTORS}
+    &nbsp;${f.factors}
   </p>
 
   <p class="section-title" style="margin-top:8px">
@@ -352,6 +462,10 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
   // Theme toggle
   const [lightMode, setLightMode] = useState(false)
 
+  // Work type selection
+  const [workTypeKey, setWorkTypeKey] = useState('repair')
+  const workTypeCfg = WORK_TYPES[workTypeKey] ?? WORK_TYPES.repair
+
   const nextDay = addDay(plan.plan_date)
 
   // Default times: 09:00 start, 06:30 next day end
@@ -419,6 +533,10 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
       workers:      allWorkers,
       vehicles:     allVehicles,
       vehicleNotes,
+      factors:       workTypeCfg.factors,
+      instructionNums: workTypeCfg.instructionNums,
+      isRoadWork:    workTypeCfg.isRoadWork,
+      duringMeasure2: workTypeCfg.duringMeasure2,
     })
     const win = window.open('', '_blank')
     if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
@@ -489,7 +607,38 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
         {/* Body */}
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
 
-          {/* Row 1: number + dates */}
+          {/* Work type selector */}
+          <div className={sectionBg}>
+            <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>Вид работ — определяет факторы, инструкции, меры по безопасности</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(WORK_TYPES).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setWorkTypeKey(key)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                    workTypeKey === key
+                      ? lightMode
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
+                      : lightMode
+                        ? 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                        : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                  }`}
+                >
+                  {cfg.label}
+                </button>
+              ))}
+            </div>
+            <div className={`mt-2 text-[10px] leading-relaxed ${subtitleText}`}>
+              <span className="font-medium">Факторы:</span> {workTypeCfg.factors}
+            </div>
+            <div className={`mt-1 text-[10px] ${subtitleText}`}>
+              <span className="font-medium">Инструкции:</span> №&nbsp;{workTypeCfg.instructionNums}
+            </div>
+          </div>
+
+          {/* Row: number + dates */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={lbl}>№ наряда-допуска</label>
@@ -687,10 +836,13 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
           {/* Info */}
           <div className={`rounded-xl p-3 border ${lightMode ? 'border-blue-200 bg-blue-50' : 'border-blue-500/15 bg-blue-500/5'}`}>
             <div className={`text-[10px] uppercase tracking-wider mb-1.5 ${lightMode ? 'text-blue-600' : 'text-blue-400/70'}`}>
-              Стандартные мероприятия (6 + 6)
+              Мероприятия — 6 до начала + 6 в процессе
             </div>
             <div className={`text-[11px] leading-relaxed ${lightMode ? 'text-blue-700/70' : 'text-white/50'}`}>
-              Мероприятия до начала и в ходе работ подставляются автоматически по типовому шаблону для работ в тоннеле (ПБО, ограждения, инструктаж, ГИБДД, маячки, ТГС-3).
+              {workTypeCfg.isRoadWork
+                ? 'До начала: проверка техники и маячков, инструктаж, уведомление ГИБДД, ограждение, маршруты.'
+                : 'До начала: проверка техники, инструктаж, уведомление диспетчера, ограждение, маршруты.'}
+              {' '}В процессе: контроль дороги, СИЗ ({workTypeCfg.label.toLowerCase()}), маячки, зона, жилет+каска, ТГС-3.
             </div>
           </div>
         </div>

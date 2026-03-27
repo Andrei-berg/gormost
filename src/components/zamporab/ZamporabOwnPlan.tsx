@@ -12,9 +12,10 @@ import {
 interface Props {
   session: AuthSession
   services: Service[]
+  refreshAt?: number
 }
 
-export default function ZamporabOwnPlan({ session, services }: Props) {
+export default function ZamporabOwnPlan({ session, services, refreshAt }: Props) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -38,7 +39,7 @@ export default function ZamporabOwnPlan({ session, services }: Props) {
     setLoading(false)
   }, [serviceId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, refreshAt])
 
   const handleCreate = async () => {
     if (!serviceId) return

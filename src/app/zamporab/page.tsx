@@ -60,6 +60,7 @@ function Content({ session }: { session: AuthSession }) {
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
   const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
+  const [ownPlanVersion, setOwnPlanVersion] = useState(0)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw, drvUsers, vehs] = await Promise.all([
@@ -75,6 +76,7 @@ function Content({ session }: { session: AuthSession }) {
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
     setAllUsers(usrs); setAllPlans(allRaw)
     setDriverUsers(drvUsers); setVehicles(vehs)
+    setOwnPlanVersion(v => v + 1)
 
     // Pending plans awaiting zamporab confirmation (load with items for review modal)
     const allPending = [...rawApproved, ...rawSubmittedStr]
@@ -171,7 +173,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'plans' && (
         <div className="space-y-4">
           {session.service_id && (
-            <ZamporabOwnPlan session={session} services={services} />
+            <ZamporabOwnPlan session={session} services={services} refreshAt={ownPlanVersion} />
           )}
           <ZamporabPlanBoard
             allPlans={allPlans}
