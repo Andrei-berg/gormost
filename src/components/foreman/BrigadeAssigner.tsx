@@ -575,6 +575,12 @@ function SplitViewPlanCard({
   const activeAssignments = itemAssignmentsMap.get(activeItemId ?? '') ?? []
   const activeAssignedIds = new Set(activeAssignments.map(a => a.user_id))
 
+  // Detect plans pre-staffed by service head (workers[] set, no work_assignments yet)
+  const headAssignedItems = plan.items.filter(i => i.workers.length > 0)
+  const preStaffedByHead = headAssignedItems.length > 0 && plan.items.length > 0
+    && headAssignedItems.length === plan.items.length
+    && plan.items.every(i => (itemAssignmentsMap.get(i.id)?.length ?? 0) === 0)
+
   // Plan-level stats
   const totalItems = plan.items.length
   const itemsWithWorkers = plan.items.filter(i => (itemAssignmentsMap.get(i.id)?.length ?? 0) > 0).length
@@ -660,6 +666,25 @@ function SplitViewPlanCard({
         </span>
       </div>
 
+      {/* Pre-staffed by head banner */}
+      {preStaffedByHead && (
+        <div className="px-4 py-2.5 border-b border-green-500/20 bg-green-500/5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-green-400 text-sm">✓</span>
+            <span className="text-xs text-green-400/80">Укомплектован начальником службы</span>
+          </div>
+          {plan.status === 'BOSS_CONFIRMED' && (
+            <button
+              onClick={handleMarkAssigned}
+              disabled={acting}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-green-600/80 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+            >
+              {acting ? '...' : 'Принять к исполнению →'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Progress bar */}
       <div className="px-4 py-2 border-b border-white/5 flex items-center gap-3">
         <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -742,7 +767,7 @@ function SplitViewPlanCard({
                   </div>
                 )}
 
-                {/* Assigned workers chips */}
+                {/* Assigned workers chips (from work_assignments by brigadier) */}
                 {itemAssignments.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {itemAssignments.map(a => (
@@ -759,6 +784,16 @@ function SplitViewPlanCard({
                         >
                           {removing === a.id ? '…' : '×'}
                         </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Workers assigned by service head (item.workers[]) — shown when no work_assignments yet */}
+                {itemAssignments.length === 0 && item.workers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {item.workers.map((w, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border bg-green-500/10 text-green-300 border-green-500/20">
+                        👷 {w}
                       </span>
                     ))}
                   </div>

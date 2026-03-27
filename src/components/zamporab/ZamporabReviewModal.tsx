@@ -2,10 +2,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import type {
   WorkPlanWithItems, WorkPlanItemWithVehicles, Service, AuthSession, CrossServiceRequest,
-  UserWithAssignment, Vehicle,
+  UserWithAssignment, Vehicle, VehicleType,
 } from '@/types'
 import {
-  SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG,
+  SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG,
 } from '@/types'
 import {
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
@@ -530,7 +530,7 @@ function ReviewItemCard({ item, activeVehicles, onEdit, onDelete, onAssignVehicl
             {/* Assigned vehicle chips */}
             {item.vehicles.map(v => (
               <span key={v.id} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/25">
-                🚛 {v.name}
+                {VEHICLE_TYPE_CONFIG[v.vehicle_type]?.emoji ?? '🚛'} {v.name}
                 {v.plate && <span className="text-blue-400/60 font-mono">{v.plate}</span>}
                 <button
                   onClick={() => onUnassignVehicle(v.id, item.id)}
@@ -539,23 +539,50 @@ function ReviewItemCard({ item, activeVehicles, onEdit, onDelete, onAssignVehicl
               </span>
             ))}
 
-            {/* Add vehicle dropdown — only if still need more */}
-            {item.vehicles.length < item.required_vehicles && (
-              <select
-                className="form-select text-xs py-1 h-auto"
-                value=""
-                onChange={e => { if (e.target.value) onAssignVehicle(e.target.value, item.id) }}
-              >
-                <option value="">+ авто ({item.vehicles.length}/{item.required_vehicles})</option>
-                {activeVehicles
-                  .filter(av => !item.vehicles.some(v => v.id === av.id))
-                  .map(av => (
-                    <option key={av.id} value={av.id}>
-                      {av.name}{av.plate ? ` · ${av.plate}` : ''}
-                    </option>
-                  ))}
-              </select>
-            )}
+            {/* Add vehicle dropdown — filtered by required vehicle types if set */}
+            {item.vehicles.length < item.required_vehicles && (() => {
+              const reqTypes = item.required_vehicle_types ?? []
+              const available = activeVehicles.filter(av => !item.vehicles.some(v => v.id === av.id))
+              // Filter by required types when specified
+              const filtered = reqTypes.length > 0
+                ? available.filter(av => reqTypes.some(r => r.type === av.vehicle_type))
+                : available
+              // Group by type for optgroups
+              const byType = new Map<string, typeof filtered>()
+              for (const v of filtered) {
+                if (!byType.has(v.vehicle_type)) byType.set(v.vehicle_type, [])
+                byType.get(v.vehicle_type)!.push(v)
+              }
+              return (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {reqTypes.length > 0 && (
+                    <span className="text-[10px] text-amber-400/60">
+                      нужны: {reqTypes.map(r => `${VEHICLE_TYPE_CONFIG[r.type]?.emoji ?? ''} ${VEHICLE_TYPE_CONFIG[r.type]?.label ?? r.type} ×${r.count}`).join(', ')}
+                    </span>
+                  )}
+                  <select
+                    className="form-select text-xs py-1 h-auto"
+                    value=""
+                    onChange={e => { if (e.target.value) onAssignVehicle(e.target.value, item.id) }}
+                  >
+                    <option value="">+ авто ({item.vehicles.length}/{item.required_vehicles})</option>
+                    {byType.size > 1
+                      ? Array.from(byType.entries()).map(([type, vehicles]) => (
+                        <optgroup key={type} label={`${VEHICLE_TYPE_CONFIG[type as VehicleType]?.emoji ?? ''} ${VEHICLE_TYPE_CONFIG[type as VehicleType]?.label ?? type}`}>
+                          {vehicles.map(av => (
+                            <option key={av.id} value={av.id}>{av.name}{av.plate ? ` · ${av.plate}` : ''}</option>
+                          ))}
+                        </optgroup>
+                      ))
+                      : filtered.map(av => (
+                        <option key={av.id} value={av.id}>{av.name}{av.plate ? ` · ${av.plate}` : ''}</option>
+                      ))
+                    }
+                    {filtered.length === 0 && <option disabled>Нет подходящих ТС</option>}
+                  </select>
+                </div>
+              )
+            })()}
 
             {/* All slots filled */}
             {item.vehicles.length >= item.required_vehicles && item.required_vehicles > 0 && (

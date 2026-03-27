@@ -269,6 +269,8 @@ function Content({ session }: { session: AuthSession }) {
             plans={plans}
             activeVehicles={vehicles.filter(v => v.status === 'ACTIVE')}
             userId={session.user_id}
+            planDate={planDate}
+            driverUsers={driverUsers}
             onRefresh={loadData}
           />
         </div>

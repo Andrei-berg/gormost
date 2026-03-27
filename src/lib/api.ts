@@ -683,7 +683,7 @@ export async function startWorkPlan(planId: string, userId: string): Promise<boo
   const { error } = await supabase
     .from('work_plans')
     .update({ status: 'IN_PROGRESS', fact_start: now, updated_at: now })
-    .eq('id', planId).eq('status', 'PLANNED')
+    .eq('id', planId).in('status', ['PLANNED', 'ASSIGNED', 'BOSS_CONFIRMED', 'FAST_TRACK'])
   if (!error) await logAction(userId, 'START_WORK_PLAN', 'work_plan', planId, null)
   return !error
 }
@@ -930,6 +930,26 @@ export async function assignVehicle(
     .select().single()
   if (error) throw new Error(error.message)
   return data as VehicleAssignment | null
+}
+
+export async function updateVehicleAssignmentDriver(
+  assignmentId: string,
+  driverUserId: string | null
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('vehicle_assignments')
+    .update({ driver_user_id: driverUserId })
+    .eq('id', assignmentId)
+  return !error
+}
+
+export async function fetchVehicleAssignmentsForItems(itemIds: string[]): Promise<VehicleAssignment[]> {
+  if (itemIds.length === 0) return []
+  const { data } = await supabase
+    .from('vehicle_assignments')
+    .select('*')
+    .in('plan_item_id', itemIds)
+  return (data || []) as VehicleAssignment[]
 }
 
 export async function unassignVehicle(vehicleId: string, planItemId: string): Promise<boolean> {

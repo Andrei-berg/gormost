@@ -1,7 +1,9 @@
 'use client'
-import type { Vehicle, WorkPlan, WorkPlanItemWithVehicles } from '@/types'
+import { useState, useEffect } from 'react'
+import type { Vehicle, WorkPlan, WorkPlanItemWithVehicles, VehicleAssignment, UserWithAssignment } from '@/types'
 import { SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
-import { assignVehicle, unassignVehicle } from '@/lib/api'
+import { assignVehicle, unassignVehicle, fetchVehicleAssignmentsForItems, updateVehicleAssignmentDriver } from '@/lib/api'
+import { isWorkerOnDuty } from '@/lib/shifts'
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -18,12 +20,41 @@ export interface PlanGroup {
 
 interface Props {
   plans: PlanGroup[]
-  activeVehicles: Vehicle[]  // ACTIVE vehicles available for assignment
+  activeVehicles: Vehicle[]
   userId: string
+  planDate?: string
+  driverUsers?: UserWithAssignment[]
   onRefresh: () => void
 }
 
-export default function PlanTransport({ plans, activeVehicles, userId, onRefresh }: Props) {
+export default function PlanTransport({ plans, activeVehicles, userId, planDate, driverUsers = [], onRefresh }: Props) {
+  const [vehicleAssignments, setVehicleAssignments] = useState<VehicleAssignment[]>([])
+
+  const loadVehicleAssignments = async () => {
+    const itemIds = plans.flatMap(p => p.items).map(i => i.id)
+    if (itemIds.length === 0) { setVehicleAssignments([]); return }
+    const assignments = await fetchVehicleAssignmentsForItems(itemIds)
+    setVehicleAssignments(assignments)
+  }
+
+  useEffect(() => { loadVehicleAssignments() }, [plans]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On-duty drivers filtered for planDate
+  const onDutyDrivers = driverUsers.filter(u => {
+    const a = u.assignment
+    if (!a?.schedule_code) return false
+    const date = planDate ? new Date(planDate + 'T00:00:00') : new Date()
+    return isWorkerOnDuty({
+      shift_num: a.shift_num,
+      schedule_code: a.schedule_code,
+      shift_reference_date: a.shift_reference_date,
+      rotation_group: a.rotation_group,
+      active_phase: a.active_phase ?? null,
+      custom_work_days: a.custom_work_days ?? null,
+      custom_rest_days: a.custom_rest_days ?? null,
+    }, date)
+  })
+
   const allItems = plans.flatMap(p => p.items)
   if (allItems.length === 0) {
     return (
@@ -36,12 +67,19 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
 
   const handleAssign = async (itemId: string, vehicleId: string) => {
     await assignVehicle(vehicleId, itemId, userId)
-    onRefresh()
+    await onRefresh()
+    await loadVehicleAssignments()
   }
 
   const handleUnassign = async (vehicleId: string, itemId: string) => {
     await unassignVehicle(vehicleId, itemId)
-    onRefresh()
+    await onRefresh()
+    await loadVehicleAssignments()
+  }
+
+  const handleAssignDriver = async (assignmentId: string, driverUserId: string | null) => {
+    await updateVehicleAssignmentDriver(assignmentId, driverUserId)
+    await loadVehicleAssignments()
   }
 
   return (
@@ -87,36 +125,77 @@ export default function PlanTransport({ plans, activeVehicles, userId, onRefresh
                     </div>
 
                     {/* Assigned vehicles */}
-                    {assigned.map(v => (
-                      <div
-                        key={v.id}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-2 ${
-                          v.status === 'BROKEN'
-                            ? 'bg-red-500/10 border border-red-500/20'
-                            : 'bg-white/5 border border-transparent'
-                        }`}
-                      >
-                        <span className="text-base shrink-0">{VEHICLE_TYPE_CONFIG[v.vehicle_type]?.emoji ?? '🚛'}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className={`text-sm font-medium ${v.status === 'BROKEN' ? 'text-red-300' : 'text-white/80'}`}>
-                            {v.name}
+                    {assigned.map(v => {
+                      const va = vehicleAssignments.find(a => a.vehicle_id === v.id && a.plan_item_id === item.id)
+                      const currentDriver = va?.driver_user_id
+                        ? driverUsers.find(u => u.user_id === va.driver_user_id)
+                        : null
+
+                      return (
+                        <div
+                          key={v.id}
+                          className={`rounded-lg px-3 py-2 mb-2 ${
+                            v.status === 'BROKEN'
+                              ? 'bg-red-500/10 border border-red-500/20'
+                              : 'bg-white/5 border border-transparent'
+                          }`}
+                        >
+                          {/* Vehicle row */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-base shrink-0">{VEHICLE_TYPE_CONFIG[v.vehicle_type]?.emoji ?? '🚛'}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-sm font-medium ${v.status === 'BROKEN' ? 'text-red-300' : 'text-white/80'}`}>
+                                {v.name}
+                              </div>
+                              {v.plate && (
+                                <span className="font-mono text-xs bg-white/10 text-white/50 px-1.5 py-0.5 rounded tracking-wide">{v.plate}</span>
+                              )}
+                            </div>
+                            {v.status === 'BROKEN' && (
+                              <span className="text-red-400 text-xs shrink-0">нужна замена</span>
+                            )}
+                            <button
+                              onClick={() => handleUnassign(v.id, item.id)}
+                              className="ml-auto text-white/20 hover:text-white/50 text-xs px-1 shrink-0"
+                              title="Снять назначение"
+                            >
+                              ✕
+                            </button>
                           </div>
-                          {v.plate && (
-                            <span className="font-mono text-xs bg-white/10 text-white/50 px-1.5 py-0.5 rounded tracking-wide">{v.plate}</span>
+
+                          {/* Driver assignment row */}
+                          {va && (
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <span className="text-[11px] text-white/25 shrink-0">👤 Водитель:</span>
+                              {currentDriver ? (
+                                <span className="flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/20">
+                                  {currentDriver.full_name}
+                                  <button
+                                    onClick={() => handleAssignDriver(va.id, null)}
+                                    className="hover:text-red-400 transition-colors ml-0.5"
+                                    title="Снять водителя"
+                                  >×</button>
+                                </span>
+                              ) : (
+                                <select
+                                  className="form-select text-xs py-0.5 h-auto flex-1 max-w-[220px]"
+                                  value=""
+                                  onChange={e => { if (e.target.value) handleAssignDriver(va.id, e.target.value) }}
+                                >
+                                  <option value="">— выбрать из смены —</option>
+                                  {onDutyDrivers.map(u => (
+                                    <option key={u.user_id} value={u.user_id}>{u.full_name}</option>
+                                  ))}
+                                  {onDutyDrivers.length === 0 && (
+                                    <option disabled>Нет водителей на смене</option>
+                                  )}
+                                </select>
+                              )}
+                            </div>
                           )}
                         </div>
-                        {v.status === 'BROKEN' && (
-                          <span className="text-red-400 text-xs shrink-0">нужна замена</span>
-                        )}
-                        <button
-                          onClick={() => handleUnassign(v.id, item.id)}
-                          className="ml-auto text-white/20 hover:text-white/50 text-xs px-1 shrink-0"
-                          title="Снять назначение"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                     {/* Assign vehicle */}
                     {needsVehicle && (
