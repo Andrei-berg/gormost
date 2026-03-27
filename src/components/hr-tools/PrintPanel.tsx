@@ -125,12 +125,12 @@ export default function PrintPanel({ users, phases, period, services, schedules,
       })
     }
 
-    const win = window.open('', '_blank')
-    if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
-    win.document.write(html)
-    win.document.close()
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
     win.focus()
-    setTimeout(() => win.print(), 400)
+    setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
   }
 
   const inp = 'bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-blue-500/50 w-full'

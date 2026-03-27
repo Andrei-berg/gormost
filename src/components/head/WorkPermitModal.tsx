@@ -538,12 +538,12 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
       isRoadWork:    workTypeCfg.isRoadWork,
       duringMeasure2: workTypeCfg.duringMeasure2,
     })
-    const win = window.open('', '_blank')
-    if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
-    win.document.write(html)
-    win.document.close()
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
     win.focus()
-    setTimeout(() => win.print(), 400)
+    setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
   }
 
   // ── Dynamic styles based on light/dark mode ─────────────────────────────
