@@ -159,7 +159,7 @@ function Content({ session }: { session: AuthSession }) {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
                         {statusCfg.label}
                       </span>
-                      {(plan.status === 'PLANNED' || plan.status === 'ASSIGNED' || plan.status === 'FAST_TRACK') && (
+                      {['PLANNED', 'ASSIGNED', 'BOSS_CONFIRMED', 'FAST_TRACK'].includes(plan.status) && (
                         <button
                           onClick={() => handlePlanAction(plan.id, 'start')}
                           disabled={isLoading}
