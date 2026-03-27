@@ -13,6 +13,7 @@ import {
   createCrossServiceRequest, assignVehicle, unassignVehicle, fetchWorkPlanWithItems,
 } from '@/lib/api'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import WorkPermitModal from '@/components/head/WorkPermitModal'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const [returnNotes, setReturnNotes] = useState('')
   const [returning, setReturning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPermit, setShowPermit] = useState(false)
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
@@ -208,6 +210,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const otherServices = ALL_SERVICES.filter(id => id !== plan.service_id)
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[999] flex items-start justify-center p-3 pt-4 overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
@@ -415,6 +418,12 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
               </button>
             )}
             <button
+              onClick={() => setShowPermit(true)}
+              className="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/25 text-blue-300 text-sm font-medium transition-all"
+            >
+              🖨 Наряд-допуск
+            </button>
+            <button
               onClick={onClose}
               className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 text-sm transition-all"
             >
@@ -424,6 +433,11 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
         </div>
       </div>
     </div>
+
+    {showPermit && (
+      <WorkPermitModal plan={{ ...plan, items: localItems }} session={session} onClose={() => setShowPermit(false)} />
+    )}
+  </>
   )
 }
 

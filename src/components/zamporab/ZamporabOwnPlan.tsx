@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession, Service } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
 import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
+import WorkPermitModal from '@/components/head/WorkPermitModal'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems,
   createWorkPlan, submitWorkPlan,
@@ -156,6 +157,7 @@ function OwnPlanCard({ plan, session, onRefresh }: {
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showPermit, setShowPermit] = useState(false)
 
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
@@ -247,6 +249,12 @@ function OwnPlanCard({ plan, session, onRefresh }: {
               {plan.service_id === 'SRV-STR' ? '⏳ Ожидает вашего подтверждения' : '⏳ Ожидает гл. инженера'}
             </span>
           )}
+          <button
+            onClick={e => { e.stopPropagation(); setShowPermit(true) }}
+            className="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/25 text-blue-300 text-[11px] transition-all"
+          >
+            🖨 Наряд-допуск
+          </button>
           <span className="text-white/20 text-xs">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
@@ -299,6 +307,10 @@ function OwnPlanCard({ plan, session, onRefresh }: {
             )
           )}
         </div>
+      )}
+
+      {showPermit && (
+        <WorkPermitModal plan={plan} session={session} onClose={() => setShowPermit(false)} />
       )}
     </div>
   )

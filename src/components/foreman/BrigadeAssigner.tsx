@@ -12,6 +12,7 @@ import {
 } from '@/lib/api'
 import { isWorkerOnDuty, getShiftForDate } from '@/lib/shifts'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import WorkPermitModal from '@/components/head/WorkPermitModal'
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
@@ -570,6 +571,7 @@ function SplitViewPlanCard({
   const [removing, setRemoving] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
   const [addError, setAddError] = useState<string | null>(null)
+  const [showPermit, setShowPermit] = useState(false)
 
   const activeItem = plan.items.find(i => i.id === activeItemId)
   const activeAssignments = itemAssignmentsMap.get(activeItemId ?? '') ?? []
@@ -661,9 +663,17 @@ function SplitViewPlanCard({
           <div className="text-sm font-semibold text-white">{svc?.service_name ?? plan.service_id}</div>
           <div className="text-xs text-white/40">{shiftLabel} · {plan.plan_date}</div>
         </div>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${WORK_PLAN_STATUS_CONFIG[plan.status].bg}`} style={{ color: WORK_PLAN_STATUS_CONFIG[plan.status].color }}>
-          {WORK_PLAN_STATUS_CONFIG[plan.status].label}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPermit(true)}
+            className="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/25 text-blue-300 text-[11px] transition-all"
+          >
+            🖨 Наряд-допуск
+          </button>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${WORK_PLAN_STATUS_CONFIG[plan.status].bg}`} style={{ color: WORK_PLAN_STATUS_CONFIG[plan.status].color }}>
+            {WORK_PLAN_STATUS_CONFIG[plan.status].label}
+          </span>
+        </div>
       </div>
 
       {/* Pre-staffed by head banner */}
@@ -948,6 +958,10 @@ function SplitViewPlanCard({
           </span>
         )}
       </div>
+
+      {showPermit && (
+        <WorkPermitModal plan={plan} session={session} onClose={() => setShowPermit(false)} />
+      )}
     </div>
   )
 }
