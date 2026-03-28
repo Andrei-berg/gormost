@@ -19,6 +19,7 @@ import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { FOREMAN_TOUR, FOREMAN_HELP } from '@/components/help/tours'
+import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 
 export default function ForemanPage() {
   return (
@@ -44,6 +45,7 @@ function Content({ session }: { session: AuthSession }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [planLoading, setPlanLoading] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [showTaskSheet, setShowTaskSheet] = useState(false)
 
   const loadData = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -146,7 +148,15 @@ function Content({ session }: { session: AuthSession }) {
       {/* Work plans section */}
       {myPlans.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-3">Планы смены</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-white/60 uppercase tracking-wider">Планы смены</h2>
+            <button
+              onClick={() => setShowTaskSheet(true)}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs transition-all"
+            >
+              🖨 План-задание
+            </button>
+          </div>
           <div className="space-y-3">
             {myPlans.map(plan => {
               const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
@@ -278,6 +288,15 @@ function Content({ session }: { session: AuthSession }) {
             onAction={handleAction}
           />
         </>
+      )}
+
+      {showTaskSheet && (
+        <PlanTaskSheetModal
+          plans={myPlans}
+          session={session}
+          defaultDate={new Date().toISOString().split('T')[0]}
+          onClose={() => setShowTaskSheet(false)}
+        />
       )}
     </div>
   )
