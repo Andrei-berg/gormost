@@ -19,7 +19,7 @@ export default function HelpTooltip({ text, title, position = 'top', size = 'sm'
     if (!visible || !triggerRef.current || !tooltipRef.current) return
     const tr = triggerRef.current.getBoundingClientRect()
     const tt = tooltipRef.current.getBoundingClientRect()
-    const gap = 10
+    const gap = 7
     let top = 0, left = 0
 
     if (position === 'top') {
@@ -64,19 +64,19 @@ export default function HelpTooltip({ text, title, position = 'top', size = 'sm'
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 9999 }}
-          className="w-64 glass-popup rounded-xl p-3 pointer-events-none"
+          className="w-48 glass-popup rounded-lg px-2.5 py-1.5 pointer-events-none"
         >
           {/* Arrow */}
-          <div className={`absolute w-2 h-2 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18
+          <div className={`absolute w-1.5 h-1.5 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18
             ${position === 'bottom' ? '-top-1 left-1/2 -translate-x-1/2 border-b-0 border-r-0' : ''}
             ${position === 'top' ? '-bottom-1 left-1/2 -translate-x-1/2 border-t-0 border-l-0' : ''}
             ${position === 'right' ? '-left-1 top-1/2 -translate-y-1/2 border-t-0 border-r-0' : ''}
             ${position === 'left' ? '-right-1 top-1/2 -translate-y-1/2 border-b-0 border-l-0' : ''}
           `} />
           {title && (
-            <div className="text-xs font-semibold text-blue-300 mb-1">{title}</div>
+            <div className="text-[10px] font-semibold text-blue-300 mb-0.5">{title}</div>
           )}
-          <p className="text-xs text-white/75 leading-relaxed">{text}</p>
+          <p className="text-[10px] text-white/75 leading-snug">{text}</p>
         </div>
       )}
     </span>

@@ -10,7 +10,7 @@ interface Props {
   maxWidth?: number       // tooltip max-width in px (default 240)
 }
 
-export default function WithTooltip({ tip, title, children, delay = 400, maxWidth = 240 }: Props) {
+export default function WithTooltip({ tip, title, children, delay = 400, maxWidth = 190 }: Props) {
   const [visible, setVisible] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0, placement: 'top' as 'top' | 'bottom' })
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -21,8 +21,8 @@ export default function WithTooltip({ tip, title, children, delay = 400, maxWidt
   const compute = useCallback(() => {
     if (!wrapRef.current) return
     const r = wrapRef.current.getBoundingClientRect()
-    const gap = 8
-    const tipH = title ? 60 : 40
+    const gap = 6
+    const tipH = title ? 48 : 32
     const spaceAbove = r.top
     const placement = spaceAbove >= tipH + gap + 16 ? 'top' : 'bottom'
     const top = placement === 'top'
@@ -68,20 +68,20 @@ export default function WithTooltip({ tip, title, children, delay = 400, maxWidt
             zIndex: 9998,
             pointerEvents: 'none',
           }}
-          className="glass-popup rounded-xl px-3 py-2 shadow-xl"
+          className="glass-popup rounded-lg px-2.5 py-1.5 shadow-lg"
         >
           {/* Arrow */}
           <div
-            className="absolute w-2 h-2 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18 left-1/2 -translate-x-1/2"
+            className="absolute w-1.5 h-1.5 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18 left-1/2 -translate-x-1/2"
             style={pos.placement === 'top'
-              ? { bottom: -5, borderTop: 'none', borderLeft: 'none' }
-              : { top: -5, borderBottom: 'none', borderRight: 'none' }
+              ? { bottom: -4, borderTop: 'none', borderLeft: 'none' }
+              : { top: -4, borderBottom: 'none', borderRight: 'none' }
             }
           />
           {title && (
-            <div className="text-[11px] font-semibold text-blue-300 mb-0.5 leading-tight">{title}</div>
+            <div className="text-[10px] font-semibold text-blue-300 mb-0.5 leading-tight">{title}</div>
           )}
-          <p className="text-[11px] text-white/70 leading-snug">{tip}</p>
+          <p className="text-[10px] text-white/70 leading-snug">{tip}</p>
         </div>,
         document.body
       )}
