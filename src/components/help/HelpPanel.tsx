@@ -25,7 +25,6 @@ export default function HelpPanel({ panelTitle, panelEmoji, sections, currentSta
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
@@ -57,34 +56,33 @@ export default function HelpPanel({ panelTitle, panelEmoji, sections, currentSta
           {/* Backdrop */}
           {open && (
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9980]"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9980]"
               onClick={() => setOpen(false)}
             />
           )}
 
-          {/* Drawer */}
+          {/* Drawer — light theme */}
           <div
             className={`fixed top-0 right-0 h-full w-full max-w-sm z-[9981] flex flex-col
               transition-transform duration-300 ease-out
               ${open ? 'translate-x-0' : 'translate-x-full'}
             `}
             style={{
-              background: 'rgba(8,12,28,0.97)',
-              borderLeft: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '-8px 0 32px rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(24px)',
+              background: '#f8fafc',
+              borderLeft: '1px solid #e2e8f0',
+              boxShadow: '-12px 0 40px rgba(0,0,0,0.18)',
             }}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8 flex-shrink-0">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
               <span className="text-2xl">{panelEmoji}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-white">{panelTitle}</div>
-                <div className="text-xs text-white/40">Справочная информация</div>
+                <div className="text-sm font-bold text-slate-800">{panelTitle}</div>
+                <div className="text-xs text-slate-400">Справочная информация</div>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -98,7 +96,7 @@ export default function HelpPanel({ panelTitle, panelEmoji, sections, currentSta
               {/* Workflow status */}
               {showWorkflow && currentStatus && (
                 <div>
-                  <div className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
                     Цикл согласования
                   </div>
                   <WorkflowStatusBar
@@ -112,30 +110,30 @@ export default function HelpPanel({ panelTitle, panelEmoji, sections, currentSta
               {/* FAQ sections */}
               {sections.map((section, si) => (
                 <div key={si}>
-                  <div className="flex items-center gap-2 mb-2.5">
+                  <div className="flex items-center gap-2 mb-2">
                     <span className="text-base">{section.emoji}</span>
-                    <div className="text-xs font-semibold text-white/50 uppercase tracking-widest">{section.title}</div>
+                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{section.title}</div>
                   </div>
                   <div className="space-y-1">
                     {section.items.map((item, qi) => {
                       const idx = si * 100 + qi
                       const expanded = expandedIdx === idx
                       return (
-                        <div key={qi} className="rounded-xl border border-white/8 overflow-hidden">
+                        <div key={qi} className="rounded-xl border border-slate-200 overflow-hidden bg-white">
                           <button
-                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/4 transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
                             onClick={() => setExpandedIdx(expanded ? null : idx)}
                           >
                             <svg
-                              className={`w-3.5 h-3.5 text-white/25 flex-shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                              className={`w-3.5 h-3.5 text-slate-300 flex-shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
                               fill="none" viewBox="0 0 24 24" stroke="currentColor"
                             >
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
-                            <span className="text-xs text-white/75 font-medium leading-snug">{item.q}</span>
+                            <span className="text-xs text-slate-700 font-medium leading-snug">{item.q}</span>
                           </button>
                           {expanded && (
-                            <div className="px-8 pb-3 text-xs text-white/50 leading-relaxed border-t border-white/6 pt-2">
+                            <div className="px-8 pb-3 text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-2">
                               {item.a}
                             </div>
                           )}
@@ -148,8 +146,8 @@ export default function HelpPanel({ panelTitle, panelEmoji, sections, currentSta
             </div>
 
             {/* Footer */}
-            <div className="flex-shrink-0 px-5 py-3 border-t border-white/8">
-              <div className="text-[10px] text-white/20 text-center">
+            <div className="flex-shrink-0 px-5 py-3 border-t border-slate-200 bg-white">
+              <div className="text-[10px] text-slate-300 text-center">
                 Горmost — система управления работами тоннеля
               </div>
             </div>

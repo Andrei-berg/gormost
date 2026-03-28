@@ -63,20 +63,25 @@ export default function HelpTooltip({ text, title, position = 'top', size = 'sm'
         <div
           ref={tooltipRef}
           role="tooltip"
-          style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 9999 }}
-          className="w-48 glass-popup rounded-lg px-2.5 py-1.5 pointer-events-none"
+          style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}
+          className="w-48 rounded-lg px-2.5 py-1.5 pointer-events-none"
         >
           {/* Arrow */}
-          <div className={`absolute w-1.5 h-1.5 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18
-            ${position === 'bottom' ? '-top-1 left-1/2 -translate-x-1/2 border-b-0 border-r-0' : ''}
-            ${position === 'top' ? '-bottom-1 left-1/2 -translate-x-1/2 border-t-0 border-l-0' : ''}
-            ${position === 'right' ? '-left-1 top-1/2 -translate-y-1/2 border-t-0 border-r-0' : ''}
-            ${position === 'left' ? '-right-1 top-1/2 -translate-y-1/2 border-b-0 border-l-0' : ''}
-          `} />
+          <div
+            className={`absolute w-1.5 h-1.5 rotate-45`}
+            style={{
+              background: '#fff',
+              border: '1px solid #e2e8f0',
+              ...(position === 'bottom' ? { top: -4, left: '50%', transform: 'translateX(-50%) rotate(45deg)', borderBottom: 'none', borderRight: 'none' } :
+                  position === 'top'    ? { bottom: -4, left: '50%', transform: 'translateX(-50%) rotate(45deg)', borderTop: 'none', borderLeft: 'none' } :
+                  position === 'right'  ? { left: -4, top: '50%', transform: 'translateY(-50%) rotate(45deg)', borderTop: 'none', borderRight: 'none' } :
+                                          { right: -4, top: '50%', transform: 'translateY(-50%) rotate(45deg)', borderBottom: 'none', borderLeft: 'none' })
+            }}
+          />
           {title && (
-            <div className="text-[10px] font-semibold text-blue-300 mb-0.5">{title}</div>
+            <div className="text-[10px] font-semibold text-blue-600 mb-0.5">{title}</div>
           )}
-          <p className="text-[10px] text-white/75 leading-snug">{text}</p>
+          <p className="text-[10px] text-slate-600 leading-snug">{text}</p>
         </div>
       )}
     </span>

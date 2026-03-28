@@ -67,21 +67,26 @@ export default function WithTooltip({ tip, title, children, delay = 400, maxWidt
             width: maxWidth,
             zIndex: 9998,
             pointerEvents: 'none',
+            background: '#fff',
+            border: '1px solid #e2e8f0',
           }}
-          className="glass-popup rounded-lg px-2.5 py-1.5 shadow-lg"
+          className="rounded-lg px-2.5 py-1.5 shadow-lg"
         >
           {/* Arrow */}
           <div
-            className="absolute w-1.5 h-1.5 rotate-45 bg-[rgba(8,12,28,0.96)] border border-white/18 left-1/2 -translate-x-1/2"
-            style={pos.placement === 'top'
-              ? { bottom: -4, borderTop: 'none', borderLeft: 'none' }
-              : { top: -4, borderBottom: 'none', borderRight: 'none' }
-            }
+            className="absolute w-1.5 h-1.5 rotate-45 left-1/2 -translate-x-1/2"
+            style={{
+              background: '#fff',
+              border: '1px solid #e2e8f0',
+              ...(pos.placement === 'top'
+                ? { bottom: -4, borderTop: 'none', borderLeft: 'none' }
+                : { top: -4, borderBottom: 'none', borderRight: 'none' })
+            }}
           />
           {title && (
-            <div className="text-[10px] font-semibold text-blue-300 mb-0.5 leading-tight">{title}</div>
+            <div className="text-[10px] font-semibold text-blue-600 mb-0.5 leading-tight">{title}</div>
           )}
-          <p className="text-[10px] text-white/70 leading-snug">{tip}</p>
+          <p className="text-[10px] text-slate-600 leading-snug">{tip}</p>
         </div>,
         document.body
       )}
