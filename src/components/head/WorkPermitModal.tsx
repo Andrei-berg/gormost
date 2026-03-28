@@ -596,7 +596,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const footerBg  = lightMode ? 'border-t border-gray-200 bg-gray-50'            : 'border-t border-white/10'
   const inp       = lightMode
     ? 'bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 w-full'
-    : 'bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white/80 focus:outline-none focus:border-blue-500/50 w-full'
+    : 'bg-white/8 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500/50 w-full [color-scheme:dark]'
   const lbl       = lightMode
     ? 'block text-[10px] text-gray-500 uppercase tracking-wider mb-1'
     : 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
@@ -614,7 +614,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
 
       {/* Panel */}
       <div
-        className={`relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
+        className={`relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden flex flex-col max-h-[calc(100vh-2rem)] ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 ${headerBg}`}>
@@ -649,7 +649,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
 
           {/* Work type selector */}
           <div className={sectionBg}>
