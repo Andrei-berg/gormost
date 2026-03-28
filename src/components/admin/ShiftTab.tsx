@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssignmentWithScheduleCode } from '@/types'
 import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api'
 import { getShiftForDate, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
+import ScheduleBadge from '@/components/help/ScheduleBadge'
 import { DRIVER_GROUPS, getDriverGroup } from '@/lib/driverGroups'
 import ShiftRoster from '@/components/ShiftRoster'
 import ShiftPhaseManager from '@/components/admin/ShiftPhaseManager'
@@ -293,7 +294,11 @@ function UserRow({ user, services, schedules, isEditing, saving, onEdit, onCance
             ? <span className={`text-xs font-medium ${SHIFT_COLORS[a.shift_num]}`}>{SHIFT_LABELS[a.shift_num]}</span>
             : <span className="text-white/20 text-xs">—</span>}
         </td>
-        <td className="px-3 py-2 text-xs text-white/50">{displayCode ?? <span className="text-white/20">—</span>}</td>
+        <td className="px-3 py-2 text-xs text-white/50">
+          {displayCode
+            ? <ScheduleBadge scheduleCode={displayCode} size="xs" />
+            : <span className="text-white/20">—</span>}
+        </td>
         <td className="px-3 py-2 text-xs text-white/30">
           {a?.driver_group_number
             ? <span className="text-amber-400/70 font-medium">Гр.{a.driver_group_number}</span>

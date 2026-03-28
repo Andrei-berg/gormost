@@ -12,6 +12,8 @@ import {
 } from '@/lib/api'
 import { isWorkerOnDuty, getShiftForDate } from '@/lib/shifts'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import StatusPlanBadge from '@/components/help/StatusPlanBadge'
+import WithTooltip from '@/components/help/WithTooltip'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
@@ -670,9 +672,7 @@ function SplitViewPlanCard({
           >
             🖨 Наряд-допуск
           </button>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${WORK_PLAN_STATUS_CONFIG[plan.status].bg}`} style={{ color: WORK_PLAN_STATUS_CONFIG[plan.status].color }}>
-            {WORK_PLAN_STATUS_CONFIG[plan.status].label}
-          </span>
+          <StatusPlanBadge status={plan.status} size="xs" />
         </div>
       </div>
 
@@ -831,18 +831,27 @@ function SplitViewPlanCard({
           {/* Role selector */}
           {activeItem && (
             <div className="flex flex-wrap gap-1">
-              {(['WORKER', 'BRIGADIER', 'MASTER', 'ITR'] as WorkAssignmentRole[]).map(role => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setPickerRole(role)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
-                    pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
-                  }`}
-                >
-                  {ROLE_ICONS[role]} {ROLE_LABELS[role]}
-                </button>
-              ))}
+              {(['WORKER', 'BRIGADIER', 'MASTER', 'ITR'] as WorkAssignmentRole[]).map(role => {
+                const TIPS: Record<string, string> = {
+                  WORKER: 'Рядовой работник — выполняет физическую работу на объекте.',
+                  BRIGADIER: 'Бригадир — старший рабочий, организует команду и отвечает за выполнение задания.',
+                  MASTER: 'Мастер — технический руководитель, ставит задачи, контролирует ТБ.',
+                  ITR: 'ИТР — инженерно-технический работник, надзор и проектирование.',
+                }
+                return (
+                  <WithTooltip key={role} tip={TIPS[role]} delay={300}>
+                    <button
+                      type="button"
+                      onClick={() => setPickerRole(role)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                        pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
+                      }`}
+                    >
+                      {ROLE_ICONS[role]} {ROLE_LABELS[role]}
+                    </button>
+                  </WithTooltip>
+                )
+              })}
             </div>
           )}
 

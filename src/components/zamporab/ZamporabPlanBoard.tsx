@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { WorkPlan, WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import CreatePlanModal from '@/components/head/CreatePlanModal'
 import CancelPlanModal from '@/components/shared/CancelPlanModal'
 
@@ -238,12 +239,7 @@ function PlanBoardCard({ plan, services, today, pendingPlan, onConfirm, onCancel
             <span className="text-[10px] text-white/30">{pendingPlan.items.length} поз.</span>
           )}
         </div>
-        <span
-          className="inline-block text-[11px] mt-0.5 px-1.5 py-0.5 rounded-full border"
-          style={{ color: stCfg.color, borderColor: stCfg.color + '40', background: stCfg.color + '10' }}
-        >
-          {stCfg.label}
-        </span>
+        <StatusPlanBadge status={plan.status} size="xs" className="mt-0.5" />
       </div>
 
       <div className="flex items-center gap-2 shrink-0">

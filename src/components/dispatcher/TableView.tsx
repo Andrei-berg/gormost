@@ -1,5 +1,6 @@
-import type { Request, Category, GObject, Service } from '@/types'
+import type { Request, Category, GObject, Service, Priority } from '@/types'
 import { STATUS_CONFIG } from '@/types'
+import WithTooltip from '@/components/help/WithTooltip'
 import EmptyState from '../EmptyState'
 
 interface Props {
@@ -37,11 +38,32 @@ export default function TableView({ requests, categories, objects, services, onR
                 <td className="px-4 py-3 text-white/50">{cat?.category_name || '—'}</td>
                 <td className="px-4 py-3 text-white/80">{obj?.object_name || '—'}</td>
                 <td className="px-4 py-3">
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: st.color, background: st.color + '20' }}>
-                    {st.label}
-                  </span>
+                  <WithTooltip tip={`Статус заявки: ${st.label}`}>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: st.color, background: st.color + '20' }}>
+                      {st.label}
+                    </span>
+                  </WithTooltip>
                 </td>
-                <td className="px-4 py-3 text-white/60">{r.priority}</td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const PRIORITY_TIPS: Record<Priority, { label: string; tip: string; color: string }> = {
+                      LOW:      { label: 'Низкий',      tip: 'Плановая работа — можно выполнить при наличии ресурсов.',       color: '#64748b' },
+                      MEDIUM:   { label: 'Средний',     tip: 'Требует выполнения в течение рабочего дня.',                   color: '#f97316' },
+                      HIGH:     { label: 'Высокий',     tip: 'Срочно — нужно выполнить в текущей смене.',                    color: '#ef4444' },
+                      CRITICAL: { label: 'Критический', tip: 'Угроза безопасности или работоспособности объекта!',           color: '#dc2626' },
+                    }
+                    const pc = PRIORITY_TIPS[r.priority as Priority]
+                    if (!pc) return <span className="text-white/60 text-xs">{r.priority}</span>
+                    return (
+                      <WithTooltip tip={pc.tip} title={pc.label}>
+                        <span className="text-xs px-2 py-0.5 rounded-full border font-medium"
+                          style={{ color: pc.color, background: pc.color + '20', borderColor: pc.color + '40' }}>
+                          {pc.label}
+                        </span>
+                      </WithTooltip>
+                    )
+                  })()}
+                </td>
               </tr>
             )
           })}

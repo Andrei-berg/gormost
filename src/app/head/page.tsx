@@ -11,6 +11,8 @@ import CreatePlanModal from '@/components/head/CreatePlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import AlertBanner from '@/components/AlertBanner'
+import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
+import { HEAD_TOUR, HEAD_HELP } from '@/components/help/tours'
 import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 import HeadTransportTab from '@/components/head/HeadTransportTab'
 
@@ -78,6 +80,13 @@ function Content({ session }: { session: AuthSession }) {
         showTimer={timerLabel ?? undefined}
       />
       <AlertBanner session={session} />
+      <GuidedTour steps={HEAD_TOUR} storageKey="tour_head_v1" />
+      <WhatNextBanner
+        role={session.role_level}
+        currentStatus={plans.find(p => ['DRAFT','SUBMITTED','REJECTED'].includes(p.status))?.status ?? null}
+        planCount={plans.length}
+        onAction={() => setShowCreate(true)}
+      />
       <ServiceStats plans={plans} />
 
       {/* Tabs */}
@@ -112,6 +121,8 @@ function Content({ session }: { session: AuthSession }) {
           )}
         </button>
         <div className="ml-auto flex items-center gap-2">
+          <HelpPanel panelTitle="Начальник службы" panelEmoji="🏢" sections={HEAD_HELP} showWorkflow />
+          <GuidedTour steps={HEAD_TOUR} storageKey="tour_head_v1" trigger="Обучение" />
           <button
             onClick={() => setShowTaskSheet(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"

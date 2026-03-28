@@ -9,6 +9,8 @@ import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
 import LiveBoard from '@/components/chief/LiveBoard'
 import ChiefDirectives from '@/components/chief/ChiefDirectives'
 import AlertBanner from '@/components/AlertBanner'
+import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
+import { CHIEF_TOUR, CHIEF_HELP } from '@/components/help/tours'
 
 export default function ChiefPage() {
   return (
@@ -61,17 +63,26 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
 
       <AlertBanner session={session} />
+      <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" />
+      <WhatNextBanner
+        role={session.role_level}
+        currentStatus={plans.some(p => p.status === 'SUBMITTED') ? 'SUBMITTED' : null}
+        planCount={plans.filter(p => p.status === 'SUBMITTED').length}
+        onAction={() => setTab('approvals')}
+      />
       <ChiefStats plans={plans} />
 
       {/* Main tab switcher */}
       <div className="flex items-center gap-2 mb-4">
         <button
+          data-tour="tab-live"
           onClick={() => setTab('live')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'live' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
           🔴 Текущие работы
         </button>
         <button
+          data-tour="tab-approvals"
           onClick={() => setTab('approvals')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'approvals' ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
@@ -88,12 +99,11 @@ function Content({ session }: { session: AuthSession }) {
         >
           📝 Поручения
         </button>
-        <button
-          onClick={loadData}
-          className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm"
-        >
-          ↻
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <HelpPanel panelTitle="Главный инженер" panelEmoji="🔧" sections={CHIEF_HELP} showWorkflow currentStatus={plans.find(p => p.status === 'SUBMITTED')?.status} />
+          <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" trigger="Обучение" />
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        </div>
       </div>
 
       {tab === 'live' ? (

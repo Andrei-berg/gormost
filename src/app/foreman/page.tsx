@@ -17,6 +17,8 @@ import { supabase } from '@/lib/supabase'
 import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems, WorkRedirect } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import AlertBanner from '@/components/AlertBanner'
+import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
+import { FOREMAN_TOUR, FOREMAN_HELP } from '@/components/help/tours'
 
 export default function ForemanPage() {
   return (
@@ -111,6 +113,17 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       <AlertBanner session={session} />
+
+      {/* Guided onboarding tour */}
+      <GuidedTour steps={FOREMAN_TOUR} storageKey="tour_foreman_v1" />
+
+      {/* Smart "what to do next" hint */}
+      <WhatNextBanner
+        role={session.role_level}
+        currentStatus={activePlans[0]?.status ?? null}
+        planCount={activePlans.length}
+        onAction={() => setTab('brigade')}
+      />
 
       <RedirectBanner redirectedPlans={redirectedPlans} redirects={redirects} />
 
@@ -212,11 +225,11 @@ function Content({ session }: { session: AuthSession }) {
       )}
 
       {/* Main tabs */}
-      <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50'}`}>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <button data-tour="tab-plans" onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50'}`}>
           📊 Планы смены
         </button>
-        <button onClick={() => setTab('brigade')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'brigade' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-white/50'}`}>
+        <button data-tour="tab-brigade" onClick={() => setTab('brigade')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'brigade' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-white/50'}`}>
           👷 Бригады
         </button>
         <button onClick={() => setTab('archive')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'archive' ? 'bg-slate-600 text-white' : 'bg-white/5 text-white/50'}`}>
@@ -225,7 +238,17 @@ function Content({ session }: { session: AuthSession }) {
         <button onClick={() => setTab('tasks')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'tasks' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
           Заявки
         </button>
-        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <div className="flex items-center gap-2 ml-auto">
+          <HelpPanel
+            panelTitle="Мастер / Бригадир"
+            panelEmoji="👷‍♂️"
+            sections={FOREMAN_HELP}
+            currentStatus={activePlans[0]?.status}
+            showWorkflow
+          />
+          <GuidedTour steps={FOREMAN_TOUR} storageKey="tour_foreman_v1" trigger="Обучение" />
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        </div>
       </div>
 
       {tab === 'plans' && (

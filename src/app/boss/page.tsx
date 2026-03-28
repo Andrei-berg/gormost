@@ -9,6 +9,8 @@ import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchC
 import type { Request, Service, ChangelogEntry, AuthSession, UserWithAssignment } from '@/types'
 import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
+import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
+import { BOSS_TOUR, BOSS_HELP } from '@/components/help/tours'
 
 export default function BossPage() {
   return (
@@ -55,6 +57,13 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Начальник участка" emoji="🏠" mode="REVIEW" />
 
       <AlertBanner session={session} />
+      <GuidedTour steps={BOSS_TOUR} storageKey="tour_boss_v1" />
+      <WhatNextBanner
+        role={session.role_level}
+        currentStatus={requests.some(r => r.status === 'PLANNED') ? 'PLANNED' : null}
+        planCount={requests.filter(r => r.status === 'PLANNED').length}
+        onAction={() => setTab('plans')}
+      />
 
       {/* KPI */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -86,8 +95,8 @@ function Content({ session }: { session: AuthSession }) {
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <button onClick={() => setTab('overview')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'overview' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Обзор</button>
-        <button onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-purple-600 text-white' : 'bg-white/5 text-white/50'}`}>
+        <button data-tour="tab-overview" onClick={() => setTab('overview')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'overview' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Обзор</button>
+        <button data-tour="tab-plans" onClick={() => setTab('plans')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'plans' ? 'bg-purple-600 text-white' : 'bg-white/5 text-white/50'}`}>
           📋 Совещание
         </button>
         <button onClick={() => setTab('roster')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'roster' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>
@@ -98,7 +107,11 @@ function Content({ session }: { session: AuthSession }) {
           {pendingApproval.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">{pendingApproval.length}</span>}
         </button>
         <button onClick={() => setTab('log')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'log' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50'}`}>Журнал</button>
-        <button onClick={loadData} className="ml-auto px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <div className="ml-auto flex items-center gap-2">
+          <HelpPanel panelTitle="Начальник участка" panelEmoji="🏠" sections={BOSS_HELP} />
+          <GuidedTour steps={BOSS_TOUR} storageKey="tour_boss_v1" trigger="Обучение" />
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        </div>
       </div>
 
       {tab === 'overview' && <OverviewCharts stats={stats} services={services} requests={requests} />}

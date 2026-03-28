@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { WorkPlanWithItems, WorkPlanItemWithVehicles, CrossServiceRequest, CrossServiceDraft, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG } from '@/types'
+import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
@@ -153,9 +154,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
         </div>
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           {!isDirect && <span className="text-[10px] text-green-400">✓ Гл. инженер согласовал</span>}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
-            {statusCfg.label}
-          </span>
+          <StatusPlanBadge status={plan.status} size="xs" />
           <span className="text-white/20 text-xs ml-1">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>

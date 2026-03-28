@@ -25,6 +25,8 @@ import ShiftOverview from '@/components/zamporab/ShiftOverview'
 import ResourceBar from '@/components/zamporab/ResourceBar'
 import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
+import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
+import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
 // HEAD components
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
@@ -126,6 +128,13 @@ function Content({ session }: { session: AuthSession }) {
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
 
       <AlertBanner session={session} />
+      <GuidedTour steps={ZAMPORAB_TOUR} storageKey="tour_zamporab_v1" />
+      <WhatNextBanner
+        role={session.role_level}
+        currentStatus={pendingPlans.length > 0 ? 'APPROVED' : null}
+        planCount={pendingPlans.length}
+        onAction={() => setTab('pending')}
+      />
       <PlanStats requests={requests} services={services} pendingApproval={unapproved} />
 
       {/* Tabs */}
@@ -160,13 +169,17 @@ function Content({ session }: { session: AuthSession }) {
             </span>
           )}
         </button>
-        <button
-          onClick={() => setShowSummary(true)}
-          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
-        >
-          🖨 План работ
-        </button>
-        <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        <div className="ml-auto flex items-center gap-2">
+          <HelpPanel panelTitle="Зам/Прораб" panelEmoji="👷" sections={ZAMPORAB_HELP} showWorkflow currentStatus={pendingPlans[0]?.status} />
+          <GuidedTour steps={ZAMPORAB_TOUR} storageKey="tour_zamporab_v1" trigger="Обучение" />
+          <button
+            onClick={() => setShowSummary(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+          >
+            🖨 План работ
+          </button>
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+        </div>
       </div>
 
       {/* Tab: All plans board */}

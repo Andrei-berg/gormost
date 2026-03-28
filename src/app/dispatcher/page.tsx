@@ -13,6 +13,8 @@ import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
 import OverrideModal from '@/components/dispatcher/OverrideModal'
 import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
+import { HelpPanel } from '@/components/help'
+import { DISPATCHER_HELP } from '@/components/help/tours'
 
 export default function DispatcherPage() {
   return (
@@ -83,7 +85,8 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       <KPICards {...kpi} />
 
       {/* Override / Fast Track button */}
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
+        <HelpPanel panelTitle="Диспетчерская" panelEmoji="🗂️" sections={DISPATCHER_HELP} />
         <button
           onClick={() => setShowOverrideModal(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-medium text-sm transition-colors"

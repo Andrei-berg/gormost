@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems, confirmWorkPlanBoss,
 } from '@/lib/api'
@@ -160,9 +161,7 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
             {totalForemen > 0 && <span>🦺 {totalForemen}</span>}
             {totalVehicles > 0 && <span>🚛 {totalVehicles}</span>}
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
-            {statusCfg.label}
-          </span>
+          <StatusPlanBadge status={plan.status} size="xs" />
           {!readOnly && (
             <button
               onClick={onConfirm}
