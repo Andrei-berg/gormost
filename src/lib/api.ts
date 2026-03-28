@@ -2096,3 +2096,18 @@ export async function fetchAllCertsWithEmployees(): Promise<EmployeeCert[]> {
     .order('expires_at', { ascending: true, nullsFirst: false })
   return (data || []) as EmployeeCert[]
 }
+
+// ─── Work permit flag ───────────────────────────────────────────────────────
+
+/** Mark a work plan as having a printed permit */
+export async function markWorkPlanPermit(
+  planId: string,
+  permitNumber: string,
+): Promise<boolean> {
+  const { error } = await supabase.from('work_plans').update({
+    has_permit:       true,
+    permit_number:    permitNumber || null,
+    permit_issued_at: new Date().toISOString(),
+  }).eq('id', planId)
+  return !error
+}

@@ -430,6 +430,10 @@ export interface WorkPlan {
   completion_note: string | null
   suspended_until: string | null
   parent_redirect_id: string | null
+  // Work permit flag (migration 037)
+  has_permit:         boolean | null
+  permit_number:      string | null
+  permit_issued_at:   string | null
 }
 
 export interface WorkPlanItem {

@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
-import type { WorkPlanWithItems, AuthSession } from '@/types'
+import { useState, useEffect } from 'react'
+import type { WorkPlanWithItems, AuthSession, User } from '@/types'
+import { fetchUsersByService, markWorkPlanPermit } from '@/lib/api'
 
 // ─── Russian month names ───────────────────────────────────────────────────
 const RU_MONTHS = [
@@ -456,11 +457,18 @@ interface Props {
   plan: WorkPlanWithItems
   session: AuthSession
   onClose: () => void
+  onPermitPrinted?: (planId: string, permitNumber: string) => void
 }
 
-export default function WorkPermitModal({ plan, session, onClose }: Props) {
+export default function WorkPermitModal({ plan, session, onClose, onPermitPrinted }: Props) {
   // Theme toggle
   const [lightMode, setLightMode] = useState(false)
+
+  // Service users for dropdowns
+  const [serviceUsers, setServiceUsers] = useState<User[]>([])
+  useEffect(() => {
+    if (plan.service_id) fetchUsersByService(plan.service_id).then(setServiceUsers)
+  }, [plan.service_id])
 
   // Work type selection
   const [workTypeKey, setWorkTypeKey] = useState('repair')
@@ -468,15 +476,20 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
 
   const nextDay = addDay(plan.plan_date)
 
-  // Default times: 09:00 start, 06:30 next day end
-  const [issuerRole,         setIssuerRole]         = useState<IssuerRole>('head')
+  // Auto-detect issuer role from session
+  const defaultIssuerRole: IssuerRole =
+    session.role_level === 'CHIEF_ENGINEER' ? 'chief' : 'head'
+
+  const [issuerRole,         setIssuerRole]         = useState<IssuerRole>(defaultIssuerRole)
   const [permitNumber,       setPermitNumber]       = useState('')
   const [issueDate,          setIssueDate]          = useState(plan.plan_date)
   const [validUntil,         setValidUntil]         = useState(nextDay)
+  const [supervisorUserId,   setSupervisorUserId]   = useState('')
   const [supervisor,         setSupervisor]         = useState('')
   const [supervisorPosition, setSupervisorPosition] = useState(
     plan.shift_type === 'NIGHT' ? 'сменный инженер' : 'мастер участка'
   )
+  const [executorUserId,     setExecutorUserId]     = useState('')
   const [executor,           setExecutor]           = useState('')
   const [executorPosition,   setExecutorPosition]   = useState('бригадир')
   const [startTime,          setStartTime]          = useState('09:00')
@@ -485,20 +498,48 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
   const [endDate,            setEndDate]            = useState(nextDay)
   const [vehicleNotes,       setVehicleNotes]       = useState('')
 
-  // Issuer (point 7) — cascade: HEAD → Энергетик → Гл. инженер
-  const [issuedBy,           setIssuedBy]           = useState(session.full_name ?? '')
+  // Issuer (point 7) — auto-fill from session when HEAD or CHIEF_ENGINEER
+  const [issuedBy,           setIssuedBy]           = useState(
+    (session.role_level === 'HEAD' || session.role_level === 'CHIEF_ENGINEER')
+      ? (session.full_name ?? '')
+      : ''
+  )
   const [issuedByPosition,   setIssuedByPosition]   = useState(
-    ISSUER_OPTIONS.find(o => o.key === 'head')?.position ?? ''
+    session.role_level === 'CHIEF_ENGINEER'
+      ? 'главный инженер'
+      : ISSUER_OPTIONS.find(o => o.key === 'head')?.position ?? ''
   )
 
   const handleIssuerRoleChange = (role: IssuerRole) => {
     setIssuerRole(role)
     const opt = ISSUER_OPTIONS.find(o => o.key === role)!
     setIssuedByPosition(opt.position)
-    if (role === 'head') {
+    if (role === 'head' && session.role_level === 'HEAD') {
+      setIssuedBy(session.full_name ?? '')
+    } else if (role === 'chief' && session.role_level === 'CHIEF_ENGINEER') {
       setIssuedBy(session.full_name ?? '')
     } else {
-      setIssuedBy('') // user fills in manually
+      setIssuedBy('')
+    }
+  }
+
+  // Supervisor dropdown select
+  const handleSupervisorSelect = (userId: string) => {
+    setSupervisorUserId(userId)
+    const u = serviceUsers.find(u => u.user_id === userId)
+    if (u) {
+      setSupervisor(u.full_name)
+      setSupervisorPosition(u.position ?? (plan.shift_type === 'NIGHT' ? 'сменный инженер' : 'мастер участка'))
+    }
+  }
+
+  // Executor dropdown select
+  const handleExecutorSelect = (userId: string) => {
+    setExecutorUserId(userId)
+    const u = serviceUsers.find(u => u.user_id === userId)
+    if (u) {
+      setExecutor(u.full_name)
+      setExecutorPosition(u.position ?? 'бригадир')
     }
   }
 
@@ -509,7 +550,7 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
     ) ?? []
   )
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const html = generateHTML({
       permitNumber,
       issueDate,
@@ -544,6 +585,9 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
     if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
     win.focus()
     setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
+    // Mark permit as created in DB
+    await markWorkPlanPermit(plan.id, permitNumber)
+    onPermitPrinted?.(plan.id, permitNumber)
   }
 
   // ── Dynamic styles based on light/dark mode ─────────────────────────────
@@ -665,13 +709,36 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={lbl}>ФИО руководителя работ</label>
-                <input value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Иванов Александр Сергеевич" className={inp} />
+                {serviceUsers.length > 0 ? (
+                  <select
+                    value={supervisorUserId}
+                    onChange={e => handleSupervisorSelect(e.target.value)}
+                    className={inp}
+                  >
+                    <option value="">— выбрать из списка —</option>
+                    {serviceUsers.map(u => (
+                      <option key={u.user_id} value={u.user_id}>{u.full_name}{u.position ? ` (${u.position})` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Иванов Александр Сергеевич" className={inp} />
+                )}
               </div>
               <div>
                 <label className={lbl}>Должность</label>
-                <input value={supervisorPosition} onChange={e => setSupervisorPosition(e.target.value)} className={inp} />
+                <input
+                  value={supervisorPosition}
+                  onChange={e => setSupervisorPosition(e.target.value)}
+                  placeholder="мастер участка"
+                  className={inp}
+                />
               </div>
             </div>
+            {supervisorUserId && (
+              <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
+                ФИО: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{supervisor}</span>
+              </div>
+            )}
           </div>
 
           {/* Executor (п.1 — Ответственный исполнитель = бригадир) */}
@@ -684,14 +751,37 @@ export default function WorkPermitModal({ plan, session, onClose }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={lbl}>ФИО исполнителя</label>
-                <input value={executor} onChange={e => setExecutor(e.target.value)} placeholder="Гончаров Валерий Викторович" className={inp} />
+                <label className={lbl}>ФИО бригадира</label>
+                {serviceUsers.length > 0 ? (
+                  <select
+                    value={executorUserId}
+                    onChange={e => handleExecutorSelect(e.target.value)}
+                    className={inp}
+                  >
+                    <option value="">— выбрать из списка —</option>
+                    {serviceUsers.map(u => (
+                      <option key={u.user_id} value={u.user_id}>{u.full_name}{u.position ? ` (${u.position})` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={executor} onChange={e => setExecutor(e.target.value)} placeholder="Гончаров Валерий Викторович" className={inp} />
+                )}
               </div>
               <div>
                 <label className={lbl}>Должность</label>
-                <input value={executorPosition} onChange={e => setExecutorPosition(e.target.value)} className={inp} />
+                <input
+                  value={executorPosition}
+                  onChange={e => setExecutorPosition(e.target.value)}
+                  placeholder="бригадир"
+                  className={inp}
+                />
               </div>
             </div>
+            {executorUserId && (
+              <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
+                ФИО: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{executor}</span>
+              </div>
+            )}
           </div>
 
           {/* Time (п.4) */}
