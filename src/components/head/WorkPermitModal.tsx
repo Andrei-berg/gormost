@@ -608,13 +608,13 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const issueDateFmt  = fmtDate(issueDate)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex">
+      {/* Backdrop (click left side to close) */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
+      {/* Panel — full-height right drawer, wide */}
       <div
-        className={`relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden flex flex-col max-h-[calc(100vh-2rem)] ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
+        className={`relative z-10 ml-auto w-full max-w-3xl flex flex-col h-full shadow-2xl border-l ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 ${headerBg}`}>
