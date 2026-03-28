@@ -461,8 +461,8 @@ interface Props {
 }
 
 export default function WorkPermitModal({ plan, session, onClose, onPermitPrinted }: Props) {
-  // Theme toggle
-  const [lightMode, setLightMode] = useState(false)
+  // Theme toggle — default light (print document form)
+  const [lightMode, setLightMode] = useState(true)
 
   // Service users for dropdowns
   const [serviceUsers, setServiceUsers] = useState<User[]>([])
