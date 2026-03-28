@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { WorkPlanWithItems, AuthSession, User } from '@/types'
 import { fetchUsersByService, markWorkPlanPermit } from '@/lib/api'
 
@@ -607,8 +608,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const serviceName   = SERVICE_NAMES[plan.service_id] ?? plan.service_id
   const issueDateFmt  = fmtDate(issueDate)
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  const modal = (
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
@@ -963,4 +964,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return null
+  return createPortal(modal, document.body)
 }
