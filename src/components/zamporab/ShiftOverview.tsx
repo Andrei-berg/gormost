@@ -231,7 +231,7 @@ export default function ShiftOverview() {
                       <span className="text-[10px] text-white/20">· {items.length}</span>
                     </div>
 
-                    <div className="space-y-1.5 pl-5">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
                       {items.map(({ emp, onDuty, assignments }) => {
                         const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
                         const absent = ABSENT_STATUSES.has(emp.currentStatus)
@@ -246,7 +246,6 @@ export default function ShiftOverview() {
                           }`}>
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                {/* Status dot */}
                                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
                                   absent   ? 'bg-orange-400'
                                   : working ? 'bg-blue-400'
@@ -262,15 +261,14 @@ export default function ShiftOverview() {
                                   )}
                                 </div>
                               </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex flex-col items-end gap-0.5 shrink-0">
                                 {onDuty && !absent && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-400">
+                                  <span className="text-[9px] px-1 py-px rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
                                     смена
                                   </span>
                                 )}
                                 <span
-                                  className="text-[10px] px-1.5 py-0.5 rounded-full border"
+                                  className="text-[9px] px-1 py-px rounded-full border whitespace-nowrap"
                                   style={{ color: stCfg.color, borderColor: stCfg.color + '40' }}
                                 >
                                   {stCfg.label}
@@ -282,21 +280,23 @@ export default function ShiftOverview() {
                             {assignments.map((a, i) => {
                               const planStCfg = WORK_PLAN_STATUS_CONFIG[a.status as keyof typeof WORK_PLAN_STATUS_CONFIG]
                               return (
-                                <div key={i} className="flex items-center gap-1.5 mt-1.5 text-xs text-white/40 pl-3.5">
-                                  {a.time && (
-                                    <span className="font-mono text-cyan-400 text-[11px] bg-cyan-500/10 px-1 py-px rounded shrink-0">
-                                      {a.time}
-                                    </span>
-                                  )}
-                                  <span className="truncate">{a.location} — {a.work}</span>
-                                  {planStCfg && (
-                                    <span
-                                      className="shrink-0 text-[10px] px-1 py-px rounded-full border"
-                                      style={{ color: planStCfg.color, borderColor: planStCfg.color + '40' }}
-                                    >
-                                      {planStCfg.label}
-                                    </span>
-                                  )}
+                                <div key={i} className="mt-1.5 text-[10px] text-white/40 border-t border-white/5 pt-1">
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {a.time && (
+                                      <span className="font-mono text-cyan-400 bg-cyan-500/10 px-1 py-px rounded shrink-0">
+                                        {a.time}
+                                      </span>
+                                    )}
+                                    {planStCfg && (
+                                      <span
+                                        className="shrink-0 px-1 py-px rounded-full border"
+                                        style={{ color: planStCfg.color, borderColor: planStCfg.color + '40' }}
+                                      >
+                                        {planStCfg.label}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="truncate mt-0.5">{a.location}{a.location && ' — '}{a.work}</div>
                                 </div>
                               )
                             })}
