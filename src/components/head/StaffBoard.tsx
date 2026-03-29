@@ -13,6 +13,40 @@ const FILTER_LABELS: Record<FilterMode, string> = {
   absent:  'Отсутствуют',
 }
 
+// ── Role grouping ──────────────────────────────────────────────
+type RoleGroup = 'itr' | 'master' | 'brigadier' | 'worker' | 'driver' | 'other'
+
+const ROLE_GROUP_ORDER: RoleGroup[] = ['itr', 'master', 'brigadier', 'worker', 'driver', 'other']
+
+const ROLE_GROUP_LABELS: Record<RoleGroup, string> = {
+  itr:       'ИТР',
+  master:    'Мастер',
+  brigadier: 'Бригадир',
+  worker:    'Рабочий',
+  driver:    'Водитель',
+  other:     'Прочие',
+}
+
+const ROLE_GROUP_ICON: Record<RoleGroup, string> = {
+  itr:       '🔧',
+  master:    '👷',
+  brigadier: '⭐',
+  worker:    '👤',
+  driver:    '🚗',
+  other:     '•',
+}
+
+function getRoleGroup(emp: EnrichedEmployee): RoleGroup {
+  const rl  = emp.user.role_level
+  const pos = (emp.user.position ?? '').toLowerCase()
+  if (['head', 'chief_engineer', 'specialist', 'zamporab', 'hr', 'safety_engineer', 'boss', 'admin'].includes(rl.toLowerCase())) return 'itr'
+  if (rl.toLowerCase() === 'foreman') return 'master'
+  if (rl.toLowerCase() === 'driver')  return 'driver'
+  if (pos.includes('бригадир'))       return 'brigadier'
+  if (rl.toLowerCase() === 'worker')  return 'worker'
+  return 'other'
+}
+
 // Statuses that mean the employee is unavailable/absent today
 const ABSENT_STATUSES = new Set<EmployeeStatusType>([
   'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka',
@@ -105,6 +139,17 @@ export default function StaffBoard({ serviceId }: Props) {
   const assigned   = empAssignments.filter(e => e.assignments.length > 0)
   const unassigned = empAssignments.filter(e => e.assignments.length === 0)
 
+  // Group helpers
+  function groupByRole<T extends { emp: EnrichedEmployee }>(list: T[]) {
+    const map = new Map<RoleGroup, T[]>()
+    for (const item of list) {
+      const g = getRoleGroup(item.emp)
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(item)
+    }
+    return ROLE_GROUP_ORDER.filter(g => map.has(g)).map(g => ({ group: g, items: map.get(g)! }))
+  }
+
   // Counts for filter badges
   const countAll     = employees.length
   const countOnDuty  = employees.filter(e => e.onDuty && !ABSENT_STATUSES.has(e.currentStatus)).length
@@ -176,70 +221,72 @@ export default function StaffBoard({ serviceId }: Props) {
           <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3 px-1">
             Назначены на работы · {assigned.length}
           </div>
-          <div className="space-y-2">
-            {assigned.map(({ emp, assignments }) => {
-              const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
-              const absent = ABSENT_STATUSES.has(emp.currentStatus)
-              return (
-                <div key={emp.user.user_id} className="glass rounded-xl overflow-hidden border border-white/8">
-                  {/* Employee header */}
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 ${
-                        absent ? 'bg-orange-500/15 border-orange-500/25 text-orange-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-                      }`}>
-                        {emp.user.full_name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white leading-none">{emp.user.full_name}</div>
-                        {emp.user.position && (
-                          <div className="text-[10px] text-white/35 mt-0.5">{emp.user.position}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {emp.onDuty && !absent && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
-                          на смене
-                        </span>
-                      )}
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full border border-white/10"
-                        style={{ color: stCfg.color }}
-                      >
-                        {stCfg.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Work assignments */}
-                  <div className="px-4 py-2 space-y-1.5">
-                    {assignments.map((a, i) => {
-                      const planSt = WORK_PLAN_STATUS_CONFIG[a.plan.status]
-                      return (
-                        <div key={i} className="flex items-start gap-2 text-xs">
-                          {a.time && (
-                            <span className="font-mono text-cyan-400 shrink-0 bg-cyan-500/10 px-1.5 py-0.5 rounded mt-px">
-                              {a.time}
-                            </span>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium text-white/85">{a.location}</span>
-                            <span className="text-white/40"> — {a.work}</span>
-                          </div>
-                          <span
-                            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border border-white/8 mt-px"
-                            style={{ color: planSt.color }}
-                          >
-                            {planSt.label}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+          <div className="space-y-4">
+            {groupByRole(assigned).map(({ group, items }) => (
+              <div key={group}>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-sm">{ROLE_GROUP_ICON[group]}</span>
+                  <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">{ROLE_GROUP_LABELS[group]}</span>
+                  <span className="text-[10px] text-white/25">· {items.length}</span>
                 </div>
-              )
-            })}
+                <div className="space-y-2">
+                  {items.map(({ emp, assignments }) => {
+                    const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+                    const absent = ABSENT_STATUSES.has(emp.currentStatus)
+                    return (
+                      <div key={emp.user.user_id} className="glass rounded-xl overflow-hidden border border-white/8">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                              absent ? 'bg-orange-500/15 border-orange-500/25 text-orange-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                            }`}>
+                              {emp.user.full_name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-white leading-none">{emp.user.full_name}</div>
+                              {emp.user.position && (
+                                <div className="text-[10px] text-white/35 mt-0.5">{emp.user.position}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {emp.onDuty && !absent && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+                                на смене
+                              </span>
+                            )}
+                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10" style={{ color: stCfg.color }}>
+                              {stCfg.label}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="px-4 py-2 space-y-1.5">
+                          {assignments.map((a, i) => {
+                            const planSt = WORK_PLAN_STATUS_CONFIG[a.plan.status]
+                            return (
+                              <div key={i} className="flex items-start gap-2 text-xs">
+                                {a.time && (
+                                  <span className="font-mono text-cyan-400 shrink-0 bg-cyan-500/10 px-1.5 py-0.5 rounded mt-px">
+                                    {a.time}
+                                  </span>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-white/85">{a.location}</span>
+                                  <span className="text-white/40"> — {a.work}</span>
+                                </div>
+                                <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border border-white/8 mt-px" style={{ color: planSt.color }}>
+                                  {planSt.label}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -250,39 +297,50 @@ export default function StaffBoard({ serviceId }: Props) {
           <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3 px-1">
             Свободны · {unassigned.length}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {unassigned.map(({ emp }) => {
-              const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
-              const absent = ABSENT_STATUSES.has(emp.currentStatus)
-              return (
-                <div
-                  key={emp.user.user_id}
-                  className={`glass rounded-xl px-3 py-2.5 border flex items-center gap-2.5 ${
-                    absent ? 'border-orange-500/15' : 'border-white/5'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                    absent        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-                    : emp.onDuty  ? 'bg-emerald-500/12 border-emerald-500/20 text-emerald-400'
-                    :               'bg-white/8 border-white/10 text-white/40'
-                  }`}>
-                    {emp.user.full_name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-white/70 font-medium truncate">{emp.user.full_name}</div>
-                    {emp.user.position && (
-                      <div className="text-[10px] text-white/30 truncate">{emp.user.position}</div>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <span className="text-[10px]" style={{ color: stCfg.color }}>{stCfg.label}</span>
-                    {emp.onDuty && !absent && (
-                      <span className="text-[9px] text-emerald-400/70">на смене</span>
-                    )}
-                  </div>
+          <div className="space-y-4">
+            {groupByRole(unassigned).map(({ group, items }) => (
+              <div key={group}>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-sm">{ROLE_GROUP_ICON[group]}</span>
+                  <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">{ROLE_GROUP_LABELS[group]}</span>
+                  <span className="text-[10px] text-white/25">· {items.length}</span>
                 </div>
-              )
-            })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {items.map(({ emp }) => {
+                    const stCfg  = EMPLOYEE_STATUS_CONFIG[emp.currentStatus]
+                    const absent = ABSENT_STATUSES.has(emp.currentStatus)
+                    return (
+                      <div
+                        key={emp.user.user_id}
+                        className={`glass rounded-xl px-3 py-2.5 border flex items-center gap-2.5 ${
+                          absent ? 'border-orange-500/15' : 'border-white/5'
+                        }`}
+                      >
+                        <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          absent        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                          : emp.onDuty  ? 'bg-emerald-500/12 border-emerald-500/20 text-emerald-400'
+                          :               'bg-white/8 border-white/10 text-white/40'
+                        }`}>
+                          {emp.user.full_name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-white/70 font-medium truncate">{emp.user.full_name}</div>
+                          {emp.user.position && (
+                            <div className="text-[10px] text-white/30 truncate">{emp.user.position}</div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                          <span className="text-[10px]" style={{ color: stCfg.color }}>{stCfg.label}</span>
+                          {emp.onDuty && !absent && (
+                            <span className="text-[9px] text-emerald-400/70">на смене</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
