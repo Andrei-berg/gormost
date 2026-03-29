@@ -38,10 +38,18 @@ const BASE_CSS = `
   .work-d { background: #dbeafe; }
   .work-n { background: #e0e7ff; }
   .weekend { background: #fafafa; color: #bbb; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
   @media print {
     @page { margin: 15mm 12mm; }
     body { font-size: 10pt; }
     .no-print { display: none !important; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    h1, h2 { break-after: avoid; page-break-after: avoid; }
+    .sig-block { break-inside: avoid; page-break-inside: avoid; }
   }
 `
 
@@ -623,10 +631,16 @@ export function printStroevaiya(
     .sig-block { margin-top: 24px; display: flex; justify-content: space-between; gap: 40px; }
     .sig-item { flex: 1; border-top: 1px solid #000; padding-top: 4px; font-size: 9pt; text-align: center; }
     .print-date { font-size: 8pt; color: #666; text-align: right; margin-top: 8px; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
     @media print {
       @page { size: A4 landscape; margin: 8mm 10mm; }
       body { font-size: 8pt; }
       .no-print { display: none !important; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr { break-inside: avoid; page-break-inside: avoid; }
     }
   `
 

@@ -201,10 +201,17 @@ function generateSummaryHTML(
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; background: #fff; }
-  @page { size: A4 landscape; margin: 10mm 12mm 12mm 15mm; }
+  @page { size: A4 landscape; margin: 10mm 12mm 15mm 15mm; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    .no-break { break-inside: avoid; page-break-inside: avoid; }
   }
 </style>
 </head>

@@ -273,9 +273,25 @@ function generateHTML(f: PermitFields): string {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; background: #fff; }
-  @page { size: A4 portrait; margin: 15mm 15mm 15mm 20mm; }
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* repeat table header on every page */
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    /* never split a row across pages */
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    /* keep section heading with the table that follows */
+    .section-title { break-after: avoid; page-break-after: avoid; }
+    /* signature block stays together */
+    .sig-block { break-inside: avoid; page-break-inside: avoid; }
+    /* small no-break helper */
+    .no-break { break-inside: avoid; page-break-inside: avoid; }
+  }
   table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  /* keep rows together in screen preview too */
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  thead { display: table-header-group; }
   h2 { font-size: 14pt; text-align: center; font-weight: bold; margin: 10px 0 4px; }
   p { margin-bottom: 5px; }
   .section-title { font-weight: bold; margin: 8px 0 4px; }

@@ -158,9 +158,18 @@ function generateSheetHTML(d: SheetData): string {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; background: #fff; }
-  @page { size: A4 portrait; margin: 12mm 12mm 12mm 18mm; }
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @page { size: A4 portrait; margin: 12mm 12mm 20mm 18mm; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    .section-title { break-after: avoid; page-break-after: avoid; }
+    .no-break { break-inside: avoid; page-break-inside: avoid; }
+  }
   table { border-collapse: collapse; width: 100%; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  thead { display: table-header-group; }
 </style>
 </head>
 <body>
