@@ -754,74 +754,48 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                 {plan.shift_type === 'NIGHT' ? 'ночная смена → сменный инженер / мастер (1/3)' : 'дневной наряд → мастер / инженер службы'}
               </span>
             </div>
-            {/* Supervisor chip picker */}
-            {supervisorOwn.length > 0 && (
-              <div className="mb-2">
-                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
-                  Мастера / ИТР своей службы — на смене
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {supervisorOwn.map(u => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onClick={() => handleSupervisorSelect(u)}
-                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
-                        supervisorUserId === u.user_id
-                          ? lightMode ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
-                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="font-medium truncate">{u.full_name}</div>
-                      {u.position && <div className={`text-[9px] truncate ${supervisorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>{u.position}</div>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {supervisorOther.length > 0 && (
-              <div className="mb-2">
-                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
-                  Мастера / ИТР других служб — на смене
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {supervisorOther.map(u => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onClick={() => handleSupervisorSelect(u)}
-                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
-                        supervisorUserId === u.user_id
-                          ? lightMode ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
-                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="font-medium truncate">{u.full_name}</div>
-                      <div className={`text-[9px] truncate ${supervisorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>
-                        {u.position ?? SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Manual fallback */}
-            <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={lbl}>ФИО (вручную)</label>
-                <input value={supervisor} onChange={e => { setSupervisor(e.target.value); setSupervisorUserId('') }} placeholder="Иванов Александр Сергеевич" className={inp} />
+                <label className={lbl}>ФИО руководителя работ</label>
+                <select
+                  value={supervisorUserId}
+                  onChange={e => {
+                    const u = allUsers.find(u => u.user_id === e.target.value)
+                    if (u) handleSupervisorSelect(u)
+                    else { setSupervisorUserId(''); setSupervisor('') }
+                  }}
+                  className={inp}
+                >
+                  <option value="">— выбрать из списка —</option>
+                  {supervisorOwn.length > 0 && (
+                    <optgroup label={`Своя служба — на смене (${supervisorOwn.length})`}>
+                      {supervisorOwn.map(u => (
+                        <option key={u.user_id} value={u.user_id}>
+                          {u.full_name}{u.position ? ` (${u.position})` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {supervisorOther.length > 0 && (
+                    <optgroup label={`Другие службы — на смене (${supervisorOther.length})`}>
+                      {supervisorOther.map(u => (
+                        <option key={u.user_id} value={u.user_id}>
+                          {u.full_name}{u.position ? ` (${u.position})` : ''} — {SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
               </div>
               <div>
                 <label className={lbl}>Должность</label>
                 <input value={supervisorPosition} onChange={e => setSupervisorPosition(e.target.value)} placeholder="мастер участка" className={inp} />
               </div>
             </div>
-            {supervisor && (
-              <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
-                Выбран: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{supervisor}</span>
-                {supervisorPosition && <span className={lightMode ? 'text-slate-500' : 'text-white/40'}>, {supervisorPosition}</span>}
-              </div>
-            )}
+            <div className="mt-2">
+              <label className={lbl}>ФИО вручную (если нет в списке)</label>
+              <input value={supervisorUserId ? '' : supervisor} onChange={e => { setSupervisor(e.target.value); setSupervisorUserId('') }} placeholder="Иванов Александр Сергеевич" className={inp} />
+            </div>
           </div>
 
           {/* Executor (п.1 — Ответственный исполнитель = бригадир) */}
@@ -832,75 +806,48 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                 бригадир службы
               </span>
             </div>
-            {/* Brigadier chip picker — own service */}
-            {brigadierOwn.length > 0 && (
-              <div className="mb-2">
-                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
-                  Бригадиры своей службы — на смене
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {brigadierOwn.map(u => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onClick={() => handleExecutorSelect(u)}
-                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
-                        executorUserId === u.user_id
-                          ? lightMode ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-500/30 border-emerald-500/60 text-emerald-200'
-                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-emerald-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="font-medium truncate">{u.full_name}</div>
-                      {u.position && <div className={`text-[9px] truncate ${executorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>{u.position}</div>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Brigadier chip picker — other services */}
-            {brigadierOther.length > 0 && (
-              <div className="mb-2">
-                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
-                  Бригадиры других служб — на смене
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {brigadierOther.map(u => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onClick={() => handleExecutorSelect(u)}
-                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
-                        executorUserId === u.user_id
-                          ? lightMode ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-500/30 border-emerald-500/60 text-emerald-200'
-                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-emerald-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="font-medium truncate">{u.full_name}</div>
-                      <div className={`text-[9px] truncate ${executorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>
-                        {u.position ?? SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Manual fallback */}
-            <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={lbl}>ФИО (вручную)</label>
-                <input value={executor} onChange={e => { setExecutor(e.target.value); setExecutorUserId('') }} placeholder="Гончаров Валерий Викторович" className={inp} />
+                <label className={lbl}>ФИО бригадира</label>
+                <select
+                  value={executorUserId}
+                  onChange={e => {
+                    const u = allUsers.find(u => u.user_id === e.target.value)
+                    if (u) handleExecutorSelect(u)
+                    else { setExecutorUserId(''); setExecutor('') }
+                  }}
+                  className={inp}
+                >
+                  <option value="">— выбрать из списка —</option>
+                  {brigadierOwn.length > 0 && (
+                    <optgroup label={`Своя служба — на смене (${brigadierOwn.length})`}>
+                      {brigadierOwn.map(u => (
+                        <option key={u.user_id} value={u.user_id}>
+                          {u.full_name}{u.position ? ` (${u.position})` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {brigadierOther.length > 0 && (
+                    <optgroup label={`Другие службы — на смене (${brigadierOther.length})`}>
+                      {brigadierOther.map(u => (
+                        <option key={u.user_id} value={u.user_id}>
+                          {u.full_name}{u.position ? ` (${u.position})` : ''} — {SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
               </div>
               <div>
                 <label className={lbl}>Должность</label>
                 <input value={executorPosition} onChange={e => setExecutorPosition(e.target.value)} placeholder="бригадир" className={inp} />
               </div>
             </div>
-            {executor && (
-              <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
-                Выбран: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{executor}</span>
-                {executorPosition && <span className={lightMode ? 'text-slate-500' : 'text-white/40'}>, {executorPosition}</span>}
-              </div>
-            )}
+            <div className="mt-2">
+              <label className={lbl}>ФИО вручную (если нет в списке)</label>
+              <input value={executorUserId ? '' : executor} onChange={e => { setExecutor(e.target.value); setExecutorUserId('') }} placeholder="Гончаров Валерий Викторович" className={inp} />
+            </div>
           </div>
 
           {/* Time (п.4) */}
