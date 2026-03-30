@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { WorkPlanWithItems, AuthSession, User } from '@/types'
-import { fetchUsersByService, markWorkPlanPermit } from '@/lib/api'
+import type { WorkPlanWithItems, AuthSession, UserWithAssignment } from '@/types'
+import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api'
+import { isWorkerOnDuty } from '@/lib/shifts'
 
 // ─── Russian month names ───────────────────────────────────────────────────
 const RU_MONTHS = [
@@ -194,6 +195,7 @@ interface PermitFields {
   instructionNums:     string
   isRoadWork:          boolean
   duringMeasure2:      string
+  customWorkLabel:     string
 }
 
 function generateHTML(f: PermitFields): string {
@@ -351,8 +353,8 @@ function generateHTML(f: PermitFields): string {
     &laquo;<span class="underline">&nbsp;${endD.day}&nbsp;</span>&raquo;&nbsp;${endD.month}&nbsp;${endD.year}&nbsp;г.
   </p>
 
-  ${f.workItems.length > 0 ? `
-  <p class="section-title">5.&nbsp;Наименование мероприятий (виды работ из плана):</p>
+  ${f.workItems.length > 0 || f.customWorkLabel ? `
+  <p class="section-title">5.&nbsp;Наименование мероприятий (виды работ из плана):${f.customWorkLabel ? `&nbsp;<span style="font-weight:normal">${f.customWorkLabel}</span>` : ''}</p>
   <table>
     <thead><tr>
       ${th('№', 'width:30px')}
@@ -458,6 +460,23 @@ function generateHTML(f: PermitFields): string {
 </html>`
 }
 
+// ─── Permit picker helpers ─────────────────────────────────────────────────
+
+function getPermitRoleGroup(u: UserWithAssignment): 'itr' | 'master' | 'brigadier' | 'other' {
+  const rl  = u.role_level.toLowerCase()
+  const pos = (u.position ?? '').toLowerCase()
+  if (['head', 'chief_engineer', 'specialist', 'zamporab', 'hr', 'safety_engineer'].includes(rl)) return 'itr'
+  if (pos.includes('бригадир')) return 'brigadier'
+  if (rl === 'foreman') return 'master'
+  return 'other'
+}
+
+function isUserOnDutyDate(u: UserWithAssignment, dateStr: string): boolean {
+  const a = u.assignment
+  if (!a || !a.schedule_code) return false
+  return isWorkerOnDuty({ ...a, schedule_code: a.schedule_code }, new Date(dateStr + 'T00:00:00'))
+}
+
 // ─── Issuer role cascade ───────────────────────────────────────────────────
 
 type IssuerRole = 'head' | 'energetik' | 'chief'
@@ -481,14 +500,15 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   // Theme toggle — default light (print document form)
   const [lightMode, setLightMode] = useState(true)
 
-  // Service users for dropdowns
-  const [serviceUsers, setServiceUsers] = useState<User[]>([])
+  // All active users with assignments (for on-duty filtering)
+  const [allUsers, setAllUsers] = useState<UserWithAssignment[]>([])
   useEffect(() => {
-    if (plan.service_id) fetchUsersByService(plan.service_id).then(setServiceUsers)
-  }, [plan.service_id])
+    fetchUsersWithAssignments().then(setAllUsers)
+  }, [])
 
   // Work type selection
   const [workTypeKey, setWorkTypeKey] = useState('repair')
+  const [customWorkLabel, setCustomWorkLabel] = useState('')
   const workTypeCfg = WORK_TYPES[workTypeKey] ?? WORK_TYPES.repair
 
   const nextDay = addDay(plan.plan_date)
@@ -540,25 +560,25 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     }
   }
 
-  // Supervisor dropdown select
-  const handleSupervisorSelect = (userId: string) => {
-    setSupervisorUserId(userId)
-    const u = serviceUsers.find(u => u.user_id === userId)
-    if (u) {
-      setSupervisor(u.full_name)
-      setSupervisorPosition(u.position ?? (plan.shift_type === 'NIGHT' ? 'сменный инженер' : 'мастер участка'))
-    }
+  // Supervisor chip select
+  const handleSupervisorSelect = (u: UserWithAssignment) => {
+    setSupervisorUserId(u.user_id)
+    setSupervisor(u.full_name)
+    setSupervisorPosition(u.position ?? (plan.shift_type === 'NIGHT' ? 'сменный инженер' : 'мастер участка'))
   }
 
-  // Executor dropdown select
-  const handleExecutorSelect = (userId: string) => {
-    setExecutorUserId(userId)
-    const u = serviceUsers.find(u => u.user_id === userId)
-    if (u) {
-      setExecutor(u.full_name)
-      setExecutorPosition(u.position ?? 'бригадир')
-    }
+  // Executor chip select
+  const handleExecutorSelect = (u: UserWithAssignment) => {
+    setExecutorUserId(u.user_id)
+    setExecutor(u.full_name)
+    setExecutorPosition(u.position ?? 'бригадир')
   }
+
+  // Derived: on-duty users grouped for permit picker
+  const supervisorOwn   = allUsers.filter(u => u.service_id === plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)) && isUserOnDutyDate(u, plan.plan_date))
+  const supervisorOther = allUsers.filter(u => u.service_id !== plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)) && isUserOnDutyDate(u, plan.plan_date))
+  const brigadierOwn    = allUsers.filter(u => u.service_id === plan.service_id && getPermitRoleGroup(u) === 'brigadier' && isUserOnDutyDate(u, plan.plan_date))
+  const brigadierOther  = allUsers.filter(u => u.service_id !== plan.service_id && getPermitRoleGroup(u) === 'brigadier' && isUserOnDutyDate(u, plan.plan_date))
 
   const allWorkers  = [...new Set(plan.items.flatMap(i => i.workers))]
   const allVehicles: string[] = plan.items.flatMap(i =>
@@ -595,6 +615,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
       instructionNums: workTypeCfg.instructionNums,
       isRoadWork:    workTypeCfg.isRoadWork,
       duringMeasure2: workTypeCfg.duringMeasure2,
+      customWorkLabel,
     })
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -698,6 +719,15 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
             <div className={`mt-1 text-[10px] ${subtitleText}`}>
               <span className="font-medium">Инструкции:</span> №&nbsp;{workTypeCfg.instructionNums}
             </div>
+            <div className="mt-2">
+              <label className={lbl}>Произвольный вид работ (вписать вручную)</label>
+              <input
+                value={customWorkLabel}
+                onChange={e => setCustomWorkLabel(e.target.value)}
+                placeholder="Например: аварийный ремонт перил моста..."
+                className={inp}
+              />
+            </div>
           </div>
 
           {/* Row: number + dates */}
@@ -724,37 +754,72 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                 {plan.shift_type === 'NIGHT' ? 'ночная смена → сменный инженер / мастер (1/3)' : 'дневной наряд → мастер / инженер службы'}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Supervisor chip picker */}
+            {supervisorOwn.length > 0 && (
+              <div className="mb-2">
+                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
+                  Мастера / ИТР своей службы — на смене
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {supervisorOwn.map(u => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => handleSupervisorSelect(u)}
+                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
+                        supervisorUserId === u.user_id
+                          ? lightMode ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
+                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="font-medium truncate">{u.full_name}</div>
+                      {u.position && <div className={`text-[9px] truncate ${supervisorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>{u.position}</div>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {supervisorOther.length > 0 && (
+              <div className="mb-2">
+                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
+                  Мастера / ИТР других служб — на смене
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {supervisorOther.map(u => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => handleSupervisorSelect(u)}
+                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
+                        supervisorUserId === u.user_id
+                          ? lightMode ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
+                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="font-medium truncate">{u.full_name}</div>
+                      <div className={`text-[9px] truncate ${supervisorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>
+                        {u.position ?? SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Manual fallback */}
+            <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
-                <label className={lbl}>ФИО руководителя работ</label>
-                {serviceUsers.length > 0 ? (
-                  <select
-                    value={supervisorUserId}
-                    onChange={e => handleSupervisorSelect(e.target.value)}
-                    className={inp}
-                  >
-                    <option value="">— выбрать из списка —</option>
-                    {serviceUsers.map(u => (
-                      <option key={u.user_id} value={u.user_id}>{u.full_name}{u.position ? ` (${u.position})` : ''}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Иванов Александр Сергеевич" className={inp} />
-                )}
+                <label className={lbl}>ФИО (вручную)</label>
+                <input value={supervisor} onChange={e => { setSupervisor(e.target.value); setSupervisorUserId('') }} placeholder="Иванов Александр Сергеевич" className={inp} />
               </div>
               <div>
                 <label className={lbl}>Должность</label>
-                <input
-                  value={supervisorPosition}
-                  onChange={e => setSupervisorPosition(e.target.value)}
-                  placeholder="мастер участка"
-                  className={inp}
-                />
+                <input value={supervisorPosition} onChange={e => setSupervisorPosition(e.target.value)} placeholder="мастер участка" className={inp} />
               </div>
             </div>
-            {supervisorUserId && (
+            {supervisor && (
               <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
-                ФИО: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{supervisor}</span>
+                Выбран: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{supervisor}</span>
+                {supervisorPosition && <span className={lightMode ? 'text-slate-500' : 'text-white/40'}>, {supervisorPosition}</span>}
               </div>
             )}
           </div>
@@ -767,37 +832,73 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                 бригадир службы
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Brigadier chip picker — own service */}
+            {brigadierOwn.length > 0 && (
+              <div className="mb-2">
+                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
+                  Бригадиры своей службы — на смене
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {brigadierOwn.map(u => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => handleExecutorSelect(u)}
+                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
+                        executorUserId === u.user_id
+                          ? lightMode ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-500/30 border-emerald-500/60 text-emerald-200'
+                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-emerald-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="font-medium truncate">{u.full_name}</div>
+                      {u.position && <div className={`text-[9px] truncate ${executorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>{u.position}</div>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Brigadier chip picker — other services */}
+            {brigadierOther.length > 0 && (
+              <div className="mb-2">
+                <div className={`text-[9px] uppercase tracking-wider mb-1.5 ${subtitleText}`}>
+                  Бригадиры других служб — на смене
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {brigadierOther.map(u => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => handleExecutorSelect(u)}
+                      className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-all leading-tight ${
+                        executorUserId === u.user_id
+                          ? lightMode ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-500/30 border-emerald-500/60 text-emerald-200'
+                          : lightMode ? 'bg-white border-gray-300 text-gray-700 hover:bg-emerald-50' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="font-medium truncate">{u.full_name}</div>
+                      <div className={`text-[9px] truncate ${executorUserId === u.user_id ? 'opacity-80' : lightMode ? 'text-gray-400' : 'text-white/40'}`}>
+                        {u.position ?? SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Manual fallback */}
+            <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
-                <label className={lbl}>ФИО бригадира</label>
-                {serviceUsers.length > 0 ? (
-                  <select
-                    value={executorUserId}
-                    onChange={e => handleExecutorSelect(e.target.value)}
-                    className={inp}
-                  >
-                    <option value="">— выбрать из списка —</option>
-                    {serviceUsers.map(u => (
-                      <option key={u.user_id} value={u.user_id}>{u.full_name}{u.position ? ` (${u.position})` : ''}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input value={executor} onChange={e => setExecutor(e.target.value)} placeholder="Гончаров Валерий Викторович" className={inp} />
-                )}
+                <label className={lbl}>ФИО (вручную)</label>
+                <input value={executor} onChange={e => { setExecutor(e.target.value); setExecutorUserId('') }} placeholder="Гончаров Валерий Викторович" className={inp} />
               </div>
               <div>
                 <label className={lbl}>Должность</label>
-                <input
-                  value={executorPosition}
-                  onChange={e => setExecutorPosition(e.target.value)}
-                  placeholder="бригадир"
-                  className={inp}
-                />
+                <input value={executorPosition} onChange={e => setExecutorPosition(e.target.value)} placeholder="бригадир" className={inp} />
               </div>
             </div>
-            {executorUserId && (
+            {executor && (
               <div className={`mt-2 text-[10px] ${lightMode ? 'text-slate-500' : 'text-white/40'}`}>
-                ФИО: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{executor}</span>
+                Выбран: <span className={lightMode ? 'text-slate-700 font-medium' : 'text-white/60 font-medium'}>{executor}</span>
+                {executorPosition && <span className={lightMode ? 'text-slate-500' : 'text-white/40'}>, {executorPosition}</span>}
               </div>
             )}
           </div>
