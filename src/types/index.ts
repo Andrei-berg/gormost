@@ -297,6 +297,23 @@ export type EmployeeStatusType =
   | 'SVO'
   | 'Troydoustroyen_s_SVO'
 
+export interface StatusMetadata {
+  // SVO
+  volunteer_type?: 'доброволец' | 'по контракту'
+  contract_suspended?: boolean
+  // Mobilizovan
+  order_number?: string
+  order_date?: string
+  // Bolnichniy
+  sick_leave_number?: string
+  // Otgul
+  otgul_basis?: 'za_svoy_schet' | 'za_otrabotannoe'
+  // Otpusk
+  leave_type?: string
+  // Uvolen
+  dismissal_order?: string
+}
+
 export interface EmployeeStatus {
   id: string
   user_id: string
@@ -311,6 +328,7 @@ export interface EmployeeStatus {
   planned_return:    string | null   // when the employee is planned to return
   actual_departure:  string | null   // when the employee actually left
   actual_return:     string | null   // when the employee actually returned
+  metadata: StatusMetadata | null
 }
 
 // Statuses for which departure/return date fields are meaningful

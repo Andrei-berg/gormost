@@ -16,14 +16,16 @@ import HRTableView from '@/components/hr/HRTableView'
 import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
 import ShiftTab from '@/components/admin/ShiftTab'
 import HRToolsShell from '@/components/hr-tools/HRToolsShell'
+import HRReports from '@/components/hr/HRReports'
 
-type Tab = 'employees' | 'shifts' | 'analytics'
+type Tab = 'employees' | 'shifts' | 'analytics' | 'reports'
 type ShiftSubTab = 'schedules' | 'monitor'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'employees', label: 'Сотрудники', emoji: '👤' },
   { id: 'shifts',    label: 'Сменность',  emoji: '🔄' },
   { id: 'analytics', label: 'Аналитика',  emoji: '📊' },
+  { id: 'reports',   label: 'Отчёты',     emoji: '📋' },
 ]
 
 export default function HRPage() {
@@ -301,6 +303,9 @@ function Content({ session }: { session: AuthSession }) {
 
       {/* ─── ANALYTICS TAB ─── */}
       {tab === 'analytics' && <HRToolsShell session={session} />}
+
+      {/* ─── REPORTS TAB ─── */}
+      {tab === 'reports' && <HRReports session={session} services={services} />}
 
       {/* Modals */}
       {selectedUserId && (

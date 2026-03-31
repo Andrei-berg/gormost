@@ -4,7 +4,7 @@ import type {
   User, Service, Category, GObject, Construction, WorkType,
   Request, RequestAssignment, StaffRequest, Remark, ChangelogEntry,
   RequestStatus, Priority, Urgency, StaffRequestStatus,
-  EmployeeStatusType, EmployeeStatus, EnrichedEmployee,
+  EmployeeStatusType, EmployeeStatus, EnrichedEmployee, StatusMetadata,
   WorkPlan, WorkPlanItem, WorkPlanWithItems, WorkPlanItemWithVehicles,
   Vehicle, VehicleAssignment, VehicleWithAssignments,
   VehicleBreakdown, VehicleBreakdownWithVehicle, VehicleBreakdownSeverity, VehicleBreakdownStatus,
@@ -458,7 +458,8 @@ export async function setEmployeeStatus(
     planned_return?: string | null
     actual_departure?: string | null
     actual_return?: string | null
-  }
+  },
+  metadata?: StatusMetadata | null
 ): Promise<EmployeeStatus | null> {
   const row: Record<string, unknown> = {
     user_id: userId, status, date_from: dateFrom, date_to: dateTo,
@@ -470,6 +471,7 @@ export async function setEmployeeStatus(
     if (dates.actual_departure  !== undefined) row.actual_departure  = dates.actual_departure  || null
     if (dates.actual_return     !== undefined) row.actual_return     = dates.actual_return     || null
   }
+  if (metadata !== undefined) row.metadata = metadata ?? null
   const { data, error } = await supabase
     .from('employee_status')
     .insert(row)
@@ -499,6 +501,35 @@ export async function fetchStatusesForPeriod(
     .or(`date_to.is.null,date_to.gte.${dateFrom}`)
     .order('date_from')
   return (data || []) as EmployeeStatus[]
+}
+
+// StatusWithUser: EmployeeStatus enriched with user fields for period reports
+export interface StatusWithUser extends EmployeeStatus {
+  user_full_name: string
+  user_position: string | null
+  user_service_id: string | null
+}
+
+export async function fetchStatusesForPeriodWithUsers(
+  dateFrom: string,
+  dateTo: string,
+  serviceId?: string
+): Promise<StatusWithUser[]> {
+  const { data } = await supabase
+    .from('employee_status')
+    .select('*, users!inner(full_name, position, service_id)')
+    .lte('date_from', dateTo)
+    .or(`date_to.is.null,date_to.gte.${dateFrom}`)
+    .order('date_from')
+  if (!data) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map(row => ({
+    ...row,
+    user_full_name: row.users?.full_name ?? '',
+    user_position: row.users?.position ?? null,
+    user_service_id: row.users?.service_id ?? null,
+    users: undefined,
+  })).filter((row: StatusWithUser) => !serviceId || row.user_service_id === serviceId)
 }
 
 // Hire employee: set date_hired and ensure is_active=true.

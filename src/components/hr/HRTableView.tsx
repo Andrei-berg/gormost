@@ -5,7 +5,7 @@ import {
   EMPLOYEE_STATUS_CONFIG, SERVICE_META,
   STATUSES_WITH_DATES, OPEN_ENDED_STATUSES,
 } from '@/types'
-import type { EnrichedEmployee, EmployeeStatusType, Service, UserWithAssignment } from '@/types'
+import type { EnrichedEmployee, EmployeeStatusType, Service, UserWithAssignment, StatusMetadata } from '@/types'
 
 const DAILY_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
 const EXTENDED_STATUSES: EmployeeStatusType[] = [
@@ -75,6 +75,15 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
   const [actualReturn, setActualReturn]         = useState('')
   const [reasonText, setReasonText]             = useState('')
 
+  // Metadata state for status-specific fields
+  const [metaVolunteerType, setMetaVolunteerType] = useState<'доброволец' | 'по контракту'>('доброволец')
+  const [metaContractSuspended, setMetaContractSuspended] = useState(false)
+  const [metaOrderNumber, setMetaOrderNumber] = useState('')
+  const [metaOrderDate, setMetaOrderDate] = useState('')
+  const [metaSickLeaveNumber, setMetaSickLeaveNumber] = useState('')
+  const [metaOtgulBasis, setMetaOtgulBasis] = useState<'za_svoy_schet' | 'za_otrabotannoe'>('za_otrabotannoe')
+  const [metaLeaveType, setMetaLeaveType] = useState('ежегодный')
+
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState<string | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -135,6 +144,13 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
     setActualDeparture('')
     setActualReturn('')
     setReasonText('')
+    setMetaVolunteerType('доброволец')
+    setMetaContractSuspended(false)
+    setMetaOrderNumber('')
+    setMetaOrderDate('')
+    setMetaSickLeaveNumber('')
+    setMetaOtgulBasis('za_otrabotannoe')
+    setMetaLeaveType('ежегодный')
     setPendingStatus(newStatus)
   }
 
@@ -142,6 +158,18 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
     if (!pendingStatus) return
     const prevStatus = localStatus
     setLocalStatus(pendingStatus); setError(null); setSaving(true)
+    let metadata: StatusMetadata | null = null
+    if (pendingStatus === 'SVO') {
+      metadata = { volunteer_type: metaVolunteerType, contract_suspended: metaContractSuspended }
+    } else if (pendingStatus === 'Mobilizovan') {
+      metadata = { order_number: metaOrderNumber || undefined, order_date: metaOrderDate || undefined }
+    } else if (pendingStatus === 'Bolnichniy') {
+      metadata = { sick_leave_number: metaSickLeaveNumber || undefined }
+    } else if (pendingStatus === 'Otgul') {
+      metadata = { otgul_basis: metaOtgulBasis }
+    } else if (pendingStatus === 'Otpusk' || pendingStatus === 'Uchebniy_otpusk') {
+      metadata = { leave_type: metaLeaveType }
+    }
     const result = await setEmployeeStatus(
       user.user_id,
       pendingStatus,
@@ -154,7 +182,8 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
         planned_return:    plannedReturn    || null,
         actual_departure:  actualDeparture  || null,
         actual_return:     actualReturn     || null,
-      }
+      },
+      metadata
     )
     setSaving(false)
     if (!result) { setLocalStatus(prevStatus); setError('Ошибка сохранения') }
@@ -382,6 +411,66 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
                       autoFocus
                     />
                   </div>
+
+                  {/* SVO metadata */}
+                  {pendingStatus === 'SVO' && (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] text-white/40 block mb-1">Тип</label>
+                        <select value={metaVolunteerType} onChange={e => setMetaVolunteerType(e.target.value as 'доброволец' | 'по контракту')} className={inp}>
+                          <option value="доброволец">Доброволец</option>
+                          <option value="по контракту">По контракту</option>
+                        </select>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
+                        <input type="checkbox" checked={metaContractSuspended} onChange={e => setMetaContractSuspended(e.target.checked)} className="accent-amber-500" />
+                        Трудовой договор приостановлен
+                      </label>
+                    </div>
+                  )}
+                  {/* Mobilizovan metadata */}
+                  {pendingStatus === 'Mobilizovan' && (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] text-white/40 block mb-1">№ приказа</label>
+                        <input type="text" value={metaOrderNumber} onChange={e => setMetaOrderNumber(e.target.value)} placeholder="№ приказа о мобилизации" className={inp} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-white/40 block mb-1">Дата приказа</label>
+                        <input type="date" value={metaOrderDate} onChange={e => setMetaOrderDate(e.target.value)} className={inp} />
+                      </div>
+                    </div>
+                  )}
+                  {/* Bolnichniy metadata */}
+                  {pendingStatus === 'Bolnichniy' && (
+                    <div>
+                      <label className="text-[10px] text-white/40 block mb-1">№ больничного листа</label>
+                      <input type="text" value={metaSickLeaveNumber} onChange={e => setMetaSickLeaveNumber(e.target.value)} placeholder="Номер б/л" className={inp} />
+                    </div>
+                  )}
+                  {/* Otgul metadata */}
+                  {pendingStatus === 'Otgul' && (
+                    <div>
+                      <label className="text-[10px] text-white/40 block mb-1">Основание</label>
+                      <select value={metaOtgulBasis} onChange={e => setMetaOtgulBasis(e.target.value as 'za_svoy_schet' | 'za_otrabotannoe')} className={inp}>
+                        <option value="za_otrabotannoe">За ранее отработанное время</option>
+                        <option value="za_svoy_schet">За свой счёт</option>
+                      </select>
+                    </div>
+                  )}
+                  {/* Otpusk / Uchebniy_otpusk metadata */}
+                  {(pendingStatus === 'Otpusk' || pendingStatus === 'Uchebniy_otpusk') && (
+                    <div>
+                      <label className="text-[10px] text-white/40 block mb-1">Вид отпуска</label>
+                      <select value={metaLeaveType} onChange={e => setMetaLeaveType(e.target.value)} className={inp}>
+                        <option value="ежегодный">Ежегодный оплачиваемый</option>
+                        <option value="дополнительный">Дополнительный</option>
+                        <option value="по уходу за ребенком">По уходу за ребёнком</option>
+                        <option value="учебный">Учебный</option>
+                        <option value="без сохранения зарплаты">Без сохранения заработной платы</option>
+                      </select>
+                    </div>
+                  )}
 
                   <div className="flex gap-1.5">
                     <button onClick={handleConfirm} disabled={saving}
