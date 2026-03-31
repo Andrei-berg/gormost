@@ -132,8 +132,9 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
           <label className={lbl}>Группа ротации</label>
           <select value={rotationGroup} onChange={e => setRotationGroup(e.target.value)} className="form-select text-xs w-full">
             <option value="">— выбрать —</option>
-            <option value="1">Группа 1 (1–15)</option>
-            <option value="2">Группа 2 (16–конец)</option>
+            <option value="1">Группа 1 (1–15 каждого месяца)</option>
+            <option value="2">Группа 2 (16–конец каждого месяца)</option>
+            <option value="mid">Средина→средина (16-е — 15-е след. мес.)</option>
           </select>
         </div>
       )}

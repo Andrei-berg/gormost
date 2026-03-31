@@ -204,7 +204,26 @@ export function isWorkerOnDuty(
   }
 
   if (code === '15/15') {
-    // Always calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
+    // mid: works from 16th of anchor month to 15th of next month, then rests, repeating
+    if (rotation_group === 'mid') {
+      const anchorMid = active_phase?.anchor_date ?? shift_reference_date
+      if (!anchorMid) return false
+      const anchorDate = new Date(anchorMid)
+      anchorDate.setHours(0, 0, 0, 0)
+      // Determine which calendar half-month period the target falls in:
+      // days 16–end → current month is the period start
+      // days  1–15  → previous month is the period start
+      let pMonth = target.getMonth()
+      let pYear  = target.getFullYear()
+      if (target.getDate() < 16) {
+        pMonth -= 1
+        if (pMonth < 0) { pMonth = 11; pYear -= 1 }
+      }
+      const elapsed = (pYear - anchorDate.getFullYear()) * 12 + (pMonth - anchorDate.getMonth())
+      // even periods (0, 2, 4…) = work; odd = rest; negative = before anchor = rest
+      return elapsed >= 0 && elapsed % 2 === 0
+    }
+    // Calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
     const day = target.getDate()
     return rotation_group === '2' ? day >= 16 : day <= 15
   }
@@ -354,6 +373,27 @@ export function resolveShiftStatus(
   }
 
   if (schedule_code === '15/15') {
+    // mid: works from 16th of anchor month to 15th of next month, then rests
+    if (rotation_group === 'mid') {
+      const anchorDate = new Date(active_phase.anchor_date)
+      anchorDate.setHours(0, 0, 0, 0)
+      let pMonth = target.getMonth()
+      let pYear  = target.getFullYear()
+      if (target.getDate() < 16) {
+        pMonth -= 1
+        if (pMonth < 0) { pMonth = 11; pYear -= 1 }
+      }
+      const elapsed = (pYear - anchorDate.getFullYear()) * 12 + (pMonth - anchorDate.getMonth())
+      const working = elapsed >= 0 && elapsed % 2 === 0
+      // Alternating: flip phase every other work period (every 2 months)
+      let ep = phase
+      if (working && active_phase.is_alternating) {
+        const cycleIdx = Math.floor(elapsed / 2)
+        if (cycleIdx % 2 !== 0) ep = ep === 'day' ? 'night' : 'day'
+      }
+      const t = SHIFT_TIMES[ep]
+      return { working, phase: working ? ep : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
+    }
     // Calendar-based: group 1 = days 1–15, group 2 = days 16–end of month
     const day = target.getDate()
     const working = rotation_group === '2' ? day >= 16 : day <= 15

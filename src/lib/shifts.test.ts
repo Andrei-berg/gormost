@@ -165,7 +165,52 @@ describe('resolveShiftStatus — cyclic schedules without phase return not worki
   })
 })
 
-// ── 7. resolveShiftStatus — 1/3 shift times ────────────────────────────────────
+// ── 7. isWorkerOnDuty — 15/15 mid-month rotation ─────────────────────────────
+// anchor = 2026-01-16 → work: Jan 16–Feb 15, rest: Feb 16–Mar 15, work: Mar 16–Apr 15…
+
+describe('isWorkerOnDuty — 15/15 mid rotation_group', () => {
+  const worker = {
+    shift_num: null,
+    schedule_code: '15/15',
+    shift_reference_date: '2026-01-16',
+    rotation_group: 'mid',
+  }
+
+  it('works from anchor day (Jan 16)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-01-16'))).toBe(true)
+  })
+
+  it('works on Feb 15 (last day of first work period)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-02-15'))).toBe(true)
+  })
+
+  it('rests on Feb 16 (start of first rest period)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-02-16'))).toBe(false)
+  })
+
+  it('rests on Mar 15 (last day of rest period)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-03-15'))).toBe(false)
+  })
+
+  it('works again on Mar 16 (start of second work period)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-03-16'))).toBe(true)
+  })
+
+  it('works on Apr 15 (last day of second work period)', () => {
+    expect(isWorkerOnDuty(worker, d('2026-04-15'))).toBe(true)
+  })
+
+  it('returns false for date before anchor', () => {
+    expect(isWorkerOnDuty(worker, d('2026-01-15'))).toBe(false)
+  })
+
+  it('returns false without anchor date', () => {
+    const noAnchor = { ...worker, shift_reference_date: null }
+    expect(isWorkerOnDuty(noAnchor, d('2026-01-16'))).toBe(false)
+  })
+})
+
+// ── 8. resolveShiftStatus — 1/3 shift times ────────────────────────────────────
 
 describe('resolveShiftStatus — 1/3 shift times', () => {
   it('returns 07:30 handover times when working', () => {
