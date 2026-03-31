@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { UserWithAssignment, Schedule, AuthSession } from '@/types'
 import { upsertEmployeeAssignment } from '@/lib/api'
+import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {
   user: UserWithAssignment
@@ -28,6 +29,9 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
   const [customRest,      setCustomRest]       = useState<string>(String(a?.custom_rest_days ?? ''))
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+  const lbl = isLight ? 'text-gray-500 text-[10px] block mb-1 uppercase tracking-wide' : 'text-white/35 text-[10px] block mb-1 uppercase tracking-wide'
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -75,15 +79,15 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-white/80 font-medium text-xs truncate max-w-[200px]">{user.full_name}</div>
-          <div className="text-white/30 text-[10px] mt-0.5">Назначение графика</div>
+          <div className={`font-medium text-xs truncate max-w-[200px] ${isLight ? 'text-gray-800' : 'text-white/80'}`}>{user.full_name}</div>
+          <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>Назначение графика</div>
         </div>
-        <button onClick={onClose} className="text-white/25 hover:text-white/60 text-xl leading-none ml-2">×</button>
+        <button onClick={onClose} className={`text-xl leading-none ml-2 ${isLight ? 'text-gray-400 hover:text-gray-600' : 'text-white/25 hover:text-white/60'}`}>×</button>
       </div>
 
       {/* Schedule selector */}
       <div>
-        <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">График работы</label>
+        <label className={lbl}>График работы</label>
         <select
           value={scheduleId}
           onChange={e => setScheduleId(e.target.value)}
@@ -99,7 +103,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {/* Shift number (1/3, 5/2) */}
       {needsShiftNum && (
         <div>
-          <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Номер смены</label>
+          <label className={lbl}>Номер смены</label>
           <select value={shiftNum} onChange={e => setShiftNum(e.target.value)} className="form-select text-xs w-full">
             <option value="">— выбрать —</option>
             {[1, 2, 3, 4].map(n => <option key={n} value={n}>Смена {n}</option>)}
@@ -110,8 +114,8 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {/* Reference date (2/2, 3/3, 6/6) */}
       {needsRefDate && (
         <div>
-          <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">
-            Опорная дата <span className="normal-case text-white/20">(первый рабочий день)</span>
+          <label className={lbl}>
+            Опорная дата <span className={`normal-case ${isLight ? 'text-gray-300' : 'text-white/20'}`}>(первый рабочий день)</span>
           </label>
           <input
             type="date"
@@ -125,7 +129,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {/* Rotation group (15/15) */}
       {needsRotation && (
         <div>
-          <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Группа ротации</label>
+          <label className={lbl}>Группа ротации</label>
           <select value={rotationGroup} onChange={e => setRotationGroup(e.target.value)} className="form-select text-xs w-full">
             <option value="">— выбрать —</option>
             <option value="1">Группа 1 (1–15)</option>
@@ -138,18 +142,18 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {isCustom && (
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Рабочих</label>
+            <label className={lbl}>Рабочих</label>
             <input type="number" min={1} max={30} value={customWork} onChange={e => setCustomWork(e.target.value)} className="form-input text-xs w-full" />
           </div>
           <div className="flex-1">
-            <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Выходных</label>
+            <label className={lbl}>Выходных</label>
             <input type="number" min={1} max={30} value={customRest} onChange={e => setCustomRest(e.target.value)} className="form-input text-xs w-full" />
           </div>
         </div>
       )}
 
       {/* Driver toggle */}
-      <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer select-none py-1">
+      <label className={`flex items-center gap-2 text-xs cursor-pointer select-none py-1 ${isLight ? 'text-gray-500' : 'text-white/50'}`}>
         <input
           type="checkbox"
           checked={isDriver}
@@ -160,16 +164,16 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       </label>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+      <div className={`flex items-center gap-2 pt-1 border-t ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
         <button
           onClick={onClose}
-          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/35 hover:bg-white/10 transition-colors"
+          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${isLight ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-white/5 text-white/35 hover:bg-white/10'}`}
         >Отмена</button>
         <div className="flex-1" />
         <button
           onClick={handleSave}
           disabled={saving || !scheduleId}
-          className="px-4 py-1.5 rounded-lg text-xs bg-blue-600/35 text-blue-100 hover:bg-blue-600/50 border border-blue-500/25 transition-colors disabled:opacity-40"
+          className="px-4 py-1.5 rounded-lg text-xs bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40"
         >
           {saving ? '…' : 'Назначить'}
         </button>

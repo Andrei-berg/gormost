@@ -14,6 +14,7 @@ import {
   type PhaseEditorState, type ScheduleEditorState,
 } from './types'
 import { addMonths, daysInRange, toDateStr, nextManual, CYCLIC_CODES } from './utils'
+import { useTheme } from '@/lib/ThemeContext'
 import PlannerToolbar from './PlannerToolbar'
 import PlannerSettingsPanel from './PlannerSettings'
 import PlannerGrid from './PlannerGrid'
@@ -54,6 +55,10 @@ export default function PlannerShell({ session }: Props) {
   // ── Role-based edit permission ───────────────────────────────────────────
   const canEdit = ['ADMIN', 'HR'].includes(session.role_level) ||
     (session.role_level === 'HEAD')
+
+  // ── Theme ────────────────────────────────────────────────────────────────
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
 
   // ── Load data ────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -227,6 +232,7 @@ export default function PlannerShell({ session }: Props) {
     <div className="space-y-3">
       {/* Toolbar */}
       <PlannerToolbar
+        isLight={isLight}
         startYear={startYear}
         startMonth={startMonth}
         span={span}
@@ -252,6 +258,7 @@ export default function PlannerShell({ session }: Props) {
       {showSettings && (
         <div className="flex justify-end">
           <PlannerSettingsPanel
+            isLight={isLight}
             settings={settings}
             onChange={setSettings}
             onClose={() => setShowSettings(false)}
@@ -261,13 +268,14 @@ export default function PlannerShell({ session }: Props) {
 
       {/* Loading */}
       {loading ? (
-        <div className="text-center text-white/25 py-20 text-sm">
+        <div className={`text-center py-20 text-sm ${isLight ? 'text-gray-400' : 'text-white/25'}`}>
           <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
           Загрузка…
         </div>
       ) : (
         <>
           <PlannerGrid
+            isLight={isLight}
             users={editableUsers}
             services={typedServices}
             schedules={typedSchedules}
@@ -290,7 +298,7 @@ export default function PlannerShell({ session }: Props) {
             onScheduleEditorSaved={handleScheduleEditorSaved}
           />
 
-          <p className="text-[11px] text-white/15 text-center">
+          <p className={`text-[11px] text-center ${isLight ? 'text-gray-300' : 'text-white/15'}`}>
             {mode === 'edit'
               ? 'Клик по ячейке: авто → I → II → OFF → авто. Клик по полоске фазы — редактор фаз.'
               : 'Переключите в режим правки для редактирования.'}

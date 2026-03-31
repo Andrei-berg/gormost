@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ShiftPhase, AuthSession } from '@/types'
 import { saveShiftPhase, deleteShiftPhase } from '@/lib/api'
+import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {
   userId: string
@@ -37,6 +38,12 @@ export default function PlannerPhaseEditor({
   const [saving, setSaving]             = useState(false)
   const [deleting, setDeleting]         = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+  const txt  = isLight ? 'text-gray-800' : 'text-white/80'
+  const mtd  = isLight ? 'text-gray-400' : 'text-white/30'
+  const lbl  = isLight ? 'text-gray-500' : 'text-white/35'
+  const inaBg = isLight ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 border border-transparent' : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -100,32 +107,32 @@ export default function PlannerPhaseEditor({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-white/80 font-medium text-xs truncate max-w-[200px]">{userName}</div>
-          <div className="text-white/30 text-[10px] mt-0.5">
+          <div className={`font-medium text-xs truncate max-w-[200px] ${txt}`}>{userName}</div>
+          <div className={`text-[10px] mt-0.5 ${mtd}`}>
             {existingPhase ? 'Редактировать фазу' : 'Создать фазу'} · {scheduleCode}
           </div>
         </div>
-        <button onClick={onClose} className="text-white/25 hover:text-white/60 text-xl leading-none ml-2 shrink-0">×</button>
+        <button onClick={onClose} className={`text-xl leading-none ml-2 shrink-0 ${isLight ? 'text-gray-400 hover:text-gray-600' : 'text-white/25 hover:text-white/60'}`}>×</button>
       </div>
 
       {/* Phase type */}
       <div>
-        <div className="text-white/35 text-[10px] mb-1.5 uppercase tracking-wide">Тип фазы</div>
+        <div className={`text-[10px] mb-1.5 uppercase tracking-wide ${lbl}`}>Тип фазы</div>
         <div className="flex gap-1.5">
           <button
             onClick={() => setPhase('day')}
             className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
               phase === 'day'
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-500/40 shadow-inner'
-                : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'
+                ? isLight ? 'bg-amber-100 text-amber-700 border border-amber-400 shadow-inner' : 'bg-amber-500/25 text-amber-200 border border-amber-500/40 shadow-inner'
+                : inaBg
             }`}
           >☀️ День</button>
           <button
             onClick={() => setPhase('night')}
             className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
               phase === 'night'
-                ? 'bg-blue-500/25 text-blue-200 border border-blue-500/40 shadow-inner'
-                : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'
+                ? isLight ? 'bg-blue-100 text-blue-700 border border-blue-400 shadow-inner' : 'bg-blue-500/25 text-blue-200 border border-blue-500/40 shadow-inner'
+                : inaBg
             }`}
           >🌙 Ночь</button>
         </div>
@@ -133,100 +140,68 @@ export default function PlannerPhaseEditor({
 
       {/* Anchor date */}
       <div>
-        <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">
+        <label className={`text-[10px] block mb-1 uppercase tracking-wide ${lbl}`}>
           Опорная дата{' '}
-          <span className="normal-case text-white/20">
+          <span className={`normal-case ${isLight ? 'text-gray-300' : 'text-white/20'}`}>
             {is1515 ? '(только для чередования день/ночь)' : '(начало цикла)'}
           </span>
         </label>
-        <input
-          type="date"
-          value={anchorDate}
-          onChange={e => handleAnchorChange(e.target.value)}
-          className="form-input text-xs w-full"
-        />
-        {/* 15/15: show calendar work window */}
+        <input type="date" value={anchorDate} onChange={e => handleAnchorChange(e.target.value)} className="form-input text-xs w-full" />
         {workRange1515 && (
           <div className="mt-1.5 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <div className="text-[10px] text-amber-300/70">
+            <div className={`text-[10px] ${isLight ? 'text-amber-600/80' : 'text-amber-300/70'}`}>
               Группа {rotationGroup ?? '1'} — рабочие дни каждого месяца:
             </div>
-            <div className="text-[11px] text-amber-200 font-medium mt-0.5">
-              {workRange1515}
-            </div>
+            <div className={`text-[11px] font-medium mt-0.5 ${isLight ? 'text-amber-700' : 'text-amber-200'}`}>{workRange1515}</div>
           </div>
         )}
       </div>
 
       {/* Valid from */}
       <div>
-        <label className="text-white/35 text-[10px] block mb-1 uppercase tracking-wide">Начало действия записи</label>
-        <input
-          type="date"
-          value={validFrom}
-          onChange={e => setValidFrom(e.target.value)}
-          className="form-input text-xs w-full"
-        />
+        <label className={`text-[10px] block mb-1 uppercase tracking-wide ${lbl}`}>Начало действия записи</label>
+        <input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} className="form-input text-xs w-full" />
       </div>
 
       {/* Valid to */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-white/35 text-[10px] uppercase tracking-wide">Конец действия</span>
-          <label className="flex items-center gap-1.5 text-[10px] text-white/50 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={ongoing}
-              onChange={e => setOngoing(e.target.checked)}
-              className="w-3 h-3 accent-blue-500"
-            />
+          <span className={`text-[10px] uppercase tracking-wide ${lbl}`}>Конец действия</span>
+          <label className={`flex items-center gap-1.5 text-[10px] cursor-pointer select-none ${isLight ? 'text-gray-500' : 'text-white/50'}`}>
+            <input type="checkbox" checked={ongoing} onChange={e => setOngoing(e.target.checked)} className="w-3 h-3 accent-blue-500" />
             Бессрочно
           </label>
         </div>
         {!ongoing && (
-          <input
-            type="date"
-            value={validTo}
-            min={validFrom}
-            onChange={e => setValidTo(e.target.value)}
-            className="form-input text-xs w-full"
-          />
+          <input type="date" value={validTo} min={validFrom} onChange={e => setValidTo(e.target.value)} className="form-input text-xs w-full" />
         )}
       </div>
 
       {/* 15/15 alternating */}
       {is1515 && (
-        <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer select-none p-2 rounded-lg bg-white/5">
-          <input
-            type="checkbox"
-            checked={isAlternating}
-            onChange={e => setIsAlternating(e.target.checked)}
-            className="w-3.5 h-3.5 accent-violet-500"
-          />
+        <label className={`flex items-center gap-2 text-xs cursor-pointer select-none p-2 rounded-lg ${isLight ? 'bg-gray-100 text-gray-500' : 'bg-white/5 text-white/50'}`}>
+          <input type="checkbox" checked={isAlternating} onChange={e => setIsAlternating(e.target.checked)} className="w-3.5 h-3.5 accent-violet-500" />
           <span>Автоматическое чередование (15/15)</span>
         </label>
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+      <div className={`flex items-center gap-2 pt-1 border-t ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
         {existingPhase && (
           <button
             onClick={handleDelete}
             disabled={deleting || saving}
-            className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 border border-red-500/15 transition-colors disabled:opacity-40"
+            className={`px-3 py-1.5 rounded-lg text-xs border transition-colors disabled:opacity-40 ${isLight ? 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200' : 'bg-red-500/10 text-red-300 hover:bg-red-500/20 border-red-500/15'}`}
           >
             {deleting ? '…' : '🗑'}
           </button>
         )}
         <div className="flex-1" />
-        <button
-          onClick={onClose}
-          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/35 hover:bg-white/10 transition-colors"
-        >Отмена</button>
+        <button onClick={onClose} className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${isLight ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-white/5 text-white/35 hover:bg-white/10'}`}>Отмена</button>
         <button
           onClick={handleSave}
           disabled={saving || !validFrom || !anchorDate || (!ongoing && !validTo)}
-          className="px-4 py-1.5 rounded-lg text-xs bg-blue-600/35 text-blue-100 hover:bg-blue-600/50 border border-blue-500/25 transition-colors disabled:opacity-40"
+          className="px-4 py-1.5 rounded-lg text-xs bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40"
         >
           {saving ? '…' : 'Сохранить'}
         </button>

@@ -32,6 +32,8 @@ interface Props {
 
   // Refresh
   onRefresh: () => void
+
+  isLight: boolean
 }
 
 export default function PlannerToolbar({
@@ -40,6 +42,7 @@ export default function PlannerToolbar({
   mode, canEdit, onModeToggle,
   showSettings, onSettingsToggle,
   onRefresh,
+  isLight,
 }: Props) {
   const scheduleCodes = [...new Set(schedules.map(s => s.code))].sort()
 
@@ -59,13 +62,13 @@ export default function PlannerToolbar({
       {/* Row 1: span + navigation + mode + settings */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Span */}
-        <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+        <div className={`flex gap-0.5 rounded-lg p-0.5 ${isLight ? 'bg-gray-100' : 'bg-white/5'}`}>
           {([1, 2, 3] as SpanMonths[]).map(s => (
             <button
               key={s}
               onClick={() => onSpanChange(s)}
               className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                span === s ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/70'
+                span === s ? 'bg-blue-600 text-white' : isLight ? 'text-gray-500 hover:text-gray-700' : 'text-white/40 hover:text-white/70'
               }`}
             >{s} мес</button>
           ))}
@@ -73,10 +76,10 @@ export default function PlannerToolbar({
 
         {/* Navigation */}
         <div className="flex items-center gap-1">
-          <button onClick={onPrev} className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 text-sm transition-colors">‹</button>
-          <span className="text-sm font-medium text-white/75 min-w-[180px] text-center">{endLabel}</span>
-          <button onClick={onNext} className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 text-sm transition-colors">›</button>
-          <button onClick={onToday} className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/35 text-xs transition-colors">сег.</button>
+          <button onClick={onPrev} className={`px-2 py-1 rounded-lg text-sm transition-colors ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-500' : 'bg-white/5 hover:bg-white/10 text-white/60'}`}>‹</button>
+          <span className={`text-sm font-medium min-w-[180px] text-center ${isLight ? 'text-gray-700' : 'text-white/75'}`}>{endLabel}</span>
+          <button onClick={onNext} className={`px-2 py-1 rounded-lg text-sm transition-colors ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-500' : 'bg-white/5 hover:bg-white/10 text-white/60'}`}>›</button>
+          <button onClick={onToday} className={`px-2 py-1 rounded-lg text-xs transition-colors ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-400' : 'bg-white/5 hover:bg-white/10 text-white/35'}`}>сег.</button>
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
@@ -86,8 +89,10 @@ export default function PlannerToolbar({
               onClick={onModeToggle}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 mode === 'edit'
-                  ? 'bg-green-600/30 text-green-300 border border-green-500/30'
-                  : 'bg-white/5 text-white/35 hover:text-white/60 border border-transparent'
+                  ? 'bg-green-600/30 text-green-700 border border-green-500/40'
+                  : isLight
+                    ? 'bg-gray-100 text-gray-500 hover:text-gray-700 border border-transparent'
+                    : 'bg-white/5 text-white/35 hover:text-white/60 border border-transparent'
               }`}
             >
               {mode === 'edit' ? '✏️ Режим правки' : '👁 Просмотр'}
@@ -98,7 +103,9 @@ export default function PlannerToolbar({
           <button
             onClick={onSettingsToggle}
             className={`p-2 rounded-xl text-sm transition-colors ${
-              showSettings ? 'bg-white/15 text-white' : 'bg-white/5 text-white/35 hover:text-white/60'
+              showSettings
+                ? isLight ? 'bg-gray-200 text-gray-700' : 'bg-white/15 text-white'
+                : isLight ? 'bg-gray-100 text-gray-400 hover:text-gray-600' : 'bg-white/5 text-white/35 hover:text-white/60'
             }`}
             title="Настройки"
           >⚙️</button>
@@ -106,7 +113,7 @@ export default function PlannerToolbar({
           {/* Refresh */}
           <button
             onClick={onRefresh}
-            className="p-2 rounded-xl bg-white/5 text-white/30 hover:text-white/60 text-sm transition-colors"
+            className={`p-2 rounded-xl text-sm transition-colors ${isLight ? 'bg-gray-100 text-gray-400 hover:text-gray-600' : 'bg-white/5 text-white/30 hover:text-white/60'}`}
             title="Обновить"
           >↻</button>
         </div>
@@ -137,13 +144,13 @@ export default function PlannerToolbar({
           {[1, 2, 3, 4].map(n => <option key={n} value={n}>Смена {n}</option>)}
         </select>
 
-        <span className="text-xs text-white/25 ml-auto">
+        <span className={`text-xs ml-auto ${isLight ? 'text-gray-400' : 'text-white/25'}`}>
           {userCount} из {totalCount} сотр.
         </span>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-[11px] text-white/30 flex-wrap">
+      <div className={`flex items-center gap-4 text-[11px] flex-wrap ${isLight ? 'text-gray-400' : 'text-white/30'}`}>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-amber-500/25 inline-block border border-amber-500/20" /> I день (авто)
         </span>
@@ -163,7 +170,7 @@ export default function PlannerToolbar({
           <span className="w-8 h-2 rounded bg-blue-500/40 inline-block" /> фаза ночь
         </span>
         {mode === 'edit' && (
-          <span className="text-green-400/60 ml-auto">
+          <span className={`ml-auto ${isLight ? 'text-green-700/70' : 'text-green-400/60'}`}>
             ✏️ Клик по ячейке — ручная правка · Клик по полоске — редактор фаз · ✎ — назначить график
           </span>
         )}
