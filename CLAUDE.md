@@ -18,14 +18,23 @@ Built for dispatching, shift planning, task management, transport coordination, 
 
 ## Development Commands
 ```bash
-npm install        # install dependencies
-npm run dev        # local dev server (http://localhost:3000)
-npm run build      # production build — MUST pass before any commit
-npm run lint       # check for linting errors
-npx tsc --noEmit   # TypeScript check without compilation
+npm install          # install dependencies
+npm run dev          # local dev server (http://localhost:3000)
+npm run build        # production build — MUST pass before any commit
+npm run test         # run tests (Vitest) — MUST pass before any commit
+npm run test:watch   # run tests in watch mode during development
+npm run lint         # check for linting errors
+npx tsc --noEmit     # TypeScript check without compilation
 ```
 
 ## Critical Rules
+
+### Testing
+- `npm run test` **must pass before any commit** — same rule as `npm run build`
+- New business logic functions require tests **before** implementation code (TDD)
+- Use `npm run test:watch` during development for instant feedback
+- Test files live next to the source file: `src/lib/foo.ts` → `src/lib/foo.test.ts`
+- Tests cover core business logic only (shift calculations, scheduling rules, data transforms) — not UI components or API calls
 
 ### Component Architecture (follow this every time)
 Goal: add/remove features without rewriting code.
