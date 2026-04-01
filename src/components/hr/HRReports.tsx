@@ -96,7 +96,8 @@ function openDokladnaya(statuses: StatusWithUser[], reportMonth: string): void {
   <title>Докладная записка</title>
   <style>
     body { font-family: 'Times New Roman', serif; font-size: 14px; margin: 40px; color: #000; }
-    .header-right { text-align: right; margin-bottom: 40px; line-height: 1.8; }
+    .header-right { display: flex; justify-content: flex-end; margin-bottom: 40px; }
+    .header-right-inner { text-align: left; line-height: 1.8; }
     h1 { text-align: center; font-size: 16px; font-weight: bold; margin: 30px 0; text-transform: none; }
     .body-text { margin-bottom: 20px; text-indent: 40px; line-height: 1.8; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
@@ -107,13 +108,15 @@ function openDokladnaya(statuses: StatusWithUser[], reportMonth: string): void {
 </head>
 <body>
   <div class="header-right">
-    Руководителю ГБУ "Гормост"<br/>
-    Ю.А. Иванкову<br/>
-    от начальника участка<br/>
-    эксплуатации тоннелей<br/>
-    большой протяженности<br/>
-    "Гормост-Лефортово"<br/>
-    В.Ю. Гурьянова
+    <div class="header-right-inner">
+      Руководителю ГБУ "Гормост"<br/>
+      Ю.А. Иванкову<br/>
+      от начальника участка<br/>
+      эксплуатации тоннелей<br/>
+      большой протяженности<br/>
+      "Гормост-Лефортово"<br/>
+      В.Ю. Гурьянова
+    </div>
   </div>
 
   <h1>Докладная записка</h1>
@@ -172,19 +175,18 @@ export default function HRReports({ session, services }: Props) {
   const [loading, setLoading] = useState(false)
   const [activeReport, setActiveReport] = useState<ReportTab>('svo')
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const [y, m] = reportMonth.split('-').map(Number)
-      const dateFrom = `${reportMonth}-01`
-      const lastDay = new Date(y, m, 0).getDate()
-      const dateTo = `${reportMonth}-${String(lastDay).padStart(2, '0')}`
-      const data = await fetchStatusesForPeriodWithUsers(dateFrom, dateTo, filterService || undefined)
-      setStatuses(data)
-      setLoading(false)
-    }
-    load()
-  }, [reportMonth, filterService])
+  async function load() {
+    setLoading(true)
+    const [y, m] = reportMonth.split('-').map(Number)
+    const dateFrom = `${reportMonth}-01`
+    const lastDay = new Date(y, m, 0).getDate()
+    const dateTo = `${reportMonth}-${String(lastDay).padStart(2, '0')}`
+    const data = await fetchStatusesForPeriodWithUsers(dateFrom, dateTo, filterService || undefined)
+    setStatuses(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [reportMonth, filterService]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter helpers
   const svo = statuses.filter(s => s.status === 'SVO')
@@ -234,9 +236,16 @@ export default function HRReports({ session, services }: Props) {
             ))}
           </select>
         </div>
-        {loading && (
-          <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mt-4" />
-        )}
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            onClick={load}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 text-xs transition-colors disabled:opacity-40"
+          >
+            {loading ? '…' : '↻ Обновить'}
+          </button>
+          {loading && <div className="w-3.5 h-3.5 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" />}
+        </div>
       </div>
 
       {/* Tab bar */}
