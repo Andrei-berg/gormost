@@ -7,7 +7,7 @@ import StatusHistory from './StatusHistory'
 
 const DAILY_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
 const EXTENDED_STATUSES: EmployeeStatusType[] = [
-  'Komandirovka', 'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO'
+  'Komandirovka', 'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO', 'Voennie_sbory'
 ]
 
 const SHIFT_COLORS: Record<number, string> = {

@@ -9,7 +9,7 @@ import type { EnrichedEmployee, EmployeeStatusType, Service, UserWithAssignment,
 
 const DAILY_STATUSES: EmployeeStatusType[] = ['Na_rabote', 'Otgul', 'Bolnichniy', 'Otpusk']
 const EXTENDED_STATUSES: EmployeeStatusType[] = [
-  'Komandirovka', 'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO'
+  'Komandirovka', 'Uchebniy_otpusk', 'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO', 'Voennie_sbory'
 ]
 
 const SHIFT_COLORS: Record<number, string> = {
@@ -81,6 +81,8 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
   const [metaOrderNumber, setMetaOrderNumber] = useState('')
   const [metaOrderDate, setMetaOrderDate] = useState('')
   const [metaSickLeaveNumber, setMetaSickLeaveNumber] = useState('')
+  const [metaSickLeaveLocation, setMetaSickLeaveLocation] = useState<'стационар' | 'амбулаторно'>('амбулаторно')
+  const [metaSickLeaveSubmitted, setMetaSickLeaveSubmitted] = useState(false)
   const [metaOtgulBasis, setMetaOtgulBasis] = useState<'za_svoy_schet' | 'za_otrabotannoe'>('za_otrabotannoe')
   const [metaLeaveType, setMetaLeaveType] = useState('ежегодный')
 
@@ -149,6 +151,8 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
     setMetaOrderNumber('')
     setMetaOrderDate('')
     setMetaSickLeaveNumber('')
+    setMetaSickLeaveLocation('амбулаторно')
+    setMetaSickLeaveSubmitted(false)
     setMetaOtgulBasis('za_otrabotannoe')
     setMetaLeaveType('ежегодный')
     setPendingStatus(newStatus)
@@ -164,7 +168,11 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
     } else if (pendingStatus === 'Mobilizovan') {
       metadata = { order_number: metaOrderNumber || undefined, order_date: metaOrderDate || undefined }
     } else if (pendingStatus === 'Bolnichniy') {
-      metadata = { sick_leave_number: metaSickLeaveNumber || undefined }
+      metadata = {
+        sick_leave_number: metaSickLeaveNumber || undefined,
+        sick_leave_location: metaSickLeaveLocation,
+        sick_leave_submitted: metaSickLeaveSubmitted,
+      }
     } else if (pendingStatus === 'Otgul') {
       metadata = { otgul_basis: metaOtgulBasis }
     } else if (pendingStatus === 'Otpusk' || pendingStatus === 'Uchebniy_otpusk') {
@@ -443,9 +451,22 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
                   )}
                   {/* Bolnichniy metadata */}
                   {pendingStatus === 'Bolnichniy' && (
-                    <div>
-                      <label className="text-[10px] text-white/40 block mb-1">№ больничного листа</label>
-                      <input type="text" value={metaSickLeaveNumber} onChange={e => setMetaSickLeaveNumber(e.target.value)} placeholder="Номер б/л" className={inp} />
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] text-white/40 block mb-1">№ больничного листа</label>
+                        <input type="text" value={metaSickLeaveNumber} onChange={e => setMetaSickLeaveNumber(e.target.value)} placeholder="Номер б/л" className={inp} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-white/40 block mb-1">Место лечения</label>
+                        <select value={metaSickLeaveLocation} onChange={e => setMetaSickLeaveLocation(e.target.value as 'стационар' | 'амбулаторно')} className={inp}>
+                          <option value="амбулаторно">Амбулаторно</option>
+                          <option value="стационар">Стационар</option>
+                        </select>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
+                        <input type="checkbox" checked={metaSickLeaveSubmitted} onChange={e => setMetaSickLeaveSubmitted(e.target.checked)} className="accent-amber-500" />
+                        Больничный лист сдан
+                      </label>
                     </div>
                   )}
                   {/* Otgul metadata */}

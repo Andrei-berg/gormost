@@ -296,6 +296,7 @@ export type EmployeeStatusType =
   | 'Mobilizovan'
   | 'SVO'
   | 'Troydoustroyen_s_SVO'
+  | 'Voennie_sbory'
 
 export interface StatusMetadata {
   // SVO
@@ -306,6 +307,8 @@ export interface StatusMetadata {
   order_date?: string
   // Bolnichniy
   sick_leave_number?: string
+  sick_leave_location?: 'стационар' | 'амбулаторно'
+  sick_leave_submitted?: boolean
   // Otgul
   otgul_basis?: 'za_svoy_schet' | 'za_otrabotannoe'
   // Otpusk
@@ -334,7 +337,7 @@ export interface EmployeeStatus {
 // Statuses for which departure/return date fields are meaningful
 export const STATUSES_WITH_DATES: EmployeeStatusType[] = [
   'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka', 'Uchebniy_otpusk',
-  'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
+  'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO', 'Voennie_sbory',
 ]
 // Statuses that are typically open-ended (no fixed return date at the start)
 export const OPEN_ENDED_STATUSES: EmployeeStatusType[] = [
@@ -357,6 +360,7 @@ export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, {
   Mobilizovan:          { label: 'Мобилизован',    color: '#dc2626', bg: 'bg-red-700/20 border-red-700/30' },
   SVO:                  { label: 'СВО',            color: '#991b1b', bg: 'bg-red-900/20 border-red-900/30' },
   Troydoustroyen_s_SVO: { label: 'Вернулся с СВО', color: '#16a34a', bg: 'bg-green-700/20 border-green-700/30' },
+  Voennie_sbory:        { label: 'Военные сборы',  color: '#6366f1', bg: 'bg-indigo-500/20 border-indigo-500/30' },
 }
 
 // ============================================

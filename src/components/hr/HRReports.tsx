@@ -10,11 +10,11 @@ interface Props {
   services: Service[]
 }
 
-type ReportTab = 'svo' | 'mobilizovan' | 'bolnichniy' | 'komandirovka' | 'otgul' | 'otpusk' | 'uvolen' | 'dokladnaya'
+type ReportTab = 'svo' | 'mobilizovan' | 'bolnichniy' | 'komandirovka' | 'otgul' | 'otpusk' | 'uvolen' | 'voennie_sbory' | 'dokladnaya'
 
 function fmtPeriod(dateFrom: string, dateTo: string | null): string {
   const from = new Date(dateFrom + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  if (!dateTo) return `с ${from}`
+  if (!dateTo) return `с ${from} по настоящее время`
   const to = new Date(dateTo + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
   return `${from} — ${to}`
 }
@@ -39,6 +39,42 @@ function getMonthLabel(yyyyMM: string): string {
   return `${MONTHS_RU[parseInt(m) - 1]} ${y} г.`
 }
 
+// Notes column for докладная
+function getDokladnayaNotes(row: StatusWithUser): string {
+  const meta = row.metadata
+  switch (row.status) {
+    case 'SVO': {
+      const parts: string[] = []
+      if (meta?.contract_suspended) {
+        parts.push(`Приостановка трудового договора${meta.volunteer_type ? ' ' + meta.volunteer_type : ''}`)
+      } else if (meta?.volunteer_type) {
+        parts.push(meta.volunteer_type)
+      }
+      if (row.reason) parts.push(row.reason)
+      return parts.join('; ')
+    }
+    case 'Mobilizovan': {
+      const parts: string[] = ['Приостановка трудового договора']
+      if (meta?.order_number) parts.push(`пр. №${meta.order_number}`)
+      if (row.reason) parts.push(row.reason)
+      return parts.join(', ')
+    }
+    case 'Bolnichniy': {
+      const parts: string[] = []
+      if (meta?.sick_leave_location) parts.push(meta.sick_leave_location)
+      if (meta?.sick_leave_number) parts.push(`б/л №${meta.sick_leave_number}`)
+      if (meta?.sick_leave_submitted === false) parts.push('б/л не сдан')
+      else if (meta?.sick_leave_submitted === true) parts.push('б/л сдан')
+      if (!row.date_to) parts.push('продолжает болеть')
+      if (row.reason) parts.push(row.reason)
+      return parts.join(', ')
+    }
+    default:
+      return row.reason ?? ''
+  }
+}
+
+// Reason label for other report tabs
 function getReasonLabel(row: StatusWithUser): string {
   const meta = row.metadata
   switch (row.status) {
@@ -61,23 +97,22 @@ function getReasonLabel(row: StatusWithUser): string {
       return 'декрет'
     case 'Troydoustroyen_s_SVO':
       return 'трудоустроен с СВО'
+    case 'Voennie_sbory':
+      return 'военные сборы'
     default:
       return EMPLOYEE_STATUS_CONFIG[row.status]?.label ?? row.status
   }
 }
 
-// Statuses included in the докладная записка (all non-working, non-dismissed)
-const DOKLADNAYA_STATUSES = new Set([
-  'Otgul', 'Bolnichniy', 'Otpusk', 'Komandirovka', 'Uchebniy_otpusk',
-  'Dekret', 'Mobilizovan', 'SVO', 'Troydoustroyen_s_SVO',
-])
+// Only СВО, Мобилизованные, Больничные go into докладная
+const DOKLADNAYA_STATUSES = new Set(['SVO', 'Mobilizovan', 'Bolnichniy'])
 
-function openDokladnaya(statuses: StatusWithUser[], reportMonth: string): void {
+function openDokladnaya(statuses: StatusWithUser[], reportMonth: string, selectedIds: Set<string>): void {
   const [y, m] = reportMonth.split('-')
   const monthWord = `${MONTHS_RU_GENITIVE[parseInt(m) - 1]} ${y}`
 
   const rows = statuses
-    .filter(s => DOKLADNAYA_STATUSES.has(s.status))
+    .filter(s => DOKLADNAYA_STATUSES.has(s.status) && selectedIds.has(s.id))
     .map((s, i) => `
       <tr>
         <td style="border:1px solid #000;padding:4px 8px;text-align:center;">${i + 1}</td>
@@ -85,7 +120,7 @@ function openDokladnaya(statuses: StatusWithUser[], reportMonth: string): void {
         <td style="border:1px solid #000;padding:4px 8px;">${s.user_position ?? '—'}</td>
         <td style="border:1px solid #000;padding:4px 8px;">${fmtPeriod(s.date_from, s.date_to)}</td>
         <td style="border:1px solid #000;padding:4px 8px;">${getReasonLabel(s)}</td>
-        <td style="border:1px solid #000;padding:4px 8px;">${s.reason ?? ''}</td>
+        <td style="border:1px solid #000;padding:4px 8px;">${getDokladnayaNotes(s)}</td>
       </tr>`)
     .join('')
 
@@ -155,25 +190,29 @@ function openDokladnaya(statuses: StatusWithUser[], reportMonth: string): void {
 }
 
 const REPORT_TABS: { id: ReportTab; label: string }[] = [
-  { id: 'svo',          label: 'СВО' },
-  { id: 'mobilizovan',  label: 'Мобилизованные' },
-  { id: 'bolnichniy',   label: 'Больничные' },
-  { id: 'komandirovka', label: 'Командировочные' },
-  { id: 'otgul',        label: 'Отгулы' },
-  { id: 'otpusk',       label: 'Отпуска' },
-  { id: 'uvolen',       label: 'Уволенные' },
-  { id: 'dokladnaya',   label: 'Докладная' },
+  { id: 'svo',           label: 'СВО' },
+  { id: 'mobilizovan',   label: 'Мобилизованные' },
+  { id: 'bolnichniy',    label: 'Больничные' },
+  { id: 'komandirovka',  label: 'Командировочные' },
+  { id: 'otgul',         label: 'Отгулы' },
+  { id: 'otpusk',        label: 'Отпуска' },
+  { id: 'voennie_sbory', label: 'Военные сборы' },
+  { id: 'uvolen',        label: 'Уволенные' },
+  { id: 'dokladnaya',    label: 'Докладная' },
 ]
 
 export default function HRReports({ session, services }: Props) {
   const today = new Date().toISOString().split('T')[0]
-  const currentMonth = today.slice(0, 7) // YYYY-MM
+  const currentMonth = today.slice(0, 7)
 
   const [reportMonth, setReportMonth] = useState(currentMonth)
   const [filterService, setFilterService] = useState('')
   const [statuses, setStatuses] = useState<StatusWithUser[]>([])
   const [loading, setLoading] = useState(false)
   const [activeReport, setActiveReport] = useState<ReportTab>('svo')
+
+  // Selection state for докладная
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   async function load() {
     setLoading(true)
@@ -183,12 +222,14 @@ export default function HRReports({ session, services }: Props) {
     const dateTo = `${reportMonth}-${String(lastDay).padStart(2, '0')}`
     const data = await fetchStatusesForPeriodWithUsers(dateFrom, dateTo, filterService || undefined)
     setStatuses(data)
+    // Pre-select all eligible rows for докладная
+    const eligible = new Set(data.filter(s => DOKLADNAYA_STATUSES.has(s.status)).map(s => s.id))
+    setSelectedIds(eligible)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [reportMonth, filterService]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Filter helpers
   const svo = statuses.filter(s => s.status === 'SVO')
   const mobilizovan = statuses.filter(s => s.status === 'Mobilizovan')
   const bolnichniy = statuses.filter(s => s.status === 'Bolnichniy')
@@ -196,6 +237,8 @@ export default function HRReports({ session, services }: Props) {
   const otgul = statuses.filter(s => s.status === 'Otgul')
   const otpusk = statuses.filter(s => s.status === 'Otpusk' || s.status === 'Uchebniy_otpusk')
   const uvolen = statuses.filter(s => s.status === 'Uvolen')
+  const voennie_sbory = statuses.filter(s => s.status === 'Voennie_sbory')
+  const dokladnayaRows = statuses.filter(s => DOKLADNAYA_STATUSES.has(s.status))
 
   const thCls = 'px-3 py-2 text-left text-[10px] text-white/40 font-medium uppercase tracking-wide border-b border-white/10'
   const tdCls = 'px-3 py-2 text-xs text-white/70'
@@ -209,6 +252,27 @@ export default function HRReports({ session, services }: Props) {
       </tr>
     )
   }
+
+  function toggleId(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    const allIds = dokladnayaRows.map(s => s.id)
+    const allSelected = allIds.every(id => selectedIds.has(id))
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(allIds))
+    }
+  }
+
+  const allSelected = dokladnayaRows.length > 0 && dokladnayaRows.every(s => selectedIds.has(s.id))
 
   return (
     <div className="space-y-4">
@@ -270,7 +334,7 @@ export default function HRReports({ session, services }: Props) {
       {/* Report content */}
       <div className="glass rounded-2xl overflow-hidden">
 
-        {/* SVO */}
+        {/* СВО */}
         {activeReport === 'svo' && (
           <table className="w-full">
             <thead>
@@ -329,19 +393,33 @@ export default function HRReports({ session, services }: Props) {
               <tr>
                 <th className={thCls}>№</th>
                 <th className={thCls}>ФИО</th>
-                <th className={thCls}>№ б/л</th>
-                <th className={thCls}>Период</th>
                 <th className={thCls}>Должность</th>
+                <th className={thCls}>№ б/л</th>
+                <th className={thCls}>Место лечения</th>
+                <th className={thCls}>Период</th>
+                <th className={thCls}>Б/л сдан</th>
               </tr>
             </thead>
             <tbody>
-              {bolnichniy.length === 0 ? <EmptyRow cols={5} /> : bolnichniy.map((s, i) => (
+              {bolnichniy.length === 0 ? <EmptyRow cols={7} /> : bolnichniy.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
-                  <td className={tdCls}>{s.metadata?.sick_leave_number ?? '—'}</td>
-                  <td className={tdCls}>{fmtPeriod(s.date_from, s.date_to)}</td>
                   <td className={tdCls}>{s.user_position ?? '—'}</td>
+                  <td className={tdCls}>{s.metadata?.sick_leave_number ?? '—'}</td>
+                  <td className={tdCls}>{s.metadata?.sick_leave_location ?? '—'}</td>
+                  <td className={tdCls}>
+                    <span className={!s.date_to ? 'text-amber-400' : ''}>
+                      {fmtPeriod(s.date_from, s.date_to)}
+                    </span>
+                  </td>
+                  <td className={tdCls}>
+                    {s.metadata?.sick_leave_submitted === true
+                      ? <span className="text-green-400">Да</span>
+                      : s.metadata?.sick_leave_submitted === false
+                        ? <span className="text-amber-400">Нет</span>
+                        : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -426,6 +504,32 @@ export default function HRReports({ session, services }: Props) {
           </table>
         )}
 
+        {/* Военные сборы */}
+        {activeReport === 'voennie_sbory' && (
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className={thCls}>№</th>
+                <th className={thCls}>ФИО</th>
+                <th className={thCls}>Должность</th>
+                <th className={thCls}>Период</th>
+                <th className={thCls}>Примечание</th>
+              </tr>
+            </thead>
+            <tbody>
+              {voennie_sbory.length === 0 ? <EmptyRow cols={5} /> : voennie_sbory.map((s, i) => (
+                <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
+                  <td className={tdCls}>{i + 1}</td>
+                  <td className={tdCls}>{s.user_full_name}</td>
+                  <td className={tdCls}>{s.user_position ?? '—'}</td>
+                  <td className={tdCls}>{fmtPeriod(s.date_from, s.date_to)}</td>
+                  <td className={tdCls}>{s.reason ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
         {/* Уволенные */}
         {activeReport === 'uvolen' && (
           <table className="w-full">
@@ -452,23 +556,77 @@ export default function HRReports({ session, services }: Props) {
 
         {/* Докладная */}
         {activeReport === 'dokladnaya' && (
-          <div className="p-6 space-y-4">
+          <div className="p-4 space-y-4">
             <div>
               <div className="text-sm text-white/70 font-medium mb-1">Докладная записка</div>
               <div className="text-xs text-white/40">
-                Список сотрудников, не вышедших на работу за {getMonthLabel(reportMonth)}.
-                Включает все статусы отсутствия (кроме Уволен и На работе).
+                СВО, Мобилизованные, Больничные за {getMonthLabel(reportMonth)}.
+                Выберите сотрудников для включения в документ.
               </div>
             </div>
-            <div className="text-xs text-white/50">
-              Всего записей: <span className="text-white/80">{statuses.filter(s => DOKLADNAYA_STATUSES.has(s.status)).length}</span>
+
+            {dokladnayaRows.length === 0 ? (
+              <div className="text-xs text-white/30 py-4">Нет данных за {getMonthLabel(reportMonth)}</div>
+            ) : (
+              <div className="space-y-1">
+                {/* Select all toggle */}
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="accent-purple-500 w-4 h-4"
+                  />
+                  <span className="text-xs text-white/50 font-medium">Выбрать всех ({dokladnayaRows.length})</span>
+                </label>
+                <div className="border-t border-white/10 my-1" />
+                {/* Individual rows */}
+                {dokladnayaRows.map(s => {
+                  const cfg = EMPLOYEE_STATUS_CONFIG[s.status]
+                  return (
+                    <label key={s.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(s.id)}
+                        onChange={() => toggleId(s.id)}
+                        className="accent-purple-500 w-4 h-4 mt-0.5 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-white/80 font-medium">{s.user_full_name}</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded border ${cfg?.bg ?? ''}`}
+                            style={{ color: cfg?.color }}
+                          >
+                            {cfg?.label ?? s.status}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-white/40 mt-0.5">
+                          {fmtPeriod(s.date_from, s.date_to)}
+                          {s.user_position && <span className="ml-2 text-white/30">{s.user_position}</span>}
+                        </div>
+                        {getDokladnayaNotes(s) && (
+                          <div className="text-[10px] text-white/30 mt-0.5 italic">{getDokladnayaNotes(s)}</div>
+                        )}
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2 border-t border-white/10">
+              <span className="text-xs text-white/40">
+                Выбрано: <span className="text-white/70">{selectedIds.size}</span> из {dokladnayaRows.length}
+              </span>
+              <button
+                onClick={() => openDokladnaya(statuses, reportMonth, selectedIds)}
+                disabled={selectedIds.size === 0}
+                className="px-4 py-2 rounded-lg bg-purple-600/30 border border-purple-500/40 text-purple-300 hover:bg-purple-600/50 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Открыть для печати
+              </button>
             </div>
-            <button
-              onClick={() => openDokladnaya(statuses, reportMonth)}
-              className="px-4 py-2 rounded-lg bg-purple-600/30 border border-purple-500/40 text-purple-300 hover:bg-purple-600/50 text-sm font-medium transition-colors"
-            >
-              Открыть для печати
-            </button>
           </div>
         )}
       </div>
