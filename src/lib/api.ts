@@ -515,21 +515,36 @@ export async function fetchStatusesForPeriodWithUsers(
   dateTo: string,
   serviceId?: string
 ): Promise<StatusWithUser[]> {
-  const { data } = await supabase
-    .from('employee_status')
-    .select('*, users!inner(full_name, position, service_id)')
-    .lte('date_from', dateTo)
-    .or(`date_to.is.null,date_to.gte.${dateFrom}`)
-    .order('date_from')
-  if (!data) return []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map(row => ({
-    ...row,
-    user_full_name: row.users?.full_name ?? '',
-    user_position: row.users?.position ?? null,
-    user_service_id: row.users?.service_id ?? null,
-    users: undefined,
-  })).filter((row: StatusWithUser) => !serviceId || row.user_service_id === serviceId)
+  // Two separate queries, merged client-side — avoids relying on PostgREST FK introspection
+  const [{ data: statusData }, { data: userData }] = await Promise.all([
+    supabase
+      .from('employee_status')
+      .select('*')
+      .lte('date_from', dateTo)
+      .or(`date_to.is.null,date_to.gte.${dateFrom}`)
+      .order('date_from'),
+    supabase
+      .from('users')
+      .select('user_id, full_name, position, service_id'),
+  ])
+
+  if (!statusData) return []
+
+  const userMap = new Map<string, { full_name: string; position: string | null; service_id: string | null }>(
+    (userData ?? []).map(u => [u.user_id, { full_name: u.full_name, position: u.position, service_id: u.service_id }])
+  )
+
+  return (statusData as EmployeeStatus[])
+    .map(row => {
+      const u = userMap.get(row.user_id)
+      return {
+        ...row,
+        user_full_name: u?.full_name ?? '',
+        user_position: u?.position ?? null,
+        user_service_id: u?.service_id ?? null,
+      }
+    })
+    .filter(row => !serviceId || row.user_service_id === serviceId)
 }
 
 // Hire employee: set date_hired and ensure is_active=true.
