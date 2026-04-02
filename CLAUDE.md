@@ -87,7 +87,6 @@ Rules for all pages:
 - Don't refactor working code unless explicitly asked
 - Don't change environment variable names
 - Don't modify Vercel or Supabase configuration
-- Don't create test files (no test framework configured yet)
 
 ## Panels & Roles
 | Panel | File | Roles |
