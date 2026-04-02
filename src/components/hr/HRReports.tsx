@@ -71,11 +71,8 @@ function getDokladnayaNotes(row: StatusWithUser): string {
   const meta = row.metadata
   switch (row.status) {
     case 'SVO': {
-      if (meta?.volunteer_type) {
-        // Capitalize first letter
-        const vt = meta.volunteer_type.charAt(0).toUpperCase() + meta.volunteer_type.slice(1)
-        return vt
-      }
+      if (meta?.volunteer_type === 'по контракту') return 'Доброволец по контракту'
+      if (meta?.volunteer_type === 'доброволец') return 'Доброволец'
       return ''
     }
     case 'Mobilizovan':

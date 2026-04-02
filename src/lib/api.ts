@@ -444,6 +444,9 @@ export async function fetchEmployeeStatusHistory(userId: string): Promise<Employ
 }
 
 // Set employee status — ALWAYS INSERT, never UPDATE (append-only log).
+// Before inserting, closes any open-ended records (date_to=null) for this user
+// by setting their date_to to dateFrom - 1 day. This ensures that when an employee
+// returns to work (or changes status), stale open records don't appear in reports.
 // For single-day status (e.g. one-day Otgul): pass dateTo = dateFrom.
 // For open-ended status: pass dateTo = null.
 export async function setEmployeeStatus(
@@ -461,6 +464,17 @@ export async function setEmployeeStatus(
   },
   metadata?: StatusMetadata | null
 ): Promise<EmployeeStatus | null> {
+  // Close any open-ended records for this user that started before the new status
+  const prevDayDate = new Date(dateFrom + 'T00:00:00')
+  prevDayDate.setDate(prevDayDate.getDate() - 1)
+  const closingDate = prevDayDate.toISOString().split('T')[0]
+  await supabase
+    .from('employee_status')
+    .update({ date_to: closingDate })
+    .eq('user_id', userId)
+    .is('date_to', null)
+    .lt('date_from', dateFrom)
+
   const row: Record<string, unknown> = {
     user_id: userId, status, date_from: dateFrom, date_to: dateTo,
     reason, created_by: createdBy,
