@@ -16,7 +16,7 @@ function fmtPeriod(dateFrom: string, dateTo: string | null): string {
   const from = new Date(dateFrom + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
   if (!dateTo) return `с ${from} по настоящее время`
   const to = new Date(dateTo + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  return `${from} — ${to}`
+  return `с ${from} по ${to}`
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -39,36 +39,61 @@ function getMonthLabel(yyyyMM: string): string {
   return `${MONTHS_RU[parseInt(m) - 1]} ${y} г.`
 }
 
-// Notes column for докладная
+// Column 5 — "Причина отсутствия (б/л, справка и т.д.)" in докладная
+function getDokladnayaReason(row: StatusWithUser): string {
+  const meta = row.metadata
+  switch (row.status) {
+    case 'SVO':
+      return 'Приостановка трудового договора'
+    case 'Mobilizovan': {
+      const num = meta?.order_number ? `Приказ № ${meta.order_number}` : 'Приказ'
+      const date = meta?.order_date
+        ? ` от ${new Date(meta.order_date + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+        : ''
+      return num + date
+    }
+    case 'Bolnichniy': {
+      const loc = meta?.sick_leave_location
+        ? meta.sick_leave_location.charAt(0).toUpperCase() + meta.sick_leave_location.slice(1)
+        : ''
+      const num = meta?.sick_leave_number ? `б/л № ${meta.sick_leave_number}` : ''
+      return [loc, num].filter(Boolean).join(' ')
+    }
+    case 'Voennie_sbory':
+      return 'Г'
+    default:
+      return ''
+  }
+}
+
+// Column 6 — "Примечание" in докладная
 function getDokladnayaNotes(row: StatusWithUser): string {
   const meta = row.metadata
   switch (row.status) {
     case 'SVO': {
-      const parts: string[] = []
-      if (meta?.contract_suspended) {
-        parts.push(`Приостановка трудового договора${meta.volunteer_type ? ' ' + meta.volunteer_type : ''}`)
-      } else if (meta?.volunteer_type) {
-        parts.push(meta.volunteer_type)
+      if (meta?.volunteer_type) {
+        // Capitalize first letter
+        const vt = meta.volunteer_type.charAt(0).toUpperCase() + meta.volunteer_type.slice(1)
+        return vt
       }
-      if (row.reason) parts.push(row.reason)
-      return parts.join('; ')
+      return ''
     }
-    case 'Mobilizovan': {
-      const parts: string[] = ['Приостановка трудового договора']
-      if (meta?.order_number) parts.push(`пр. №${meta.order_number}`)
-      if (row.reason) parts.push(row.reason)
-      return parts.join(', ')
-    }
+    case 'Mobilizovan':
+      return 'Мобилизован'
     case 'Bolnichniy': {
-      const parts: string[] = []
-      if (meta?.sick_leave_location) parts.push(meta.sick_leave_location)
-      if (meta?.sick_leave_number) parts.push(`б/л №${meta.sick_leave_number}`)
-      if (meta?.sick_leave_submitted === false) parts.push('б/л не сдан')
-      else if (meta?.sick_leave_submitted === true) parts.push('б/л сдан')
+      if (meta?.sick_leave_submitted === true) {
+        const date = meta?.sick_leave_submitted_date
+          ? ` ${new Date(meta.sick_leave_submitted_date + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+          : ''
+        return `б/л сдан в отдел кадров${date}`
+      }
+      // Not submitted or unknown
+      const parts = ['б/л не сдан']
       if (!row.date_to) parts.push('продолжает болеть')
-      if (row.reason) parts.push(row.reason)
       return parts.join(', ')
     }
+    case 'Voennie_sbory':
+      return 'Прохождение военно-учебных сборов'
     default:
       return row.reason ?? ''
   }
@@ -104,8 +129,8 @@ function getReasonLabel(row: StatusWithUser): string {
   }
 }
 
-// Only СВО, Мобилизованные, Больничные go into докладная
-const DOKLADNAYA_STATUSES = new Set(['SVO', 'Mobilizovan', 'Bolnichniy'])
+// СВО, Мобилизованные, Больничные, Военные сборы go into докладная
+const DOKLADNAYA_STATUSES = new Set(['SVO', 'Mobilizovan', 'Bolnichniy', 'Voennie_sbory'])
 
 function openDokladnaya(statuses: StatusWithUser[], reportMonth: string, selectedIds: Set<string>): void {
   const [y, m] = reportMonth.split('-')
@@ -119,7 +144,7 @@ function openDokladnaya(statuses: StatusWithUser[], reportMonth: string, selecte
         <td style="border:1px solid #000;padding:4px 8px;">${s.user_full_name}</td>
         <td style="border:1px solid #000;padding:4px 8px;">${s.user_position ?? '—'}</td>
         <td style="border:1px solid #000;padding:4px 8px;">${fmtPeriod(s.date_from, s.date_to)}</td>
-        <td style="border:1px solid #000;padding:4px 8px;">${getReasonLabel(s)}</td>
+        <td style="border:1px solid #000;padding:4px 8px;">${getDokladnayaReason(s)}</td>
         <td style="border:1px solid #000;padding:4px 8px;">${getDokladnayaNotes(s)}</td>
       </tr>`)
     .join('')
@@ -605,8 +630,10 @@ export default function HRReports({ session, services }: Props) {
                           {fmtPeriod(s.date_from, s.date_to)}
                           {s.user_position && <span className="ml-2 text-white/30">{s.user_position}</span>}
                         </div>
-                        {getDokladnayaNotes(s) && (
-                          <div className="text-[10px] text-white/30 mt-0.5 italic">{getDokladnayaNotes(s)}</div>
+                        {(getDokladnayaReason(s) || getDokladnayaNotes(s)) && (
+                          <div className="text-[10px] text-white/30 mt-0.5 italic">
+                            {[getDokladnayaReason(s), getDokladnayaNotes(s)].filter(Boolean).join(' · ')}
+                          </div>
                         )}
                       </div>
                     </label>

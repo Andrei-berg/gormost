@@ -309,6 +309,7 @@ export interface StatusMetadata {
   sick_leave_number?: string
   sick_leave_location?: 'стационар' | 'амбулаторно'
   sick_leave_submitted?: boolean
+  sick_leave_submitted_date?: string  // ISO date when б/л was submitted to HR
   // Otgul
   otgul_basis?: 'za_svoy_schet' | 'za_otrabotannoe'
   // Otpusk

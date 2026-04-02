@@ -83,6 +83,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
   const [metaSickLeaveNumber, setMetaSickLeaveNumber] = useState('')
   const [metaSickLeaveLocation, setMetaSickLeaveLocation] = useState<'стационар' | 'амбулаторно'>('амбулаторно')
   const [metaSickLeaveSubmitted, setMetaSickLeaveSubmitted] = useState(false)
+  const [metaSickLeaveSubmittedDate, setMetaSickLeaveSubmittedDate] = useState('')
   const [metaOtgulBasis, setMetaOtgulBasis] = useState<'za_svoy_schet' | 'za_otrabotannoe'>('za_otrabotannoe')
   const [metaLeaveType, setMetaLeaveType] = useState('ежегодный')
 
@@ -153,6 +154,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
     setMetaSickLeaveNumber('')
     setMetaSickLeaveLocation('амбулаторно')
     setMetaSickLeaveSubmitted(false)
+    setMetaSickLeaveSubmittedDate('')
     setMetaOtgulBasis('za_otrabotannoe')
     setMetaLeaveType('ежегодный')
     setPendingStatus(newStatus)
@@ -172,6 +174,7 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
         sick_leave_number: metaSickLeaveNumber || undefined,
         sick_leave_location: metaSickLeaveLocation,
         sick_leave_submitted: metaSickLeaveSubmitted,
+        sick_leave_submitted_date: metaSickLeaveSubmitted ? (metaSickLeaveSubmittedDate || undefined) : undefined,
       }
     } else if (pendingStatus === 'Otgul') {
       metadata = { otgul_basis: metaOtgulBasis }
@@ -467,6 +470,12 @@ function HRTableRow({ employee, canEdit, canAdmin, currentUserId, onNameClick, o
                         <input type="checkbox" checked={metaSickLeaveSubmitted} onChange={e => setMetaSickLeaveSubmitted(e.target.checked)} className="accent-amber-500" />
                         Больничный лист сдан
                       </label>
+                      {metaSickLeaveSubmitted && (
+                        <div>
+                          <label className="text-[10px] text-white/40 block mb-1">Дата сдачи в отдел кадров</label>
+                          <input type="date" value={metaSickLeaveSubmittedDate} onChange={e => setMetaSickLeaveSubmittedDate(e.target.value)} className={inp} />
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Otgul metadata */}
