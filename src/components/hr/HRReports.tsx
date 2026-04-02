@@ -236,8 +236,10 @@ export default function HRReports({ session, services }: Props) {
   const [loading, setLoading] = useState(false)
   const [activeReport, setActiveReport] = useState<ReportTab>('svo')
 
-  // Selection state for докладная
+  // Selection state for докладная — individual rows
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Which status groups to include in докладная
+  const [includedGroups, setIncludedGroups] = useState<Set<string>>(new Set(DOKLADNAYA_STATUSES))
 
   async function load() {
     setLoading(true)
@@ -263,7 +265,7 @@ export default function HRReports({ session, services }: Props) {
   const otpusk = statuses.filter(s => s.status === 'Otpusk' || s.status === 'Uchebniy_otpusk')
   const uvolen = statuses.filter(s => s.status === 'Uvolen')
   const voennie_sbory = statuses.filter(s => s.status === 'Voennie_sbory')
-  const dokladnayaRows = statuses.filter(s => DOKLADNAYA_STATUSES.has(s.status))
+  const dokladnayaRows = statuses.filter(s => DOKLADNAYA_STATUSES.has(s.status) && includedGroups.has(s.status))
 
   const thCls = 'px-3 py-2 text-left text-[10px] text-white/40 font-medium uppercase tracking-wide border-b border-white/10'
   const tdCls = 'px-3 py-2 text-xs text-white/70'
@@ -297,7 +299,39 @@ export default function HRReports({ session, services }: Props) {
     }
   }
 
+  function toggleGroup(status: string) {
+    const groupIds = statuses.filter(s => s.status === status).map(s => s.id)
+    setIncludedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(status)) {
+        next.delete(status)
+        // deselect all rows of this group
+        setSelectedIds(prevSel => {
+          const sel = new Set(prevSel)
+          groupIds.forEach(id => sel.delete(id))
+          return sel
+        })
+      } else {
+        next.add(status)
+        // select all rows of this group
+        setSelectedIds(prevSel => {
+          const sel = new Set(prevSel)
+          groupIds.forEach(id => sel.add(id))
+          return sel
+        })
+      }
+      return next
+    })
+  }
+
   const allSelected = dokladnayaRows.length > 0 && dokladnayaRows.every(s => selectedIds.has(s.id))
+
+  const DOKLADNAYA_GROUPS: { status: string; label: string; color: string; bg: string }[] = [
+    { status: 'SVO',          label: 'СВО',            color: '#991b1b', bg: 'bg-red-900/20 border-red-900/30' },
+    { status: 'Mobilizovan',  label: 'Мобилизованные', color: '#dc2626', bg: 'bg-red-700/20 border-red-700/30' },
+    { status: 'Bolnichniy',   label: 'Больничные',     color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
+    { status: 'Voennie_sbory',label: 'Военные сборы',  color: '#6366f1', bg: 'bg-indigo-500/20 border-indigo-500/30' },
+  ]
 
   return (
     <div className="space-y-4">
@@ -585,13 +619,49 @@ export default function HRReports({ session, services }: Props) {
             <div>
               <div className="text-sm text-white/70 font-medium mb-1">Докладная записка</div>
               <div className="text-xs text-white/40">
-                СВО, Мобилизованные, Больничные за {getMonthLabel(reportMonth)}.
-                Выберите сотрудников для включения в документ.
+                Выберите разделы и сотрудников для включения в документ за {getMonthLabel(reportMonth)}.
               </div>
             </div>
 
+            {/* Group toggles */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Разделы</div>
+              <div className="flex flex-wrap gap-2">
+                {DOKLADNAYA_GROUPS.map(g => {
+                  const count = statuses.filter(s => s.status === g.status).length
+                  const on = includedGroups.has(g.status)
+                  return (
+                    <button
+                      key={g.status}
+                      onClick={() => toggleGroup(g.status)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        on
+                          ? `${g.bg} opacity-100`
+                          : 'bg-white/5 border-white/10 opacity-40'
+                      }`}
+                      style={on ? { color: g.color } : { color: '#ffffff66' }}
+                    >
+                      <span className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${on ? 'border-current bg-current/20' : 'border-white/20'}`}>
+                        {on && <span className="text-[8px] leading-none font-bold">✓</span>}
+                      </span>
+                      {g.label}
+                      {count > 0 && (
+                        <span className="ml-0.5 opacity-60">({count})</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-white/10" />
+
             {dokladnayaRows.length === 0 ? (
-              <div className="text-xs text-white/30 py-4">Нет данных за {getMonthLabel(reportMonth)}</div>
+              <div className="text-xs text-white/30 py-4">
+                {includedGroups.size === 0
+                  ? 'Не выбран ни один раздел'
+                  : `Нет данных за ${getMonthLabel(reportMonth)}`}
+              </div>
             ) : (
               <div className="space-y-1">
                 {/* Select all toggle */}
