@@ -167,7 +167,7 @@ export default function PlanList({ plans, session, onRefresh, onCreatePlan }: Pr
                           const isOverdue = plan.plan_date < today && !['DONE', 'REDIRECTED', 'CANCELLED'].includes(plan.status)
                           const canCancel = isOverdue && plan.status !== 'REJECTED'
                           return (
-                            <div key={plan.id} className="relative">
+                            <div key={plan.id} id={`plan-${plan.id}`} className="relative">
                               <PlanCard plan={plan} session={session} onRefresh={onRefresh} />
                               {canCancel && (
                                 <button

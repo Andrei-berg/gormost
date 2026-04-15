@@ -44,6 +44,10 @@ interface Props {
   onSaved: () => void
 }
 
+function hasDraftPlans(plans: WorkPlan[]): boolean {
+  return plans.some(p => p.status === 'DRAFT')
+}
+
 export default function CreatePlanModal({ session, existingPlans, onClose, onSaved }: Props) {
   const options = getPlanOptions(existingPlans)
   const [selected, setSelected] = useState(options[0] ? `${options[0].date}_${options[0].shift}` : '')
@@ -76,8 +80,26 @@ export default function CreatePlanModal({ session, existingPlans, onClose, onSav
         <h2 className="text-lg font-semibold text-white mb-4">Новый план работ</h2>
 
         {options.length === 0 ? (
-          <div className="text-center text-white/40 py-8 text-sm">
-            Все ближайшие смены уже запланированы
+          <div className="py-6 space-y-3">
+            {hasDraftPlans(existingPlans) ? (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <span className="text-3xl">📝</span>
+                <div>
+                  <div className="text-sm font-semibold text-amber-300 mb-1">У вас есть незаконченные черновики</div>
+                  <div className="text-xs text-white/45 leading-relaxed">
+                    Вы уже создавали план на эти смены — он сохранился как черновик.<br />
+                    Закройте это окно и найдите его в разделе <span className="text-amber-300/80 font-medium">«Черновики»</span> вверху страницы.
+                  </div>
+                </div>
+                <button onClick={onClose} className="px-5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-sm font-medium transition-colors">
+                  Вернуться к черновикам
+                </button>
+              </div>
+            ) : (
+              <div className="text-center text-white/40 text-sm">
+                Все ближайшие смены уже запланированы
+              </div>
+            )}
           </div>
         ) : (
           <>

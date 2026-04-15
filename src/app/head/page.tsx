@@ -15,6 +15,7 @@ import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { HEAD_TOUR, HEAD_HELP } from '@/components/help/tours'
 import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 import HeadTransportTab from '@/components/head/HeadTransportTab'
+import DraftPlansSection from '@/components/head/DraftPlansSection'
 
 export default function HeadPage() {
   return (
@@ -141,6 +142,7 @@ function Content({ session }: { session: AuthSession }) {
 
       {tab === 'plans' && (
         <>
+          <DraftPlansSection plans={plans} session={session} onRefresh={loadData} />
           <PlanList
             plans={plans}
             session={session}
