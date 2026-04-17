@@ -7,7 +7,7 @@ import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
 import LiveBoard from '@/components/chief/LiveBoard'
-import ChiefDirectives from '@/components/chief/ChiefDirectives'
+import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { CHIEF_TOUR, CHIEF_HELP } from '@/components/help/tours'
@@ -109,7 +109,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'live' ? (
         <LiveBoard />
       ) : tab === 'directives' ? (
-        <ChiefDirectives session={session} />
+        <UrgentOrdersPanel session={session} />
       ) : (
         <>
           {/* Filter tabs */}

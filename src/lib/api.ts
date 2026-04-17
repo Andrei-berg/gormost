@@ -15,6 +15,7 @@ import type {
   CrossServiceRequest,
   WorkRedirect, WorkSource, OriginalPlanFate, ShiftType,
   Directive, DirectivePriority, DirectiveStatus,
+  DirectiveWorkerAssignment, ServiceOrderType,
   CertType, EmployeeCert, CertRequirement,
 } from '@/types'
 
@@ -1922,7 +1923,7 @@ export async function fetchDirectives(): Promise<Directive[]> {
 }
 
 export async function createDirective(
-  data: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan'>,
+  data: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan' | 'service_id' | 'order_type' | 'location'>,
   userId: string
 ): Promise<Directive | null> {
   const { data: result, error } = await supabase
@@ -1941,6 +1942,76 @@ export async function updateDirectiveStatus(
     .from('directives')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
+}
+
+// ── Directive worker assignments (migration 041) ─────────────────────────────
+
+export async function createDirectiveWithWorkers(
+  directiveData: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan' | 'service_id' | 'order_type' | 'location'>,
+  workers: Pick<DirectiveWorkerAssignment, 'worker_id' | 'worker_name' | 'source_plan_id' | 'source_plan_name'>[],
+  userId: string
+): Promise<Directive | null> {
+  const directive = await createDirective(directiveData, userId)
+  if (!directive) return null
+  if (workers.length > 0) {
+    await supabase.from('directive_worker_assignments').insert(
+      workers.map(w => ({ ...w, directive_id: directive.id, assigned_by: userId }))
+    )
+  }
+  return directive
+}
+
+export async function fetchDirectiveWorkers(directiveId: string): Promise<DirectiveWorkerAssignment[]> {
+  const { data } = await supabase
+    .from('directive_worker_assignments')
+    .select('*')
+    .eq('directive_id', directiveId)
+    .order('assigned_at')
+  return (data || []) as DirectiveWorkerAssignment[]
+}
+
+export async function fetchDirectivesWithWorkers(): Promise<(Directive & { workers: DirectiveWorkerAssignment[] })[]> {
+  const directives = await fetchDirectives()
+  if (!directives.length) return []
+  const { data: allWorkers } = await supabase
+    .from('directive_worker_assignments')
+    .select('*')
+    .in('directive_id', directives.map(d => d.id))
+  const workersByDirective = new Map<string, DirectiveWorkerAssignment[]>()
+  ;(allWorkers || []).forEach((w: DirectiveWorkerAssignment) => {
+    if (!workersByDirective.has(w.directive_id)) workersByDirective.set(w.directive_id, [])
+    workersByDirective.get(w.directive_id)!.push(w)
+  })
+  return directives.map(d => ({ ...d, workers: workersByDirective.get(d.id) || [] }))
+}
+
+// Returns worker IDs that are currently assigned to active directives on a given date
+export async function fetchPulledWorkerIds(planDate: string): Promise<Set<string>> {
+  const startOfDay = planDate + 'T00:00:00'
+  const endOfDay   = planDate + 'T23:59:59'
+  const { data: dirs } = await supabase
+    .from('directives')
+    .select('id')
+    .gte('created_at', startOfDay)
+    .lte('created_at', endOfDay)
+    .not('status', 'in', '("DONE","CANCELLED")')
+  if (!dirs || dirs.length === 0) return new Set()
+  const { data: workers } = await supabase
+    .from('directive_worker_assignments')
+    .select('worker_id')
+    .in('directive_id', dirs.map((d: { id: string }) => d.id))
+  return new Set((workers || []).map((w: { worker_id: string }) => w.worker_id))
+}
+
+// ── Service order types catalog (migration 041) ──────────────────────────────
+
+export async function fetchServiceOrderTypes(serviceId: string): Promise<ServiceOrderType[]> {
+  const { data } = await supabase
+    .from('service_order_types')
+    .select('*')
+    .eq('service_id', serviceId)
+    .order('sort_order')
+  return (data || []) as ServiceOrderType[]
 }
 
 // Returns a map userId → EmployeeStatusType for employees who are absent on a given date.

@@ -383,6 +383,28 @@ export interface Directive {
   notes:        string | null
   created_at:   string
   updated_at:   string
+  // Extended fields (migration 041)
+  service_id:   string | null
+  order_type:   string | null
+  location:     string | null
+}
+
+export interface DirectiveWorkerAssignment {
+  id:               string
+  directive_id:     string
+  worker_id:        string
+  worker_name:      string
+  source_plan_id:   string | null
+  source_plan_name: string | null
+  assigned_at:      string
+  assigned_by:      string
+}
+
+export interface ServiceOrderType {
+  id:         string
+  service_id: string
+  name:       string
+  sort_order: number
 }
 
 export const DIRECTIVE_PRIORITY_CONFIG: Record<DirectivePriority, { label: string; color: string }> = {

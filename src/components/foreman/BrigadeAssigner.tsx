@@ -15,6 +15,7 @@ import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import WithTooltip from '@/components/help/WithTooltip'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
+import DirectiveAlert from '@/components/foreman/DirectiveAlert'
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
@@ -138,10 +139,17 @@ export default function BrigadeAssigner({ session, services }: Props) {
   const inWork   = plans.filter(p => ['ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(p.status) && p.plan_date >= todayStr)
   const overdue  = plans.filter(p => p.plan_date < todayStr)
 
+  // IDs of workers assigned to this foreman's plans
+  const myWorkerIds = useMemo(
+    () => Array.from(new Set(allAssignments.map(a => a.user_id))),
+    [allAssignments]
+  )
+
   if (loading) return <div className="text-center text-white/30 py-12">Загрузка...</div>
 
   return (
     <div className="space-y-6">
+      <DirectiveAlert planWorkerIds={myWorkerIds} />
 
       {/* Shift stats — interactive roster panel */}
       <div className="glass rounded-xl border border-cyan-500/20 overflow-hidden">

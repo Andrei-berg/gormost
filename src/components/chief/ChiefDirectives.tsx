@@ -59,6 +59,9 @@ export default function ChiefDirectives({ session }: { session: AuthSession }) {
         priority,
         plan_id: selectedPlan?.id ?? null,
         suspend_plan: suspendPlan,
+        service_id: null,
+        order_type: null,
+        location: null,
       }, session.user_id)
       setShowCreate(false)
       load()

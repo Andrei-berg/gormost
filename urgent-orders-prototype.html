@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gormost — Поручения сверху</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #070a0f;
+      --glass:       rgba(255,255,255,0.04);
+      --glass-s:     rgba(255,255,255,0.08);
+      --glass-popup: rgba(10,15,25,0.97);
+      --border:      rgba(255,255,255,0.07);
+      --border-s:    rgba(255,255,255,0.13);
+      --text:        #e8edf5;
+      --text-2:      rgba(232,237,245,0.55);
+      --text-3:      rgba(232,237,245,0.28);
+      --amber:       #f59e0b;
+      --amber-bg:    rgba(245,158,11,0.12);
+      --amber-bd:    rgba(245,158,11,0.28);
+      --red:         #ef4444;
+      --red-bg:      rgba(239,68,68,0.12);
+      --red-bd:      rgba(239,68,68,0.28);
+      --green:       #10b981;
+      --green-bg:    rgba(16,185,129,0.12);
+      --green-bd:    rgba(16,185,129,0.25);
+      --blue:        #60a5fa;
+      --blue-bg:     rgba(96,165,250,0.12);
+      --blue-bd:     rgba(96,165,250,0.25);
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+      --r:  10px;
+      --rs: 6px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+
+    /* Subtle scanline grid */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.035) 1px, transparent 1px);
+      background-size: 44px 44px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .app {
+      position: relative; z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 28px;
+    }
+    .brand {
+      font-family: var(--mono);
+      font-size: 18px; font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+    .breadcrumb {
+      font-family: var(--mono);
+      font-size: 11px; color: var(--text-3);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex; gap: 2px; padding: 4px;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+    .tab {
+      padding: 8px 16px; border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-2);
+      font-family: var(--sans); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all .15s;
+    }
+    .tab.active {
+      background: var(--glass-s);
+      border-color: var(--border-s);
+      color: var(--text);
+    }
+
+    /* ── HEADER ROW ── */
+    .panel-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .panel-title {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .panel-title h2 {
+      font-family: var(--mono);
+      font-size: 15px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.45; transform:scale(.75); }
+    }
+    .date-badge {
+      font-family: var(--mono); font-size: 11px; color: var(--text-3);
+    }
+
+    .btn-new {
+      display: flex; align-items: center; gap: 7px;
+      padding: 10px 18px;
+      background: var(--amber); color: #000;
+      border: none; border-radius: var(--rs);
+      font-family: var(--sans); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s; letter-spacing:.02em;
+    }
+    .btn-new:hover {
+      background: #fbbf24;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px rgba(245,158,11,.35);
+    }
+
+    /* ── STATS BAR ── */
+    .stats {
+      display: flex; gap: 0;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .stat {
+      flex: 1; padding: 12px 16px;
+      border-right: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-family: var(--mono); font-size: 22px; font-weight: 600;
+    }
+    .stat-num.a { color: var(--amber); }
+    .stat-num.g { color: var(--green); }
+    .stat-num.r { color: var(--red); }
+    .stat-num.w { color: var(--text-2); }
+    .stat-lbl {
+      font-size: 11px; color: var(--text-2); line-height: 1.4;
+    }
+
+    /* ── ORDERS GRID ── */
+    .orders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .order-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      cursor: pointer;
+      transition: all .15s;
+      position: relative; overflow: hidden;
+    }
+    .order-card:hover {
+      background: var(--glass-s);
+      border-color: var(--border-s);
+      transform: translateY(-1px);
+    }
+    .order-card.critical { border-left: 3px solid var(--red); }
+    .order-card.urgent   { border-left: 3px solid var(--amber); }
+    .order-card.critical::after {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background: linear-gradient(90deg, var(--red), transparent);
+    }
+    .order-card.urgent::after {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background: linear-gradient(90deg, var(--amber), transparent);
+    }
+
+    .card-top {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      font-family: var(--mono); font-size: 10px;
+      font-weight: 700; letter-spacing: .09em;
+      padding: 3px 9px; border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge.critical { background:var(--red-bg); color:var(--red); border:1px solid var(--red-bd); }
+    .badge.urgent   { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-bd); }
+    .badge.active   { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue-bd); }
+    .badge.inprog   { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-bd); }
+    .badge.done     { background:var(--green-bg); color:var(--green); border:1px solid var(--green-bd); }
+    .badge.svc      { font-size:11px; color:var(--text-3); background:none; border:none; padding:0; letter-spacing:.04em; }
+
+    .card-title { font-size:14px; font-weight:500; margin-bottom:4px; line-height:1.4; }
+    .card-type  { font-size:11px; color:var(--text-2); font-style:italic; margin-bottom:12px; }
+
+    .card-meta { display:flex; gap:12px; margin-bottom:10px; }
+    .meta { font-size:11px; color:var(--text-2); display:flex; align-items:center; gap:3px; }
+
+    .card-bottom { display:flex; align-items:center; justify-content:space-between; }
+
+    .chips { display:flex; flex-wrap:wrap; gap:4px; }
+    .chip-worker {
+      font-size:11px; padding:2px 8px; border-radius:4px;
+      background:var(--amber-bg); color:var(--amber);
+      border:1px solid var(--amber-bd);
+      font-family: var(--mono);
+    }
+
+    /* ── WEAKENED BRIGADES ── */
+    .weakened-section {
+      background: rgba(245,158,11,.04);
+      border: 1px solid var(--amber-bd);
+      border-radius: var(--r);
+      padding: 16px;
+    }
+    .weakened-title {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      letter-spacing: .08em; color: var(--amber);
+      text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 14px;
+    }
+    .weakened-title span {
+      font-size:11px; color:var(--text-2);
+      font-family:var(--sans); font-weight:400;
+      text-transform:none; letter-spacing:0;
+    }
+    .weakened-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 8px;
+    }
+    .bw-card {
+      background: var(--glass-s);
+      border: 1px solid var(--amber-bd);
+      border-radius: var(--rs);
+      padding: 12px;
+    }
+    .bw-head {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:8px;
+    }
+    .bw-name { font-size:12px; font-weight:500; }
+    .bw-minus {
+      font-family:var(--mono); font-size:11px; color:var(--amber);
+      background:var(--amber-bg); padding:2px 7px; border-radius:3px;
+    }
+    .bw-workers { display:flex; flex-direction:column; gap:4px; }
+    .bw-row { font-size:12px; display:flex; align-items:center; gap:6px; }
+    .bw-row.out { color:var(--text-3); text-decoration:line-through; }
+    .out-tag {
+      font-family:var(--mono); font-size:9px; font-weight:700;
+      color:var(--amber); background:var(--amber-bg);
+      border:1px solid var(--amber-bd);
+      border-radius:3px; padding:1px 5px;
+      text-transform:uppercase; letter-spacing:.06em;
+    }
+
+    /* ── FOREMAN VIEW ── */
+    .foreman-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .section-eyebrow {
+      font-family:var(--mono); font-size:10px;
+      letter-spacing:.14em; text-transform:uppercase;
+      color:var(--text-3); margin-bottom:12px;
+    }
+    .foreman-alert {
+      background: rgba(245,158,11,.05);
+      border: 1px solid var(--amber-bd);
+      border-radius: var(--r);
+      padding: 16px;
+      position: relative; overflow: hidden;
+    }
+    .foreman-alert::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background: linear-gradient(90deg, var(--amber), transparent);
+    }
+    .fa-head { display:flex; gap:12px; margin-bottom:14px; }
+    .fa-icon { font-size:22px; }
+    .fa-title { font-size:14px; font-weight:600; color:var(--amber); margin-bottom:2px; }
+    .fa-sub   { font-size:12px; color:var(--text-2); }
+    .fa-rows  {
+      background: var(--glass);
+      border-radius: var(--rs); padding: 12px;
+      display:flex; flex-direction:column; gap:0;
+    }
+    .fa-row {
+      display:flex; align-items:center; gap:10px;
+      font-size:13px; padding: 7px 0;
+    }
+    .fa-row + .fa-row { border-top: 1px solid var(--border); }
+    .fa-name  { font-weight:500; flex:1; }
+    .fa-ref   { font-family:var(--mono); font-size:11px; color:var(--amber); }
+    .fa-from  { font-size:11px; color:var(--text-3); }
+    .fa-time  { font-size:11px; color:var(--text-3); margin-left:auto; }
+
+    /* ── MODAL ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(7,10,15,.88);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .overlay.hidden { display:none; }
+
+    .modal {
+      background: var(--glass-popup);
+      border: 1px solid var(--border-s);
+      border-radius: 14px;
+      width: 100%; max-width: 900px;
+      max-height: 90vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-top {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-ttl {
+      font-family:var(--mono); font-size:13px; font-weight:600;
+      letter-spacing:.08em; text-transform:uppercase;
+    }
+    .modal-right { display:flex; align-items:center; gap:14px; }
+    .step-track {
+      display:flex; align-items:center; gap:6px;
+    }
+    .step-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--border-s);
+      transition: all .2s;
+    }
+    .step-dot.on  { background:var(--amber); box-shadow:0 0 8px var(--amber); }
+    .step-dot.done{ background:var(--green); }
+    .step-line    { width:22px; height:1px; background:var(--border-s); }
+    .step-lbl     { font-family:var(--mono); font-size:10px; color:var(--text-3); }
+    .modal-x {
+      background:none; border:none; color:var(--text-2);
+      cursor:pointer; font-size:22px; line-height:1;
+      padding:4px 8px; border-radius:4px; transition:all .15s;
+    }
+    .modal-x:hover { color:var(--text); background:var(--glass-s); }
+
+    .modal-body   { padding:24px; overflow-y:auto; flex:1; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display:flex; align-items:center; justify-content:flex-end; gap:10px;
+    }
+
+    /* ── FORM ── */
+    .frow   { margin-bottom:16px; }
+    .f2     { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+    .flbl   {
+      display:block; font-family:var(--mono); font-size:10px;
+      font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+      color:var(--text-2); margin-bottom:6px;
+    }
+    .finp, .fsel, .ftxt {
+      width:100%; padding:10px 12px;
+      background:var(--glass); border:1px solid var(--border-s);
+      border-radius:var(--rs); color:var(--text);
+      font-family:var(--sans); font-size:14px;
+      outline:none; transition:all .15s;
+    }
+    .finp:focus, .fsel:focus, .ftxt:focus {
+      border-color:var(--amber);
+      box-shadow:0 0 0 3px rgba(245,158,11,.12);
+    }
+    .fsel option { background:#0d1220; color:var(--text); }
+    .ftxt { resize:vertical; min-height:72px; }
+    .finp:disabled, .fsel:disabled {
+      opacity:.45; cursor:not-allowed;
+    }
+
+    /* Priority radio */
+    .prio-row { display:flex; gap:8px; }
+    .prio-opt {
+      flex:1; padding:11px 12px;
+      border:1px solid var(--border-s);
+      background:var(--glass);
+      border-radius:var(--rs);
+      cursor:pointer; text-align:center;
+      transition:all .15s;
+    }
+    .prio-opt:hover { border-color:var(--amber-bd); }
+    .prio-opt.sel-u { background:var(--amber-bg); border-color:var(--amber-bd); color:var(--amber); }
+    .prio-opt.sel-c { background:var(--red-bg);   border-color:var(--red-bd);   color:var(--red); }
+    .prio-lbl { font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; display:block; }
+    .prio-sub { font-size:11px; color:var(--text-2); margin-top:3px; }
+    .prio-opt.sel-u .prio-sub, .prio-opt.sel-c .prio-sub { color:inherit; opacity:.7; }
+
+    /* ── STEP 2 LAYOUT ── */
+    .s2-layout {
+      display: grid;
+      grid-template-columns: 1fr 256px;
+      gap: 20px;
+    }
+    .s2-board-ttl {
+      font-family:var(--mono); font-size:10px; font-weight:700;
+      letter-spacing:.09em; text-transform:uppercase;
+      color:var(--text-3); margin-bottom:10px;
+    }
+    .brigade-list {
+      display:flex; flex-direction:column; gap:8px;
+      max-height:430px; overflow-y:auto; padding-right:4px;
+    }
+    .brig-card {
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--rs); padding:12px;
+      transition:all .15s;
+    }
+    .brig-card.has-sel { border-color:var(--amber-bd); background:rgba(245,158,11,.03); }
+    .brig-head {
+      display:flex; align-items:flex-start;
+      justify-content:space-between; margin-bottom:6px;
+    }
+    .brig-name   { font-size:12px; font-weight:500; line-height:1.3; }
+    .brig-master { font-size:11px; color:var(--text-3); margin-bottom:8px; }
+    .sel-tag {
+      font-family:var(--mono); font-size:9px; font-weight:700;
+      color:var(--amber); background:var(--amber-bg);
+      border:1px solid var(--amber-bd);
+      border-radius:3px; padding:2px 6px;
+      text-transform:uppercase; white-space:nowrap;
+    }
+
+    .worker-tokens { display:flex; flex-wrap:wrap; gap:5px; }
+    .wtoken {
+      display:flex; align-items:center; gap:4px;
+      padding:5px 10px; border-radius:20px;
+      border:1px solid var(--border-s);
+      background:var(--glass-s);
+      font-size:12px; cursor:pointer;
+      transition:all .15s; user-select:none;
+    }
+    .wtoken:hover { border-color:var(--amber-bd); background:var(--amber-bg); color:var(--amber); }
+    .wtoken.sel   { border-color:var(--amber); background:var(--amber-bg); color:var(--amber); }
+    .wtoken.out   { opacity:.32; cursor:not-allowed; text-decoration:line-through; }
+    .wt-dot { width:5px; height:5px; border-radius:50%; background:var(--text-3); transition:all .15s; }
+    .wtoken.sel .wt-dot { background:var(--amber); }
+
+    /* Staging */
+    .stg-ttl {
+      font-family:var(--mono); font-size:10px; font-weight:700;
+      letter-spacing:.09em; text-transform:uppercase;
+      color:var(--text-2); margin-bottom:8px;
+    }
+    .stg-box {
+      background:var(--glass);
+      border:1px dashed var(--border-s);
+      border-radius:var(--rs);
+      padding:10px; min-height:100px;
+      margin-bottom:12px;
+    }
+    .stg-empty {
+      text-align:center; padding:22px 8px;
+      font-size:12px; color:var(--text-3); font-style:italic;
+      line-height:1.5;
+    }
+    .stg-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 10px;
+      background:var(--amber-bg); border:1px solid var(--amber-bd);
+      border-radius:var(--rs); margin-bottom:5px;
+    }
+    .stg-name { font-size:13px; color:var(--amber); font-weight:500; }
+    .stg-from { font-size:10px; color:var(--text-2); margin-top:1px; }
+    .stg-rm   {
+      background:none; border:none; color:var(--text-3);
+      cursor:pointer; font-size:16px; padding:2px 5px; border-radius:3px;
+    }
+    .stg-rm:hover { color:var(--red); }
+    .stg-hint { font-size:11px; color:var(--text-3); line-height:1.5; margin-bottom:14px; }
+
+    .order-preview {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:var(--rs); padding:12px;
+    }
+    .op-ttl { font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--text-3); margin-bottom:6px; }
+    .op-name { font-size:12px; font-weight:500; margin-bottom:2px; }
+    .op-sub  { font-size:11px; color:var(--text-2); }
+    .op-svc  { font-size:11px; color:var(--text-3); font-family:var(--mono); margin-top:5px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      padding:10px 18px; border-radius:var(--rs);
+      font-family:var(--sans); font-size:13px; font-weight:500;
+      cursor:pointer; border:1px solid transparent;
+      transition:all .15s;
+    }
+    .btn-ghost {
+      background:var(--glass); border-color:var(--border-s);
+      color:var(--text-2);
+    }
+    .btn-ghost:hover { background:var(--glass-s); color:var(--text); }
+    .btn-amber {
+      background:var(--amber); color:#000; font-weight:700;
+    }
+    .btn-amber:hover { background:#fbbf24; }
+    .btn-amber:disabled {
+      background:rgba(245,158,11,.25); color:rgba(0,0,0,.4);
+      cursor:not-allowed;
+    }
+    .btn-green { background:var(--green); color:#fff; font-weight:700; }
+
+    /* ── DETAIL MODAL ── */
+    .d-info {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:10px; margin-bottom:16px;
+    }
+    .d-cell {
+      background:var(--glass); border-radius:var(--rs); padding:10px;
+    }
+    .d-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:5px; }
+    .d-val { font-size:13px; }
+
+    .w-assigned { display:flex; flex-direction:column; gap:6px; }
+    .wa-row {
+      background:var(--amber-bg); border:1px solid var(--amber-bd);
+      border-radius:var(--rs); padding:10px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .wa-name { font-size:13px; font-weight:500; color:var(--amber); }
+    .wa-from { font-size:11px; color:var(--text-2); margin-top:2px; }
+
+    /* ── TOAST ── */
+    .toast {
+      position:fixed; bottom:24px; right:24px;
+      padding:13px 20px;
+      background:var(--green-bg); border:1px solid var(--green-bd);
+      border-radius:var(--r);
+      color:var(--green); font-size:13px; font-weight:500;
+      z-index:200;
+      transform:translateY(70px); opacity:0;
+      transition:all .32s cubic-bezier(.34,1.56,.64,1);
+    }
+    .toast.show { transform:translateY(0); opacity:1; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .anim { animation: fadeUp .28s ease forwards; }
+    .anim-d1 { animation-delay:.08s; opacity:0; }
+    .anim-d2 { animation-delay:.16s; opacity:0; }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border-s); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <span class="brand">GORMOST</span>
+    <span class="breadcrumb">/ ГЛАВНЫЙ ИНЖЕНЕР</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-left:auto;">17 апреля 2026, пятница</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab">Наряды на работы</button>
+    <button class="tab active">Поручения &#9888;</button>
+    <button class="tab">Журнал</button>
+  </div>
+
+  <!-- Panel header -->
+  <div class="panel-header anim">
+    <div class="panel-title">
+      <div class="pulse"></div>
+      <h2>Поручения сверху</h2>
+      <span class="date-badge">17 апр 2026</span>
+    </div>
+    <button class="btn-new" onclick="openModal()">
+      <span style="font-size:18px;line-height:1">+</span>
+      Создать поручение
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats anim anim-d1">
+    <div class="stat">
+      <span class="stat-num a" id="stat-active">2</span>
+      <div class="stat-lbl">Активных<br>поручений</div>
+    </div>
+    <div class="stat">
+      <span class="stat-num g">5</span>
+      <div class="stat-lbl">Выполнено<br>сегодня</div>
+    </div>
+    <div class="stat">
+      <span class="stat-num r" id="stat-pulled">3</span>
+      <div class="stat-lbl">Работников<br>выведено</div>
+    </div>
+    <div class="stat">
+      <span class="stat-num w">2</span>
+      <div class="stat-lbl">Бригады<br>ослаблены</div>
+    </div>
+  </div>
+
+  <!-- Orders list -->
+  <div class="orders-grid anim anim-d2" id="orders-grid">
+
+    <!-- Order 1 — CRITICAL -->
+    <div class="order-card critical" onclick="showDetail('o1')">
+      <div class="card-top">
+        <span class="badge critical">&#128308; Критично</span>
+        <span class="badge svc">&#9889; SRV-ENG</span>
+      </div>
+      <div class="card-title">Устранение аварийной утечки — секция А-3</div>
+      <div class="card-type">Аварийный наряд — инженерные системы</div>
+      <div class="card-meta">
+        <span class="meta">&#128336; 09:15</span>
+        <span class="meta">&#128100; Иванов И.И. (Гл. инж.)</span>
+      </div>
+      <div class="card-bottom">
+        <div class="chips"><span class="chip-worker">Лебедев К.С.</span></div>
+        <span class="badge inprog">В работе</span>
+      </div>
+    </div>
+
+    <!-- Order 2 — URGENT -->
+    <div class="order-card urgent" onclick="showDetail('o2')">
+      <div class="card-top">
+        <span class="badge urgent">&#9889; Срочно</span>
+        <span class="badge svc">&#127959;&#65039; SRV-STR</span>
+      </div>
+      <div class="card-title">Осмотр деформации стены — тоннель Б-7</div>
+      <div class="card-type">Наряд на строительные работы</div>
+      <div class="card-meta">
+        <span class="meta">&#128336; 11:40</span>
+        <span class="meta">&#128100; Петров А.М. (Зампрораб)</span>
+      </div>
+      <div class="card-bottom">
+        <div class="chips">
+          <span class="chip-worker">Смирнов В.К.</span>
+          <span class="chip-worker">Иванов А.А.</span>
+        </div>
+        <span class="badge active">Активно</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Weakened brigades -->
+  <div class="weakened-section anim anim-d2" id="weakened-section">
+    <div class="weakened-title">
+      &#9888; Ослабленные бригады
+      <span>— из этих бригад выведены работники</span>
+    </div>
+    <div class="weakened-grid" id="weakened-grid">
+      <div class="bw-card">
+        <div class="bw-head">
+          <div class="bw-name">&#9889; Тоннель В-7 &mdash; Орлов М.Е.</div>
+          <span class="bw-minus">-1</span>
+        </div>
+        <div class="bw-workers">
+          <div class="bw-row out">Лебедев К.С. <span class="out-tag">выведен</span></div>
+          <div class="bw-row">Новиков В.Ю.</div>
+          <div class="bw-row">Попов Г.Н.</div>
+        </div>
+      </div>
+      <div class="bw-card">
+        <div class="bw-head">
+          <div class="bw-name">&#127959;&#65039; Секция Б-12 &mdash; Козлов П.В.</div>
+          <span class="bw-minus">-2</span>
+        </div>
+        <div class="bw-workers">
+          <div class="bw-row out">Смирнов В.К. <span class="out-tag">выведен</span></div>
+          <div class="bw-row out">Иванов А.А. <span class="out-tag">выведен</span></div>
+          <div class="bw-row">Петров Д.Н.</div>
+          <div class="bw-row">Федоров С.И.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Foreman view demo -->
+  <div class="foreman-section">
+    <div class="section-eyebrow">Вид мастера (/foreman) — уведомление об изменении состава бригады</div>
+    <div class="foreman-alert">
+      <div class="fa-head">
+        <span class="fa-icon">&#9888;&#65039;</span>
+        <div>
+          <div class="fa-title">Состав бригады изменён</div>
+          <div class="fa-sub">Работники переведены на экстренное поручение &mdash; бригада: Секция Б-12</div>
+        </div>
+      </div>
+      <div class="fa-rows">
+        <div class="fa-row">
+          <span class="fa-name">Смирнов В.К.</span>
+          <span class="fa-ref">&#8594; ПСВ-2024-042</span>
+          <span class="fa-from">Тоннель Б-7, осмотр стены</span>
+          <span class="fa-time">11:40</span>
+        </div>
+        <div class="fa-row">
+          <span class="fa-name">Иванов А.А.</span>
+          <span class="fa-ref">&#8594; ПСВ-2024-042</span>
+          <span class="fa-from">Тоннель Б-7, осмотр стены</span>
+          <span class="fa-time">11:40</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ── MODAL ── -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <div class="modal-top">
+      <span class="modal-ttl" id="modal-ttl">Новое поручение</span>
+      <div class="modal-right">
+        <div class="step-track">
+          <div class="step-dot on" id="sd1"></div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="sd2"></div>
+        </div>
+        <span class="step-lbl" id="step-lbl">Шаг 1 из 2</span>
+        <button class="modal-x" onclick="closeModal()">&#215;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">&#10003; Поручение создано — бригады и мастера уведомлены</div>
+
+<script>
+// ══════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════
+
+const SERVICES = [
+  { id:'SRV-ENG',  name:'Инженерные системы',   em:'⚡' },
+  { id:'SRV-STR',  name:'Строительная служба',   em:'🏗️' },
+  { id:'SRV-FIRE', name:'Пожарная безопасность', em:'🚒' },
+  { id:'SRV-VENT', name:'Вентиляция',            em:'💨' },
+  { id:'SRV-CCTV', name:'Видеонаблюдение',       em:'📹' },
+];
+
+const ORDER_TYPES = {
+  'SRV-ENG':  ['Наряд на ремонт инженерных систем','Наряд на плановое ТО','Аварийный наряд — ИС','Наряд на диагностику систем'],
+  'SRV-STR':  ['Наряд на строительные работы','Наряд на демонтаж','Аварийный наряд — конструкции','Наряд на сварочные работы'],
+  'SRV-FIRE': ['Наряд на проверку систем ПБ','Наряд на ремонт оборудования ПБ','Аварийный наряд — пожарная безопасность','Наряд на испытание систем ПБ'],
+  'SRV-VENT': ['Наряд на ремонт вентиляции','Наряд на регламентное ТО','Аварийный наряд — вентиляция','Наряд на замену фильтров/элементов'],
+  'SRV-CCTV': ['Наряд на ремонт системы ССТВ','Наряд на установку оборудования ССТВ','Аварийный наряд — система ССТВ','Наряд на ТО системы видеонаблюдения'],
+};
+
+const BRIGADES = [
+  { id:'b1', em:'🏗️', short:'Секция Б-12',
+    plan:'Ремонт дорожного покрытия, секция Б-12',
+    master:'Козлов П.В.',
+    workers:[
+      {id:'w1',name:'Смирнов В.К.',out:true},
+      {id:'w2',name:'Иванов А.А.',out:true},
+      {id:'w3',name:'Петров Д.Н.',out:false},
+      {id:'w4',name:'Федоров С.И.',out:false},
+    ]
+  },
+  { id:'b2', em:'⚡', short:'Тоннель В-7',
+    plan:'Техобслуживание инженерных систем, тоннель В-7',
+    master:'Орлов М.Е.',
+    workers:[
+      {id:'w5',name:'Лебедев К.С.',out:true},
+      {id:'w6',name:'Новиков В.Ю.',out:false},
+      {id:'w7',name:'Попов Г.Н.',out:false},
+    ]
+  },
+  { id:'b3', em:'💨', short:'Сектор В — ТО',
+    plan:'Регламентное ТО вентиляционных систем, сектор В',
+    master:'Морозов А.Д.',
+    workers:[
+      {id:'w8',name:'Волков Р.В.',out:false},
+      {id:'w9',name:'Зайцев П.А.',out:false},
+      {id:'w10',name:'Кузнецов И.Н.',out:false},
+    ]
+  },
+  { id:'b4', em:'🚒', short:'Блок Г — ПБ',
+    plan:'Проверка систем пожарной безопасности, блок Г',
+    master:'Захаров Д.М.',
+    workers:[
+      {id:'w11',name:'Соколов В.П.',out:false},
+      {id:'w12',name:'Павлов О.К.',out:false},
+    ]
+  },
+  { id:'b5', em:'📹', short:'Тоннель А — ССТВ',
+    plan:'Ремонт оборудования видеонаблюдения, тоннель А',
+    master:'Медведев Н.С.',
+    workers:[
+      {id:'w13',name:'Семенов А.В.',out:false},
+      {id:'w14',name:'Белов Д.А.',out:false},
+      {id:'w15',name:'Тихонов К.Г.',out:false},
+    ]
+  },
+];
+
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+
+let S = {};
+
+function resetState() {
+  S = { step:1, svc:'', otype:'', title:'', loc:'', desc:'', prio:'urgent', workers:[] };
+}
+
+// ══════════════════════════════════════
+//  MODAL OPEN / CLOSE
+// ══════════════════════════════════════
+
+function openModal() {
+  resetState();
+  document.getElementById('overlay').classList.remove('hidden');
+  renderStep1();
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+
+function setStepUI(n) {
+  document.getElementById('sd1').className = n===1 ? 'step-dot on' : 'step-dot done';
+  document.getElementById('sd2').className = n===2 ? 'step-dot on' : 'step-dot';
+  document.getElementById('step-lbl').textContent = `Шаг ${n} из 2`;
+  document.getElementById('modal-ttl').textContent =
+    n===1 ? 'Новое поручение — детали' : 'Выбор работников из бригад';
+}
+
+// ══════════════════════════════════════
+//  STEP 1
+// ══════════════════════════════════════
+
+function renderStep1() {
+  setStepUI(1);
+
+  const svcOpts = SERVICES.map(s =>
+    `<option value="${s.id}" ${S.svc===s.id?'selected':''}>${s.em} ${s.name}</option>`
+  ).join('');
+
+  const typOpts = S.svc && ORDER_TYPES[S.svc]
+    ? ORDER_TYPES[S.svc].map(t =>
+        `<option value="${t}" ${S.otype===t?'selected':''}>${t}</option>`
+      ).join('')
+    : '<option value="">— сначала выберите службу —</option>';
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="f2">
+      <div>
+        <label class="flbl">Служба</label>
+        <select class="fsel" id="s-svc" onchange="onSvc(this.value)">
+          <option value="">— выберите службу —</option>
+          ${svcOpts}
+        </select>
+      </div>
+      <div>
+        <label class="flbl">Тип наряда</label>
+        <select class="fsel" id="s-type" onchange="S.otype=this.value" ${!S.svc?'disabled':''}>
+          <option value="">— выберите тип —</option>
+          ${typOpts}
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <label class="flbl">Описание / заголовок поручения</label>
+      <input class="finp" id="s-title" type="text"
+        placeholder="Напр.: Устранение утечки в секции Б-5"
+        value="${S.title}" oninput="S.title=this.value">
+    </div>
+    <div class="f2">
+      <div>
+        <label class="flbl">Объект / местоположение</label>
+        <input class="finp" id="s-loc" type="text"
+          placeholder="Секция, тоннель, блок..."
+          value="${S.loc}" oninput="S.loc=this.value">
+      </div>
+      <div>
+        <label class="flbl">Выдал поручение</label>
+        <input class="finp" type="text" value="Иванов И.И. (Гл. инженер)" disabled>
+      </div>
+    </div>
+    <div class="frow">
+      <label class="flbl">Описание задачи (необязательно)</label>
+      <textarea class="ftxt" id="s-desc" placeholder="Дополнительные детали..."
+        oninput="S.desc=this.value">${S.desc}</textarea>
+    </div>
+    <div class="frow">
+      <label class="flbl">Приоритет</label>
+      <div class="prio-row">
+        <div class="prio-opt ${S.prio==='urgent'?'sel-u':''}" id="p-u" onclick="setPrio('urgent')">
+          <span class="prio-lbl">⚡ Срочно</span>
+          <div class="prio-sub">Выполнить в течение часа</div>
+        </div>
+        <div class="prio-opt ${S.prio==='critical'?'sel-c':''}" id="p-c" onclick="setPrio('critical')">
+          <span class="prio-lbl">🔴 Критично</span>
+          <div class="prio-sub">Немедленно, всё бросить</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Отмена</button>
+    <button class="btn btn-amber" onclick="goStep2()">
+      Далее: выбрать работников →
+    </button>
+  `;
+}
+
+function onSvc(v) {
+  S.svc = v; S.otype = '';
+  renderStep1();
+}
+
+function setPrio(p) {
+  S.prio = p;
+  ['u','c'].forEach(k => {
+    const el = document.getElementById('p-'+k);
+    if (!el) return;
+    el.className = 'prio-opt' + (p===({'u':'urgent','c':'critical'}[k]) ? (p==='urgent'?' sel-u':' sel-c') : '');
+  });
+}
+
+// ══════════════════════════════════════
+//  STEP 2
+// ══════════════════════════════════════
+
+function goStep2() {
+  if (!S.svc) { document.getElementById('s-svc')?.focus(); return; }
+  S.step = 2;
+  renderStep2();
+}
+
+function renderStep2() {
+  setStepUI(2);
+
+  const brigadeHTML = BRIGADES.map(b => {
+    const hasSel = b.workers.some(w => S.workers.find(sw=>sw.wid===w.id));
+    const tokens = b.workers.map(w => {
+      const isSel = !!S.workers.find(sw=>sw.wid===w.id);
+      if (w.out) {
+        return `<div class="wtoken out" title="Уже выведен на другое поручение">
+          <div class="wt-dot"></div>${w.name}
+        </div>`;
+      }
+      return `<div class="wtoken ${isSel?'sel':''}"
+          onclick="toggleW('${w.id}','${w.name}','${b.id}','${b.short}')"
+          data-wid="${w.id}">
+          <div class="wt-dot"></div>${w.name}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="brig-card ${hasSel?'has-sel':''}">
+        <div class="brig-head">
+          <div class="brig-name">${b.em} ${b.plan}</div>
+          ${hasSel?'<span class="sel-tag">выбраны ↓</span>':''}
+        </div>
+        <div class="brig-master">Мастер: ${b.master}</div>
+        <div class="worker-tokens">${tokens}</div>
+      </div>`;
+  }).join('');
+
+  const stagingHTML = S.workers.length === 0
+    ? `<div class="stg-empty">Нажмите на работника в<br>бригаде чтобы добавить</div>`
+    : S.workers.map(sw => `
+        <div class="stg-item">
+          <div>
+            <div class="stg-name">${sw.name}</div>
+            <div class="stg-from">из: ${sw.brShort}</div>
+          </div>
+          <button class="stg-rm" onclick="removeW('${sw.wid}')">×</button>
+        </div>`).join('');
+
+  const svc = SERVICES.find(s=>s.id===S.svc);
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="s2-layout">
+      <div>
+        <div class="s2-board-ttl">Бригады на объектах — нажмите на работника чтобы вывести на поручение</div>
+        <div class="brigade-list">${brigadeHTML}</div>
+      </div>
+      <div>
+        <div class="stg-ttl">Назначить на поручение</div>
+        <div class="stg-box" id="stg-box">${stagingHTML}</div>
+        <div class="stg-hint">Выберите 1–3 работников. После создания они будут выведены из своих бригад, мастера получат уведомление.</div>
+        <div class="order-preview">
+          <div class="op-ttl">Поручение</div>
+          <div class="op-name">${S.title||'(без названия)'}</div>
+          ${S.loc?`<div class="op-sub">${S.loc}</div>`:''}
+          <div class="op-svc">${svc?.em||''} ${svc?.id||''} · ${S.otype||'тип не выбран'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="goBack()">← Назад</button>
+    <button class="btn btn-amber" id="btn-confirm"
+      ${S.workers.length===0?'disabled':''}
+      onclick="createOrder()">
+      ✓ Создать поручение (${S.workers.length})
+    </button>
+  `;
+}
+
+function toggleW(wid, name, bid, brShort) {
+  const idx = S.workers.findIndex(w=>w.wid===wid);
+  if (idx>=0) { S.workers.splice(idx,1); }
+  else {
+    if (S.workers.length>=3) return;
+    S.workers.push({wid,name,bid,brShort});
+  }
+  renderStep2();
+}
+
+function removeW(wid) {
+  S.workers = S.workers.filter(w=>w.wid!==wid);
+  renderStep2();
+}
+
+function goBack() { S.step=1; renderStep1(); }
+
+// ══════════════════════════════════════
+//  CREATE ORDER
+// ══════════════════════════════════════
+
+function createOrder() {
+  closeModal();
+  showToast();
+
+  const svc = SERVICES.find(s=>s.id===S.svc);
+  const chips = S.workers.map(w=>`<span class="chip-worker">${w.name}</span>`).join('');
+  const now = new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+  const cls = S.prio==='critical'?'critical':'urgent';
+  const lbl = S.prio==='critical'?'🔴 Критично':'⚡ Срочно';
+
+  const card = document.createElement('div');
+  card.className = `order-card ${cls} anim`;
+  card.style.animationDelay='.05s'; card.style.opacity='0';
+  card.onclick = () => showDetail('new');
+  card.innerHTML = `
+    <div class="card-top">
+      <span class="badge ${cls}">${lbl}</span>
+      <span class="badge svc">${svc?.em} ${svc?.id}</span>
+    </div>
+    <div class="card-title">${S.title||'Без названия'}</div>
+    <div class="card-type">${S.otype}</div>
+    <div class="card-meta">
+      <span class="meta">&#128336; ${now}</span>
+      <span class="meta">&#128100; Иванов И.И.</span>
+    </div>
+    <div class="card-bottom">
+      <div class="chips">${chips}</div>
+      <span class="badge active">Активно</span>
+    </div>`;
+
+  document.getElementById('orders-grid').appendChild(card);
+
+  // update stat
+  const sa = document.getElementById('stat-active');
+  sa.textContent = parseInt(sa.textContent)+1;
+  const sp = document.getElementById('stat-pulled');
+  sp.textContent = parseInt(sp.textContent)+S.workers.length;
+
+  // add weakened card if workers selected
+  if (S.workers.length>0) {
+    const b = BRIGADES.find(br=>br.id===S.workers[0].bid);
+    if (b) {
+      const rows = b.workers.map(w => {
+        const isPulled = !!S.workers.find(sw=>sw.wid===w.id);
+        return `<div class="bw-row ${isPulled?'out':''}">
+          ${w.name}${isPulled?'<span class="out-tag">выведен</span>':''}
+        </div>`;
+      }).join('');
+      const wc = document.createElement('div');
+      wc.className='bw-card anim';
+      wc.innerHTML=`
+        <div class="bw-head">
+          <div class="bw-name">${b.em} ${b.short} &mdash; ${b.master}</div>
+          <span class="bw-minus">-${S.workers.length}</span>
+        </div>
+        <div class="bw-workers">${rows}</div>`;
+      document.getElementById('weakened-grid').appendChild(wc);
+    }
+  }
+}
+
+// ══════════════════════════════════════
+//  DETAIL MODAL
+// ══════════════════════════════════════
+
+function showDetail(id) {
+  const data = {
+    o1: {
+      prio:'critical', plbl:'🔴 Критично', status:'inprog', slbl:'В работе',
+      title:'Устранение аварийной утечки — секция А-3',
+      type:'Аварийный наряд — инженерные системы',
+      svc:'⚡ Инженерные системы', time:'09:15', creator:'Иванов И.И. (Гл. инж.)',
+      loc:'Секция А-3', desc:'Обнаружена утечка рабочей жидкости. Требуется немедленное устранение.',
+      workers:[{name:'Лебедев К.С.',from:'Тоннель В-7 (бригада Орлова)'}],
+    },
+    o2: {
+      prio:'urgent', plbl:'⚡ Срочно', status:'active', slbl:'Активно',
+      title:'Осмотр деформации стены — тоннель Б-7',
+      type:'Наряд на строительные работы',
+      svc:'🏗️ Строительная служба', time:'11:40', creator:'Петров А.М. (Зампрораб)',
+      loc:'Тоннель Б-7', desc:'Обнаружены трещины в стеновой панели. Требуется осмотр и оценка.',
+      workers:[
+        {name:'Смирнов В.К.',from:'Секция Б-12 (бригада Козлова)'},
+        {name:'Иванов А.А.',from:'Секция Б-12 (бригада Козлова)'},
+      ],
+    },
+  };
+
+  const d = data[id] || {
+    prio:'urgent', plbl:'⚡ Срочно', status:'active', slbl:'Активно',
+    title: S.title||'Новое поручение',
+    type: S.otype, svc: (SERVICES.find(s=>s.id===S.svc)?.em||'')+ ' '+(S.svc||''),
+    time: new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}),
+    creator:'Иванов И.И. (Гл. инж.)', loc:S.loc, desc:S.desc||'',
+    workers: S.workers.map(w=>({name:w.name, from:w.brShort})),
+  };
+
+  const wHTML = d.workers.map(w=>`
+    <div class="wa-row">
+      <div>
+        <div class="wa-name">${w.name}</div>
+        <div class="wa-from">Выведен из: ${w.from}</div>
+      </div>
+      <span class="badge ${d.status}">${d.slbl}</span>
+    </div>`).join('');
+
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.onclick = e => { if(e.target===ov) ov.remove(); };
+  ov.innerHTML = `
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-top">
+        <span class="modal-ttl">Поручение</span>
+        <div class="modal-right">
+          <button class="modal-x" onclick="this.closest('.overlay').remove()">×</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <span class="badge ${d.prio}">${d.plbl}</span>
+          <span class="badge ${d.status}">${d.slbl}</span>
+        </div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:5px;line-height:1.3">${d.title}</div>
+        <div style="font-size:13px;color:var(--text-2);font-style:italic;margin-bottom:16px">${d.type}</div>
+        <div class="d-info">
+          <div class="d-cell"><div class="d-lbl">Служба</div><div class="d-val">${d.svc}</div></div>
+          <div class="d-cell"><div class="d-lbl">Создано</div><div class="d-val">${d.time} · ${d.creator}</div></div>
+          ${d.loc?`<div class="d-cell"><div class="d-lbl">Объект</div><div class="d-val">${d.loc}</div></div>`:''}
+          ${d.desc?`<div class="d-cell" style="grid-column:1/-1"><div class="d-lbl">Описание</div><div class="d-val" style="font-size:13px">${d.desc}</div></div>`:''}
+        </div>
+        ${d.workers.length>0?`
+        <div style="margin-bottom:16px;">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;">
+            Назначенные работники
+          </div>
+          <div class="w-assigned">${wHTML}</div>
+        </div>`:''}
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="flex:1" onclick="this.closest('.overlay').remove()">Закрыть</button>
+          <button class="btn btn-green" style="flex:1" onclick="markDone(this)">✓ Завершить поручение</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function markDone(btn) {
+  btn.disabled=true; btn.textContent='✓ Завершено';
+  btn.style.background='var(--glass-s)'; btn.style.color='var(--green)';
+}
+
+// ══════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>

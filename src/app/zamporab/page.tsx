@@ -30,6 +30,7 @@ import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
 // HEAD components
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
+import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
 
 export default function ZamPorabPage() {
   return (
@@ -39,7 +40,7 @@ export default function ZamPorabPage() {
   )
 }
 
-type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming'
+type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'directives'
 
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
@@ -168,6 +169,9 @@ function Content({ session }: { session: AuthSession }) {
               {pendingIncoming}
             </span>
           )}
+        </button>
+        <button onClick={() => setTab('directives')} className={tabCls('directives', 'bg-amber-600')}>
+          ⚡ Поручения
         </button>
         <div className="ml-auto flex items-center gap-2">
           <HelpPanel panelTitle="Зам/Прораб" panelEmoji="👷" sections={ZAMPORAB_HELP} showWorkflow currentStatus={pendingPlans[0]?.status} />
@@ -302,6 +306,8 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'staff' && <ShiftOverview />}
 
       {tab === 'incoming' && <IncomingRequests session={session} />}
+
+      {tab === 'directives' && <UrgentOrdersPanel session={session} />}
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />

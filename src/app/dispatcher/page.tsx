@@ -11,6 +11,7 @@ import PeopleStats from '@/components/dispatcher/PeopleStats'
 import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
 import OverrideModal from '@/components/dispatcher/OverrideModal'
+import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
 import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
 import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
 import { HelpPanel } from '@/components/help'
@@ -40,6 +41,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [shiftUsers, setShiftUsers] = useState<UserWithAssignment[]>([])
   const [activePlans, setActivePlans] = useState<WorkPlanWithItems[]>([])
   const [showOverrideModal, setShowOverrideModal] = useState(false)
+  const [showDirectives,    setShowDirectives]    = useState(false)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, shiftU] = await Promise.all([
@@ -84,17 +86,34 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
       <KPICards {...kpi} />
 
-      {/* Override / Fast Track button */}
+      {/* Override / Fast Track buttons */}
       <div className="mb-4 flex justify-end gap-2">
         <HelpPanel panelTitle="Диспетчерская" panelEmoji="🗂️" sections={DISPATCHER_HELP} />
+        <button
+          onClick={() => setShowDirectives(v => !v)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition-colors ${
+            showDirectives
+              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+              : 'bg-amber-600/10 hover:bg-amber-600/20 border-amber-500/25 text-amber-400'
+          }`}
+        >
+          <span className="text-base">📝</span>
+          Поручения
+        </button>
         <button
           onClick={() => setShowOverrideModal(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-medium text-sm transition-colors"
         >
           <span className="text-base">⚡</span>
-          Поручение сверху
+          Fast Track
         </button>
       </div>
+
+      {showDirectives && (
+        <div className="mb-6 glass rounded-2xl p-5 border border-amber-500/20">
+          <UrgentOrdersPanel session={session} />
+        </div>
+      )}
 
       <div className="mb-4">
         <OnDutyMonitor users={shiftUsers} services={services} />
