@@ -29,6 +29,10 @@ npx tsc --noEmit     # TypeScript check without compilation
 
 ## Critical Rules
 
+### Core Principles
+- **IMPORTANT: Preserve the original code and logic as much as possible. Only change what is necessary.**
+- **State your assumptions explicitly before writing code. If ambiguous, propose interpretations and ask.**
+
 ### Testing
 - `npm run test` **must pass before any commit** — same rule as `npm run build`
 - New business logic functions require tests **before** implementation code (TDD)
@@ -73,6 +77,7 @@ Rules for all pages:
 ### Git Workflow
 - `main` branch must always be deployable (colleagues see the demo)
 - Run `npm run build` before committing — if build fails, fix before commit
+- Run `npm run test` before committing — if tests fail, fix before commit
 - Write clear commit messages in English
 
 ### Code Style

@@ -13,12 +13,16 @@
 - Vitest configured: 30 tests covering shift calculation logic
 - GitHub Actions CI pipeline: build + test runs on every push/PR
 
+## What has been done (docs)
+- PROJECT.md, ARCHITECTURE.md, REQUIREMENTS.md, ROADMAP.md — all created
+- gormost.tar removed from repository
+
 ## What needs to be done next
-1. Create PROJECT.md — full project description with modules and user roles
-2. Create ARCHITECTURE.md — current codebase structure, components, data flows
-3. Create REQUIREMENTS.md — what's in v1, what's in v2, what's out of scope
-4. Create ROADMAP.md — phased plan of work
-5. Remove gormost.tar from repository (binary bloat)
+1. Run pending migrations in Supabase SQL Editor: 038_status_metadata.sql, 041_directive_worker_assignments.sql
+2. Fill employee shift assignments in Admin → Смены
+3. Add required workers/vehicles fields to plan item form (head panel)
+4. HR Phase 06 (Reporting/Export): research done, needs /gsd:plan-phase 06
+5. Print templates for work orders (waiting for documents)
 
 ## Planned changes
 - HR reporting: export to Excel/PDF
