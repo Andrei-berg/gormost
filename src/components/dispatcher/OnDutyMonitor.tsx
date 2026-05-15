@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service } from '@/types'
 import { resolveShiftStatus, getShiftForDate } from '@/lib/shifts'
 import { useTheme } from '@/lib/ThemeContext'
+import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 
 // Absence types (sick/vacation) require migration 025 — currently only schedule-based
 type DutyStatus = 'on_duty' | 'off_today' | 'no_schedule'
@@ -134,6 +135,9 @@ export default function OnDutyMonitor({ users, services }: Props) {
           </select>
         </div>
       </div>
+
+      {/* 3-day shift rotation strip */}
+      <ShiftRotationStrip referenceDate={date} />
 
       {/* Summary chips */}
       <div className="grid grid-cols-4 gap-2">
