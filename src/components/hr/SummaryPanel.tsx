@@ -18,12 +18,11 @@ interface Props {
 export default function SummaryPanel({ employees, services, assignmentMap }: Props) {
   const today = new Date().toISOString().split('T')[0]
   const shift = getCurrentShift()
+  const todayDate = new Date(today)
 
   const total = employees.length
   const activeTotal = employees.filter(e => !ABSENT_STATUSES.includes(e.currentStatus)).length
 
-  // On duty today by schedule calculation
-  const todayDate = new Date(today)
   const onDutyTotal = assignmentMap
     ? employees.filter(e => {
         const assign = assignmentMap.get(e.user.user_id)
@@ -45,68 +44,158 @@ export default function SummaryPanel({ employees, services, assignmentMap }: Pro
             return isWorkerOnDuty({ ...assign, schedule_code: assign.schedule_code }, todayDate)
           }).length
         : null
-      return { svc, svcTotal, svcActive, svcOnDuty }
+      const meta = SERVICE_META[svc.service_id]
+      return { svc, svcTotal, svcActive, svcOnDuty, meta }
     })
     .filter((t): t is NonNullable<typeof t> => t !== null)
 
   if (tiles.length === 0) return null
 
-  return (
-    <div className="mb-6 space-y-4">
-      {/* Top-level summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <SummaryTile label="Всего сотрудников" value={total} color="text-white/80" />
-        <SummaryTile label="На работе сегодня" value={activeTotal} color="text-green-400" />
-        {onDutyTotal !== null && (
-          <SummaryTile
-            label={`На дежурстве (Смена ${shift.shiftNumber})`}
-            value={onDutyTotal}
-            color="text-blue-400"
-          />
-        )}
-        <SummaryTile label="Служб" value={tiles.length} color="text-violet-400" />
-      </div>
+  const attendancePct = total > 0 ? ((activeTotal / total) * 100).toFixed(1) : '—'
 
-      {/* Per-service breakdown */}
-      <div>
-        <div className="text-xs text-white/40 uppercase tracking-widest mb-3">По службам</div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {tiles.map(({ svc, svcTotal, svcActive, svcOnDuty }) => {
-            const meta = SERVICE_META[svc.service_id]
-            return (
-              <div key={svc.service_id} className="glass rounded-xl p-3 w-[140px] shrink-0 border border-white/5">
-                <div className="text-xl mb-1">{meta?.emoji ?? '📋'}</div>
-                <div className="text-xs text-white/60 mb-2 leading-tight line-clamp-2" title={svc.service_name}>{svc.service_name}</div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/30">Всего</span>
-                    <span className="text-sm font-bold text-white/80">{svcTotal}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/30">На работе</span>
-                    <span className="text-sm font-bold text-green-400">{svcActive}</span>
-                  </div>
-                  {svcOnDuty !== null && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-white/30">Дежурство</span>
-                      <span className="text-sm font-bold text-blue-400">{svcOnDuty}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+  return (
+    <div className="mb-5 space-y-3">
+      {/* KPI strip — 4 cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Total */}
+        <div className="glass rounded-2xl p-4 border border-white/8">
+          <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mb-2">
+            Всего сотрудников
+          </div>
+          <div className="font-mono text-[38px] font-bold text-white/90 leading-none tabular-nums">
+            {total}
+          </div>
+          <div className="text-[10px] text-white/30 mt-2 font-mono flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/30" />
+            штатная численность
+          </div>
+        </div>
+
+        {/* On work */}
+        <div
+          className="rounded-2xl p-4 border"
+          style={{
+            background: 'linear-gradient(135deg,rgba(63,185,80,.10),rgba(255,255,255,.04))',
+            borderColor: 'rgba(63,185,80,.30)',
+          }}
+        >
+          <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mb-2">
+            На работе сегодня
+          </div>
+          <div className="font-mono text-[38px] font-bold leading-none tabular-nums" style={{ color: '#3FB950' }}>
+            {activeTotal}
+          </div>
+          <div className="text-[10px] mt-2 font-mono flex items-center gap-1.5" style={{ color: 'rgba(63,185,80,.70)' }}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#3FB950' }} />
+            {attendancePct}% присутствие
+          </div>
+        </div>
+
+        {/* On duty */}
+        {onDutyTotal !== null ? (
+          <div
+            className="rounded-2xl p-4 border"
+            style={{
+              background: 'linear-gradient(135deg,rgba(240,165,0,.10),rgba(255,255,255,.04))',
+              borderColor: 'rgba(240,165,0,.30)',
+            }}
+          >
+            <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mb-2">
+              На дежурстве (Смена {shift.shiftNumber})
+            </div>
+            <div className="font-mono text-[38px] font-bold leading-none tabular-nums" style={{ color: '#F0A500' }}>
+              {onDutyTotal}
+            </div>
+            <div className="text-[10px] mt-2 font-mono flex items-center gap-1.5" style={{ color: 'rgba(240,165,0,.70)' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#F0A500' }} />
+              текущая смена
+            </div>
+          </div>
+        ) : (
+          <div className="glass rounded-2xl p-4 border border-white/8 opacity-40">
+            <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mb-2">На дежурстве</div>
+            <div className="font-mono text-[38px] font-bold text-white/30 leading-none">—</div>
+          </div>
+        )}
+
+        {/* Services count */}
+        <div
+          className="rounded-2xl p-4 border"
+          style={{
+            background: 'linear-gradient(135deg,rgba(56,139,253,.10),rgba(255,255,255,.04))',
+            borderColor: 'rgba(56,139,253,.30)',
+          }}
+        >
+          <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mb-2">
+            Служб
+          </div>
+          <div className="font-mono text-[38px] font-bold leading-none tabular-nums" style={{ color: '#388BFD' }}>
+            {tiles.length}
+          </div>
+          <div className="text-[10px] mt-2 font-mono text-white/30 flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#388BFD' }} />
+            Лефортовский тоннель
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-function SummaryTile({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="glass rounded-xl p-4 border border-white/5">
-      <div className={`text-3xl font-bold font-mono ${color}`}>{value}</div>
-      <div className="text-xs text-white/40 mt-1 leading-tight">{label}</div>
+      {/* Service summary grid — 2×3 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {tiles.map(({ svc, svcTotal, svcActive, svcOnDuty, meta }) => {
+          const accentColor = meta?.color ?? 'rgba(255,255,255,0.4)'
+          return (
+            <div
+              key={svc.service_id}
+              className="rounded-2xl p-4 border relative overflow-hidden"
+              style={{ background: 'rgba(255,255,255,.03)', borderColor: 'rgba(255,255,255,.08)' }}
+            >
+              {/* Left color strip */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl"
+                style={{ background: accentColor }}
+              />
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{meta?.emoji ?? '📋'}</span>
+                <span
+                  className="text-[13px] font-semibold text-white flex-1 leading-tight truncate"
+                  title={svc.service_name}
+                >
+                  {svc.service_name}
+                </span>
+                <span className="text-white/25 text-xs flex-shrink-0">›</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                <div>
+                  <div className="font-mono text-lg font-bold text-white/90 leading-none tabular-nums">
+                    {svcTotal}
+                  </div>
+                  <div className="text-[9px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
+                    Всего
+                  </div>
+                </div>
+                <div>
+                  <div className="font-mono text-lg font-bold leading-none tabular-nums" style={{ color: '#3FB950' }}>
+                    {svcActive}
+                  </div>
+                  <div className="text-[9px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
+                    На работе
+                  </div>
+                </div>
+                {svcOnDuty !== null && (
+                  <div>
+                    <div className="font-mono text-lg font-bold leading-none tabular-nums" style={{ color: '#F0A500' }}>
+                      {svcOnDuty}
+                    </div>
+                    <div className="text-[9px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
+                      Дежурство
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -17,15 +17,33 @@ interface Props {
 export default function ServiceSection({
   serviceId, serviceName, employees, canEdit, currentUserId, onRefresh, onNameClick, assignmentMap,
 }: Props) {
-  const meta = SERVICE_META[serviceId] ?? { emoji: '📋', color: '#ffffff', bg: 'bg-white/10' }
+  const meta = SERVICE_META[serviceId]
+  const accentColor = meta?.color ?? 'rgba(255,255,255,0.4)'
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">{meta.emoji}</span>
-        <h2 className="text-sm font-bold text-white/70 uppercase tracking-wider">{serviceName}</h2>
-        <span className="text-xs text-white/30 ml-1">({employees.length} чел.)</span>
+      {/* Section header */}
+      <div className="flex items-center gap-2.5 mb-3 px-0.5">
+        <span className="text-base">{meta?.emoji ?? '📋'}</span>
+        <span
+          className="text-[11px] font-bold uppercase tracking-widest"
+          style={{ color: 'rgba(255,255,255,0.55)' }}
+        >
+          {serviceName}
+        </span>
+        <span
+          className="font-mono text-[11px] px-2 py-px rounded-full border"
+          style={{
+            color: 'rgba(255,255,255,0.35)',
+            background: 'rgba(255,255,255,0.04)',
+            borderColor: 'rgba(255,255,255,0.08)',
+          }}
+        >
+          {employees.length} чел.
+        </span>
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {employees.map(emp => (
           <EmployeeCard

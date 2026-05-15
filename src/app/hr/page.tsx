@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
+import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import SummaryPanel from '@/components/hr/SummaryPanel'
 import ServiceSection from '@/components/hr/ServiceSection'
 import EmployeeDetailCard from '@/components/hr/EmployeeDetailCard'
@@ -17,15 +18,16 @@ import ShiftMonitorTab from '@/components/admin/ShiftMonitorTab'
 import ShiftTab from '@/components/admin/ShiftTab'
 import HRToolsShell from '@/components/hr-tools/HRToolsShell'
 import HRReports from '@/components/hr/HRReports'
+import type { EmployeeStatusType } from '@/types'
 
 type Tab = 'employees' | 'shifts' | 'analytics' | 'reports'
 type ShiftSubTab = 'schedules' | 'monitor'
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'employees', label: 'Сотрудники', emoji: '👤' },
-  { id: 'shifts',    label: 'Сменность',  emoji: '🔄' },
-  { id: 'analytics', label: 'Аналитика',  emoji: '📊' },
-  { id: 'reports',   label: 'Отчёты',     emoji: '📋' },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'employees', label: 'Сотрудники' },
+  { id: 'shifts',    label: 'Сменность' },
+  { id: 'analytics', label: 'Аналитика' },
+  { id: 'reports',   label: 'Отчёты' },
 ]
 
 export default function HRPage() {
@@ -52,6 +54,7 @@ function Content({ session }: { session: AuthSession }) {
   const [view, setView] = useState<'cards' | 'table'>('cards')
   const [search, setSearch] = useState('')
   const [filterService, setFilterService] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [selectedEditMode, setSelectedEditMode] = useState(false)
@@ -94,7 +97,9 @@ function Content({ session }: { session: AuthSession }) {
       || e.user.full_name.toLowerCase().includes(search.trim().toLowerCase())
     const matchesService = filterService === ''
       || e.user.service_id === filterService
-    return matchesSearch && matchesService
+    const matchesStatus = filterStatus === ''
+      || e.currentStatus === (filterStatus as EmployeeStatusType)
+    return matchesSearch && matchesService && matchesStatus
   })
 
   const grouped = services
@@ -111,50 +116,78 @@ function Content({ session }: { session: AuthSession }) {
     employees.find(e => e.user.user_id === uid)
 
   const activeCount = employees.length
-  const serviceCount = new Set(employees.map(e => e.user.service_id).filter(Boolean)).size
   const withSchedule = usersWithSchedule.filter(u => u.assignment).length
 
   return (
     <div className="min-h-screen p-4 max-w-6xl mx-auto">
       <Header session={session} title="Кадровый центр" emoji="👥" mode="LIVE" lastUpdated={lastUpdated} />
 
-      {/* Tab bar */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="flex gap-1 glass-strong rounded-2xl p-1">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                tab === t.id
-                  ? 'bg-teal-600/40 text-white border border-teal-500/40'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span>{t.emoji}</span>
-              <span className="hidden sm:inline">{t.label}</span>
-              {!loading && t.id === 'employees' && (
-                <span className={`text-xs tabular-nums ${tab === t.id ? 'text-teal-200/70' : 'text-white/30'}`}>
-                  {activeCount}
-                </span>
-              )}
-              {!loading && t.id === 'shifts' && (
-                <span className={`text-xs tabular-nums ${tab === t.id ? 'text-teal-200/70' : 'text-white/30'}`}>
-                  {withSchedule}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* Shift rotation strip */}
+      <div className="glass rounded-xl p-2.5 mb-4 border border-white/8">
+        <ShiftRotationStrip />
+      </div>
 
-        {/* Planner link — always accessible from HR */}
+      {/* Tab bar */}
+      <div
+        className="flex items-center gap-0.5 mb-5 rounded-xl border px-1.5 py-1.5"
+        style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+      >
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={
+              tab === t.id
+                ? {
+                    background: 'rgba(240,165,0,0.12)',
+                    color: '#F0A500',
+                    border: '1px solid rgba(240,165,0,0.30)',
+                  }
+                : {
+                    color: 'rgba(255,255,255,0.45)',
+                    border: '1px solid transparent',
+                  }
+            }
+          >
+            {t.label}
+            {!loading && t.id === 'employees' && (
+              <span
+                className="font-mono text-[10px] px-1.5 py-px rounded-full"
+                style={
+                  tab === t.id
+                    ? { background: 'rgba(240,165,0,0.18)', color: '#F0A500' }
+                    : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }
+                }
+              >
+                {activeCount}
+              </span>
+            )}
+            {!loading && t.id === 'shifts' && (
+              <span
+                className="font-mono text-[10px] px-1.5 py-px rounded-full"
+                style={
+                  tab === t.id
+                    ? { background: 'rgba(240,165,0,0.18)', color: '#F0A500' }
+                    : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }
+                }
+              >
+                {withSchedule}
+              </span>
+            )}
+          </button>
+        ))}
+
+        <div className="flex-1" />
+
+        {/* Planner link */}
         <Link
           href="/planner"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-white/15 text-white/50 hover:text-white hover:bg-white/8 transition-all text-sm ml-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+          style={{ color: 'rgba(255,255,255,0.40)' }}
         >
-          <span>📅</span>
-          <span className="hidden sm:inline">Планировщик</span>
-          <span className="text-white/30 text-xs">→</span>
+          Планировщик
+          <span style={{ color: 'rgba(255,255,255,0.25)' }}>→</span>
         </Link>
       </div>
 
@@ -162,7 +195,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'employees' && (
         loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
           </div>
         ) : (
           <>
@@ -175,19 +208,12 @@ function Content({ session }: { session: AuthSession }) {
               onSearchChange={setSearch}
               filterService={filterService}
               onFilterChange={setFilterService}
+              filterStatus={filterStatus}
+              onFilterStatusChange={setFilterStatus}
               services={services}
+              canAdmin={canAdmin}
+              onHire={() => setShowHireModal(true)}
             />
-
-            {canAdmin && (
-              <div className="mb-4 flex justify-end">
-                <button
-                  onClick={() => setShowHireModal(true)}
-                  className="px-4 py-2 rounded-lg bg-teal-500/20 border border-teal-500/30 text-teal-400 hover:bg-teal-500/30 text-sm font-medium transition-colors"
-                >
-                  + Нанять сотрудника
-                </button>
-              </div>
-            )}
 
             {view === 'table' ? (
               <HRTableView
@@ -230,7 +256,7 @@ function Content({ session }: { session: AuthSession }) {
                   />
                 )}
                 {grouped.length === 0 && noServiceEmployees.length === 0 && (
-                  <div className="text-center text-white/30 py-12">Нет сотрудников для отображения</div>
+                  <div className="text-center text-white/30 py-12 text-sm">Нет сотрудников для отображения</div>
                 )}
               </>
             )}
@@ -239,27 +265,28 @@ function Content({ session }: { session: AuthSession }) {
               <div className="mt-6">
                 <button
                   onClick={() => setShowDismissed(!showDismissed)}
-                  className="flex items-center gap-2 text-sm text-white/30 hover:text-white/60 transition-colors mb-3"
+                  className="flex items-center gap-2 text-xs text-white/30 hover:text-white/60 transition-colors mb-3"
                 >
-                  <span className="text-xs">{showDismissed ? '▲' : '▼'}</span>
-                  <span className="uppercase tracking-wider font-bold">Уволенные</span>
-                  <span className="text-white/20">({dismissedUsers.length})</span>
+                  <span>{showDismissed ? '▲' : '▼'}</span>
+                  <span className="uppercase tracking-widest font-bold">Уволенные</span>
+                  <span className="text-white/20 font-mono">({dismissedUsers.length})</span>
                 </button>
                 {showDismissed && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {dismissedUsers.map(u => (
                       <div
                         key={u.user_id}
-                        className="flex items-center justify-between px-4 py-2.5 bg-white/3 border border-white/5 rounded-lg"
+                        className="flex items-center justify-between px-4 py-2.5 rounded-xl border"
+                        style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
                       >
                         <div>
                           <span className="text-sm text-white/40">{u.full_name}</span>
                           {u.tab_number && (
-                            <span className="text-xs text-white/20 ml-2">Таб. {u.tab_number}</span>
+                            <span className="text-xs text-white/20 ml-2 font-mono">Таб. {u.tab_number}</span>
                           )}
                         </div>
                         {u.date_fired && (
-                          <span className="text-xs text-white/20">
+                          <span className="text-xs text-white/20 font-mono">
                             {new Date(u.date_fired).toLocaleDateString('ru-RU')}
                           </span>
                         )}
@@ -276,14 +303,17 @@ function Content({ session }: { session: AuthSession }) {
       {/* ─── SHIFTS TAB ─── */}
       {tab === 'shifts' && (
         <div className="space-y-4">
-          <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
+          <div className="flex gap-1 rounded-xl p-1 w-fit" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {([['schedules', '🔄 Графики и фазы'], ['monitor', '📅 Мониторинг']] as [ShiftSubTab, string][]).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setShiftSubTab(id)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  shiftSubTab === id ? 'bg-teal-600 text-white' : 'text-white/40 hover:text-white/60'
-                }`}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={
+                  shiftSubTab === id
+                    ? { background: 'rgba(240,165,0,0.20)', color: '#F0A500' }
+                    : { color: 'rgba(255,255,255,0.40)' }
+                }
               >
                 {label}
               </button>
