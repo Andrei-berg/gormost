@@ -1,66 +1,148 @@
-import type { Request, Service } from '@/types'
+'use client'
+import type { WorkPlan, WorkPlanWithItems, Service } from '@/types'
 import { SERVICE_META } from '@/types'
 
 interface Props {
-  requests: Request[]
+  allPlans: WorkPlan[]
+  pendingPlans: WorkPlanWithItems[]
   services: Service[]
-  pendingApproval: number
 }
 
-export default function PlanStats({ requests, services, pendingApproval }: Props) {
-  const total = requests.length
-  const approvedByHead = requests.filter(r => r.approved_by_head).length
-  const approvedByMe = requests.filter(r => r.approved_by_zamporab).length
-  const done = requests.filter(r => r.status === 'DONE').length
-  const inProgress = requests.filter(r => r.status === 'IN_PROGRESS').length
+function isOverdue(dateStr: string): boolean {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return new Date(dateStr) < today
+}
+
+export default function PlanStats({ allPlans, pendingPlans, services }: Props) {
+  const total = allPlans.length
+  const awaiting = pendingPlans.length
+  const overdueCount = pendingPlans.filter(p => isOverdue(p.plan_date)).length
+  const approvedByMe = allPlans.filter(p => p.zamporab_approved_by != null).length
+  const inProgress = allPlans.filter(p => p.status === 'IN_PROGRESS').length
+  const done = allPlans.filter(p => p.status === 'DONE').length
 
   return (
-    <div className="space-y-4 mb-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-5 gap-3">
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-white font-mono">{total}</div>
-          <div className="text-xs text-white/40">Всего заявок</div>
+    <div className="space-y-2.5 mb-4">
+      {/* KPI strip — 5 cards */}
+      <div className="grid grid-cols-5 gap-2.5">
+        <div className="glass rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Всего планов</div>
+          <div className="font-mono text-[30px] font-bold leading-none text-white tabular-nums">{total}</div>
+          <div className="font-mono text-[11px] text-white/35 mt-1">все службы</div>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-amber-400 font-mono">{pendingApproval}</div>
-          <div className="text-xs text-white/40">Ждут согл.</div>
+
+        <div
+          className="glass rounded-2xl px-4 py-3 border"
+          style={{ background: 'rgba(240,165,0,0.06)', borderColor: 'rgba(240,165,0,0.40)' }}
+        >
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(240,165,0,0.6)]" />
+            Ждут согл.
+          </div>
+          <div className="font-mono text-[30px] font-bold leading-none text-amber-400 tabular-nums">{awaiting}</div>
+          <div className="font-mono text-[11px] text-white/35 mt-1">
+            {overdueCount > 0 ? `${overdueCount} просрочено` : 'нет просрочек'}
+          </div>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-blue-400 font-mono">{approvedByMe}</div>
-          <div className="text-xs text-white/40">Согл. мной</div>
+
+        <div className="glass rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Согласовано</div>
+          <div className="font-mono text-[30px] font-bold leading-none text-emerald-400 tabular-nums">{approvedByMe}</div>
+          <div className="font-mono text-[11px] text-white/35 mt-1">за смену</div>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-violet-400 font-mono">{inProgress}</div>
-          <div className="text-xs text-white/40">В работе</div>
+
+        <div className="glass rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">В работе</div>
+          <div className="font-mono text-[30px] font-bold leading-none text-violet-400 tabular-nums">{inProgress}</div>
+          <div className="font-mono text-[11px] text-white/35 mt-1">из них планов</div>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-green-400 font-mono">{done}</div>
-          <div className="text-xs text-white/40">Выполнено</div>
+
+        <div className="glass rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Выполнено</div>
+          <div
+            className="font-mono text-[30px] font-bold leading-none tabular-nums"
+            style={{ color: 'rgba(63,185,80,0.8)' }}
+          >
+            {done}
+          </div>
+          <div className="font-mono text-[11px] text-white/35 mt-1">
+            {total > 0 ? `${Math.round(done / total * 100)}% плана` : '—'}
+          </div>
         </div>
       </div>
 
-      {/* По службам */}
-      <div className="glass rounded-2xl p-4">
-        <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">Заявки по службам</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          {services.map(svc => {
-            const svcReqs = requests.filter(r => r.service_id === svc.service_id)
-            const meta = SERVICE_META[svc.service_id]
-            const svcDone = svcReqs.filter(r => r.status === 'DONE').length
-            const pct = svcReqs.length > 0 ? Math.round((svcDone / svcReqs.length) * 100) : 0
-            return (
-              <div key={svc.service_id} className={`glass rounded-xl p-3 text-center ${svcReqs.length === 0 ? 'opacity-40' : ''}`}>
-                <div className="text-2xl mb-1">{meta?.emoji || '📋'}</div>
-                <div className="text-xs text-white/60 mb-2 truncate">{svc.service_name}</div>
-                <div className="text-lg font-bold font-mono" style={{ color: meta?.color || '#fff' }}>
-                  {svcReqs.length > 0 ? svcReqs.length : '—'}
-                </div>
-                <div className="text-[10px] text-white/30">{svcReqs.length > 0 ? `${pct}% готово` : 'нет плана'}</div>
+      {/* Service grid — 3 columns */}
+      <div className="grid grid-cols-3 gap-2.5">
+        {services.map(svc => {
+          const meta = SERVICE_META[svc.service_id]
+          const svcPlans = allPlans.filter(p => p.service_id === svc.service_id)
+          const svcDone = svcPlans.filter(p => p.status === 'DONE').length
+          const pct = svcPlans.length > 0 ? Math.round(svcDone / svcPlans.length * 100) : 0
+          const svcPending = pendingPlans.filter(p => p.service_id === svc.service_id).length
+
+          return (
+            <div
+              key={svc.service_id}
+              className="glass rounded-2xl px-4 py-3 relative overflow-hidden transition-all hover:border-white/20"
+              style={svcPlans.length === 0 ? { opacity: 0.45 } : {}}
+            >
+              {/* Left color accent bar */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-[3px]"
+                style={{ background: meta?.color ?? 'transparent', borderRadius: '16px 0 0 16px' }}
+              />
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[18px]">{meta?.emoji ?? '📋'}</span>
+                <span className="text-[12px] font-semibold text-white leading-tight truncate">{svc.service_name}</span>
               </div>
-            )
-          })}
-        </div>
+
+              <div className="flex items-end gap-2 mb-2">
+                <span
+                  className="font-mono text-[26px] font-bold leading-none tabular-nums"
+                  style={{ color: svcPlans.length > 0 ? (meta?.color ?? '#fff') : 'rgba(255,255,255,0.25)' }}
+                >
+                  {svcPlans.length}
+                </span>
+                <span className="font-mono text-[10px] text-white/35 mb-0.5">
+                  {svcPlans.length > 0 ? `планов · ${pct}%` : 'планов'}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-1 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: meta?.color ?? 'rgba(255,255,255,0.4)' }}
+                />
+              </div>
+
+              {/* Status label */}
+              {svcPlans.length === 0 ? (
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                  <span className="font-mono text-[11px] text-white/25">нет планов</span>
+                </div>
+              ) : svcPending > 0 ? (
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(240,165,0,0.6)]" />
+                  <span className="font-mono text-[11px] text-amber-400">на согласовании {svcPending}</span>
+                </div>
+              ) : pct === 100 ? (
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="font-mono text-[11px] text-emerald-400">100% готово</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta?.color ?? '#fff' }} />
+                  <span className="font-mono text-[11px] text-white/45">{svcDone}/{svcPlans.length} выполнено</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

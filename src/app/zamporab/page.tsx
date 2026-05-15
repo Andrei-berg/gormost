@@ -4,21 +4,22 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import KanbanBoard from '@/components/KanbanBoard'
 import RequestModal from '@/components/RequestModal'
+import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
   fetchServices, fetchUsers, approveRequest,
   fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
   fetchDriverUsers, fetchVehicles,
+  confirmWorkPlanZamporab, approveWorkPlanDirect, returnWorkPlanZamporab,
 } from '@/lib/api'
 import type {
   Request, Category, GObject, Construction, WorkType, Service,
   User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
-  UserWithAssignment, Vehicle,
+  UserWithAssignment, Vehicle, WorkPlanItem,
 } from '@/types'
 import { SERVICE_META } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import PlanStats from '@/components/zamporab/PlanStats'
-import ZamporabPlanBoard from '@/components/zamporab/ZamporabPlanBoard'
 import ZamporabReviewModal from '@/components/zamporab/ZamporabReviewModal'
 import ZamporabOwnPlan from '@/components/zamporab/ZamporabOwnPlan'
 import ShiftOverview from '@/components/zamporab/ShiftOverview'
@@ -27,7 +28,6 @@ import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
-// HEAD components
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
@@ -42,6 +42,12 @@ export default function ZamPorabPage() {
 
 type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'directives'
 
+function isOverduePlan(dateStr: string): boolean {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return new Date(dateStr) < today
+}
+
 function Content({ session }: { session: AuthSession }) {
   const [requests, setRequests] = useState<Request[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -50,12 +56,10 @@ function Content({ session }: { session: AuthSession }) {
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
-  // all plans (board view — no items needed)
   const [allPlans, setAllPlans] = useState<WorkPlan[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [driverUsers, setDriverUsers] = useState<UserWithAssignment[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  // plans awaiting zamporab confirmation (with items — for review modal)
   const [pendingPlans, setPendingPlans] = useState<WorkPlanWithItems[]>([])
   const [reviewPlan, setReviewPlan] = useState<WorkPlanWithItems | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -64,6 +68,7 @@ function Content({ session }: { session: AuthSession }) {
   const [tab, setTab] = useState<Tab>('plans')
   const [timerText, setTimerText] = useState('')
   const [ownPlanVersion, setOwnPlanVersion] = useState(0)
+  const [showDone, setShowDone] = useState(false)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw, drvUsers, vehs] = await Promise.all([
@@ -71,7 +76,7 @@ function Content({ session }: { session: AuthSession }) {
       fetchWorkTypes(), fetchServices(), fetchUsers(),
       fetchWorkPlans({ status: 'APPROVED' }),
       fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }),
-      fetchWorkPlans(), // all plans for board (no items)
+      fetchWorkPlans(),
       fetchDriverUsers(),
       fetchVehicles(true),
     ])
@@ -81,12 +86,10 @@ function Content({ session }: { session: AuthSession }) {
     setDriverUsers(drvUsers); setVehicles(vehs)
     setOwnPlanVersion(v => v + 1)
 
-    // Pending plans awaiting zamporab confirmation (load with items for review modal)
     const allPending = [...rawApproved, ...rawSubmittedStr]
     const pendingWithItems = await Promise.all(allPending.map(p => fetchWorkPlanWithItems(p.id)))
     setPendingPlans(pendingWithItems.filter(Boolean) as WorkPlanWithItems[])
 
-    // Incoming cross-service requests
     if (session.service_id) {
       const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })
       setIncomingRequests(incoming)
@@ -95,7 +98,6 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Timer to 16:30
   useEffect(() => {
     const update = () => {
       const now = new Date()
@@ -120,13 +122,26 @@ function Content({ session }: { session: AuthSession }) {
 
   const unapproved = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length
   const pendingIncoming = incomingRequests.filter(r => r.status === 'PENDING').length
+  const donePlans = allPlans.filter(p => p.status === 'DONE' || p.status === 'REJECTED')
+  const overdueCount = pendingPlans.filter(p => isOverduePlan(p.plan_date)).length
 
-  const tabCls = (t: Tab, color = 'bg-blue-600') =>
-    `px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === t ? `${color} text-white` : 'bg-white/5 text-white/50 hover:bg-white/10'}`
+  const tabDefs: { id: Tab; label: string; count?: number }[] = [
+    { id: 'plans', label: 'Мои планы', count: pendingPlans.length + donePlans.length },
+    { id: 'pending', label: 'Подтверждение', count: pendingPlans.length },
+    { id: 'kanban', label: 'Заявки', count: unapproved || undefined },
+    { id: 'staff', label: 'Смена' },
+    { id: 'incoming', label: 'Смежные', count: pendingIncoming || undefined },
+    { id: 'directives', label: 'Поручения' },
+  ]
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
+
+      {/* Shift rotation strip */}
+      <div className="mb-3">
+        <ShiftRotationStrip />
+      </div>
 
       <AlertBanner session={session} />
       <GuidedTour steps={ZAMPORAB_TOUR} storageKey="tour_zamporab_v1" />
@@ -136,74 +151,130 @@ function Content({ session }: { session: AuthSession }) {
         planCount={pendingPlans.length}
         onAction={() => setTab('pending')}
       />
-      <PlanStats requests={requests} services={services} pendingApproval={unapproved} />
 
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <button onClick={() => setTab('plans')} className={tabCls('plans', 'bg-blue-600')}>
-          📋 Мои планы
-        </button>
-        <button onClick={() => setTab('pending')} className={tabCls('pending', 'bg-emerald-600')}>
-          ⏳ Подтверждение
-          {pendingPlans.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {pendingPlans.length}
-            </span>
-          )}
-        </button>
-        <button onClick={() => setTab('kanban')} className={tabCls('kanban', 'bg-blue-600')}>
-          📊 Заявки
-          {unapproved > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {unapproved}
-            </span>
-          )}
-        </button>
-        <button onClick={() => setTab('staff')} className={tabCls('staff', 'bg-blue-600')}>
-          👷 Смена
-        </button>
-        <button onClick={() => setTab('incoming')} className={tabCls('incoming', 'bg-violet-600')}>
-          🔗 Смежные
-          {pendingIncoming > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {pendingIncoming}
-            </span>
-          )}
-        </button>
-        <button onClick={() => setTab('directives')} className={tabCls('directives', 'bg-amber-600')}>
-          ⚡ Поручения
-        </button>
-        <div className="ml-auto flex items-center gap-2">
+      <PlanStats allPlans={allPlans} pendingPlans={pendingPlans} services={services} />
+
+      {/* Tab bar — amber underline style */}
+      <div className="glass-strong rounded-2xl p-1.5 mb-4 flex items-center gap-1">
+        <div className="flex flex-1 gap-0.5 overflow-x-auto">
+          {tabDefs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap rounded-lg border-b-2 transition-all
+                ${tab === t.id
+                  ? 'text-amber-400 border-amber-400'
+                  : 'text-white/45 border-transparent hover:text-white'}`}
+            >
+              {t.label}
+              {t.count != null && t.count > 0 && (
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.5 rounded-full ${
+                    tab === t.id ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.06] text-white/35'
+                  }`}
+                >
+                  {t.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 ml-2 shrink-0">
           <HelpPanel panelTitle="Зам/Прораб" panelEmoji="👷" sections={ZAMPORAB_HELP} showWorkflow currentStatus={pendingPlans[0]?.status} />
           <GuidedTour steps={ZAMPORAB_TOUR} storageKey="tour_zamporab_v1" trigger="Обучение" />
           <button
             onClick={() => setShowSummary(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors text-[12px] font-bold"
           >
-            🖨 План работ
+            → План работ
           </button>
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm border border-white/10">↻</button>
         </div>
       </div>
 
-      {/* Tab: All plans board */}
+      {/* Tab: Мои планы — new list design */}
       {tab === 'plans' && (
         <div className="space-y-4">
+          {/* Own-service plan editor (SRV-STR zamporab) */}
           {session.service_id && (
             <ZamporabOwnPlan session={session} services={services} refreshAt={ownPlanVersion} />
           )}
-          <ZamporabPlanBoard
-            allPlans={allPlans}
-            pendingPlans={pendingPlans}
-            services={services}
-            session={session}
-            onOpenPending={setReviewPlan}
-            onRefresh={loadData}
-          />
+
+          {/* Section: НА СОГЛАСОВАНИИ */}
+          <div>
+            <div className="flex items-center gap-2 px-1 py-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(240,165,0,0.55)] animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-amber-400">На согласовании</span>
+              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-amber-500/16 border border-amber-500/35 text-amber-400">
+                {pendingPlans.length}
+              </span>
+              <span className="ml-auto text-[11px] text-white/30 font-mono">до 16:30</span>
+            </div>
+
+            {pendingPlans.length === 0 ? (
+              <EmptyState message="Нет планов, ожидающих согласования" />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {pendingPlans.map(plan => (
+                  <PendingPlanRow
+                    key={plan.id}
+                    plan={plan}
+                    services={services}
+                    session={session}
+                    onOpen={() => setReviewPlan(plan)}
+                    onRefresh={loadData}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Завершённые / Отменённые */}
+          <div>
+            <div className="flex items-center gap-2 px-1 py-2">
+              <span className="w-2 h-2 rounded-full bg-white/25" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Завершённые / Отменённые</span>
+              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/15 text-white/35">
+                {donePlans.length}
+              </span>
+              <button
+                onClick={() => setShowDone(v => !v)}
+                className="ml-auto text-white/35 font-mono text-[11px] flex items-center gap-1 hover:text-white/60 transition-colors"
+              >
+                {showDone ? 'Свернуть' : 'Развернуть'}
+                <span style={{ display: 'inline-block', transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </button>
+            </div>
+            {showDone && donePlans.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-1">
+                {donePlans.map(plan => {
+                  const svc = services.find(s => s.service_id === plan.service_id)
+                  const meta = SERVICE_META[plan.service_id]
+                  const [yy, mm, dd] = plan.plan_date.split('-')
+                  return (
+                    <div key={plan.id} className="glass rounded-xl px-4 py-3 flex items-center gap-3 opacity-60">
+                      <span className="text-lg">{meta?.emoji ?? '📋'}</span>
+                      <span className="text-[13px] text-white/70 flex-1">{svc?.service_name ?? plan.service_id}</span>
+                      <span className="font-mono text-[11px] text-white/40">{dd}.{mm}.{yy}</span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
+                          plan.status === 'DONE'
+                            ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                            : 'text-red-400 border-red-500/30 bg-red-500/10'
+                        }`}
+                      >
+                        {plan.status === 'DONE' ? 'Выполнено' : 'Отклонён'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Tab: Pending confirmation */}
+      {/* Tab: Подтверждение — detailed approval with resource check */}
       {tab === 'pending' && (
         <div className="space-y-3">
           <ResourceBar driverUsers={driverUsers} vehicles={vehicles} />
@@ -236,7 +307,7 @@ function Content({ session }: { session: AuthSession }) {
         />
       )}
 
-      {/* Tab: Kanban */}
+      {/* Tab: Заявки */}
       {tab === 'kanban' && (
         <div className="overflow-x-auto pb-4">
           {(() => {
@@ -304,9 +375,7 @@ function Content({ session }: { session: AuthSession }) {
       )}
 
       {tab === 'staff' && <ShiftOverview />}
-
       {tab === 'incoming' && <IncomingRequests session={session} />}
-
       {tab === 'directives' && <UrgentOrdersPanel session={session} />}
 
       {showModal && (
@@ -315,11 +384,199 @@ function Content({ session }: { session: AuthSession }) {
       {showSummary && (
         <WorkPlanSummaryModal session={session} onClose={() => setShowSummary(false)} />
       )}
+
+      {/* Bottom status bar */}
+      {(overdueCount > 0 || pendingPlans.length > 0 || pendingIncoming > 0) && (
+        <div className="glass rounded-xl border border-white/10 grid grid-cols-3 gap-3 px-4 py-3 mt-6">
+          <div className="flex items-center gap-2.5 text-[12px]">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 border"
+              style={{ background: 'rgba(248,81,73,0.15)', borderColor: 'rgba(248,81,73,0.40)' }}>
+              ⚠
+            </div>
+            <div>
+              <div className="font-bold text-[11px] uppercase tracking-widest text-red-400">Просрочка</div>
+              <div className="font-mono text-[11px] text-white/40">
+                {overdueCount > 0 ? `${overdueCount} план(а) просрочено` : 'Просрочек нет'}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 text-[12px]">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 border"
+              style={{ background: 'rgba(240,165,0,0.15)', borderColor: 'rgba(240,165,0,0.40)' }}>
+              📋
+            </div>
+            <div>
+              <div className="font-bold text-[11px] uppercase tracking-widest text-amber-400">Согласования</div>
+              <div className="font-mono text-[11px] text-white/40">
+                {pendingPlans.length} план(а) ждут до 16:30
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 text-[12px]">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 border"
+              style={{ background: 'rgba(56,139,253,0.15)', borderColor: 'rgba(56,139,253,0.40)' }}>
+              👥
+            </div>
+            <div>
+              <div className="font-bold text-[11px] uppercase tracking-widest text-blue-300">Смежные</div>
+              <div className="font-mono text-[11px] text-white/40">
+                {pendingIncoming > 0 ? `${pendingIncoming} заявк(и) ждут ответа` : 'Нет новых заявок'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── Resource traffic light color helper ──────────────────────────────────
+// ── Expandable pending plan row (Мои планы tab) ──────────────────────────────
+
+function PendingPlanRow({ plan, services, session, onOpen, onRefresh }: {
+  plan: WorkPlanWithItems
+  services: Service[]
+  session: AuthSession
+  onOpen: () => void
+  onRefresh: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [approving, setApproving] = useState(false)
+
+  const svc = services.find(s => s.service_id === plan.service_id)
+  const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧', color: '#fff', bg: 'bg-white/10' }
+  const [yy, mm, dd] = plan.plan_date.split('-')
+  const dateLabel = `${dd}.${mm}.${yy}`
+  const overdue = isOverduePlan(plan.plan_date)
+  const isDirect = plan.service_id === 'SRV-STR' && plan.status === 'SUBMITTED'
+  const shortCode = plan.service_id.replace('SRV-', '')
+
+  const planTitle = plan.items[0]?.work_description
+    ? plan.items.length > 1
+      ? `${plan.items[0].work_description} · +${plan.items.length - 1} поз.`
+      : plan.items[0].work_description
+    : `План работ от ${dateLabel}`
+
+  const handleApprove = async () => {
+    setApproving(true)
+    if (isDirect) {
+      await approveWorkPlanDirect(plan.id, session.user_id)
+    } else {
+      await confirmWorkPlanZamporab(plan.id, session.user_id)
+    }
+    setApproving(false)
+    onRefresh()
+  }
+
+  return (
+    <div
+      className={`glass rounded-xl border transition-all ${
+        overdue ? 'border-red-500/30' : 'border-white/10 hover:border-white/20'
+      }`}
+      style={overdue ? { background: 'linear-gradient(90deg, rgba(248,81,73,0.07), rgba(255,255,255,0.03))' } : {}}
+    >
+      <div className="grid items-center gap-4 p-4" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
+        {/* Service tag */}
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-mono text-[11px] font-bold whitespace-nowrap"
+          style={{ color: meta.color, background: `${meta.color}28`, borderColor: `${meta.color}72` }}
+        >
+          {meta.emoji} {shortCode}
+        </span>
+
+        {/* Plan info */}
+        <div className="min-w-0">
+          <div className="text-[14px] font-semibold text-white leading-snug truncate">{planTitle}</div>
+          <div className="flex items-center gap-2.5 flex-wrap mt-1">
+            <span className="text-[12px] text-white/40">{svc?.service_name}</span>
+            <span className="font-mono text-[12px] text-white/35">плановая дата · {dateLabel}</span>
+            {overdue && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold border bg-red-500/18 text-red-400 border-red-500/45">
+                Просрочен
+              </span>
+            )}
+            <span
+              className="px-1.5 py-0.5 rounded-full text-[10px] font-bold border"
+              style={plan.status === 'SUBMITTED'
+                ? { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.2)' }
+                : { background: 'rgba(240,165,0,0.16)', color: '#F0A500', borderColor: 'rgba(240,165,0,0.40)' }
+              }
+            >
+              {plan.status === 'SUBMITTED' ? 'Черновик' : 'На согл.'}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={handleApprove}
+            disabled={approving}
+            className="px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-all disabled:opacity-50
+              bg-emerald-500/20 text-emerald-400 border-emerald-500/40
+              hover:bg-emerald-500 hover:text-black hover:border-emerald-500"
+          >
+            ✓ Согласовать
+          </button>
+          <button
+            onClick={onOpen}
+            className="px-2.5 py-1.5 rounded-lg text-[12px] font-bold border text-red-400 border-red-500/35 hover:bg-red-500/18 transition-all"
+            title="Открыть для проверки / отклонения"
+          >
+            ✗
+          </button>
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className={`px-2.5 py-1.5 rounded-lg border transition-all text-[12px] ${
+              expanded
+                ? 'text-amber-400 border-amber-500/35'
+                : 'text-white/40 border-white/15 hover:text-white hover:border-white/30'
+            }`}
+            style={{ background: expanded ? 'rgba(240,165,0,0.12)' : 'transparent', transform: expanded ? 'rotate(180deg)' : 'none' }}
+          >
+            ▼
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded items */}
+      {expanded && plan.items.length > 0 && (
+        <div className="px-4 pb-4">
+          <div className="border-t border-white/[0.07] pt-3 flex flex-col">
+            {plan.items.map((item, idx) => (
+              <PlanItemRow key={item.id} item={item} idx={idx} total={plan.items.length} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlanItemRow({ item, idx, total }: { item: WorkPlanItem; idx: number; total: number }) {
+  return (
+    <div
+      className={`grid items-center gap-3 py-2 ${idx < total - 1 ? 'border-b border-dashed border-white/[0.05]' : ''}`}
+      style={{ gridTemplateColumns: '22px 1fr auto auto auto' }}
+    >
+      <span className="font-mono text-[10px] text-white/30">{String(idx + 1).padStart(2, '0')}</span>
+      <span className="text-[13px] font-medium text-white">{item.work_description}</span>
+      <span className="font-mono text-[11px] text-white/40">{item.location}</span>
+      {item.required_workers > 0 && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-mono text-[11px] font-semibold"
+          style={{ background: 'rgba(56,139,253,0.10)', borderColor: 'rgba(56,139,253,0.30)', color: '#6FA8FF' }}>
+          👥 {item.required_workers} чел.
+        </span>
+      )}
+      {item.time_start ? (
+        <span className="font-mono text-[11px] text-white/30">{item.time_start}</span>
+      ) : (
+        <span />
+      )}
+    </div>
+  )
+}
+
+// ── Resource traffic light color helper ──────────────────────────────────────
 
 function resourceColor(available: number, required: number): string {
   if (required === 0) return 'text-white/25'
@@ -328,7 +585,7 @@ function resourceColor(available: number, required: number): string {
   return 'text-red-400'
 }
 
-// ── Compact pending plan card ──────────────────────────────────────────────
+// ── Compact pending plan card (Подтверждение tab) ─────────────────────────────
 
 function PendingPlanCard({ plan, services, driverUsers, vehicles, onOpen }: {
   plan: WorkPlanWithItems
