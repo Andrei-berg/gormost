@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, approveWorkPlan } from '@/lib/api'
 import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/types'
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
@@ -21,6 +21,7 @@ export default function ChiefPage() {
 }
 
 const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+
 const STATUS_TABS: Array<{ key: WorkPlanStatus | 'ALL'; label: string }> = [
   { key: 'SUBMITTED', label: 'На согласовании' },
   { key: 'APPROVED',  label: 'Согласованы' },
@@ -38,7 +39,8 @@ function Content({ session }: { session: AuthSession }) {
   const [plans, setPlans] = useState<WorkPlanWithItems[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [filter, setFilter] = useState<WorkPlanStatus | 'ALL'>('SUBMITTED')
-  const [tab, setTab] = useState<'live' | 'approvals' | 'directives'>('live')
+  const [tab, setTab] = useState<'live' | 'approvals' | 'directives'>('approvals')
+  const [savingAll, setSavingAll] = useState(false)
 
   const loadData = useCallback(async () => {
     const [raw, svcs] = await Promise.all([fetchWorkPlans(), fetchServices()])
@@ -49,14 +51,25 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  const visible = filter === 'ALL' ? plans : plans.filter(p => p.status === filter)
+  const submittedPlans = plans.filter(p => p.status === 'SUBMITTED')
+  const approvedPlans  = plans.filter(p => p.status === 'APPROVED')
+  const livePlans      = plans.filter(p => ['IN_PROGRESS', 'ASSIGNED', 'BOSS_CONFIRMED'].includes(p.status))
 
+  const visible = filter === 'ALL' ? plans : plans.filter(p => p.status === filter)
   const grouped = visible.reduce<Record<string, WorkPlanWithItems[]>>((acc, p) => {
     if (!acc[p.plan_date]) acc[p.plan_date] = []
     acc[p.plan_date].push(p)
     return acc
   }, {})
   const dates = Object.keys(grouped).sort()
+
+  const handleApproveAll = async () => {
+    if (submittedPlans.length === 0) return
+    setSavingAll(true)
+    await Promise.all(submittedPlans.map(p => approveWorkPlan(p.id, session.user_id)))
+    setSavingAll(false)
+    loadData()
+  }
 
   return (
     <div className="min-h-screen p-4 max-w-[1400px] mx-auto">
@@ -66,43 +79,50 @@ function Content({ session }: { session: AuthSession }) {
       <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" />
       <WhatNextBanner
         role={session.role_level}
-        currentStatus={plans.some(p => p.status === 'SUBMITTED') ? 'SUBMITTED' : null}
-        planCount={plans.filter(p => p.status === 'SUBMITTED').length}
+        currentStatus={submittedPlans.length > 0 ? 'SUBMITTED' : null}
+        planCount={submittedPlans.length}
         onAction={() => setTab('approvals')}
       />
       <ChiefStats plans={plans} />
 
-      {/* Main tab switcher */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          data-tour="tab-live"
+      {/* Tab bar */}
+      <div
+        className="flex items-center gap-1 p-1.5 rounded-xl mb-4"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+      >
+        <TabBtn
+          active={tab === 'live'}
           onClick={() => setTab('live')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'live' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+          count={livePlans.length}
         >
-          🔴 Текущие работы
-        </button>
-        <button
-          data-tour="tab-approvals"
+          🛠 Текущие работы
+        </TabBtn>
+        <TabBtn
+          active={tab === 'approvals'}
           onClick={() => setTab('approvals')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${tab === 'approvals' ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+          count={submittedPlans.length}
+          data-tour="tab-approvals"
         >
           📋 Согласование
-          {plans.filter(p => p.status === 'SUBMITTED').length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-              {plans.filter(p => p.status === 'SUBMITTED').length}
-            </span>
-          )}
-        </button>
-        <button
+        </TabBtn>
+        <TabBtn
+          active={tab === 'directives'}
           onClick={() => setTab('directives')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'directives' ? 'bg-rose-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
         >
-          📝 Поручения
-        </button>
-        <div className="ml-auto flex items-center gap-2">
+          📌 Поручения
+        </TabBtn>
+
+        <div className="ml-auto flex items-center gap-1">
           <HelpPanel panelTitle="Главный инженер" panelEmoji="🔧" sections={CHIEF_HELP} showWorkflow currentStatus={plans.find(p => p.status === 'SUBMITTED')?.status} />
           <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" trigger="Обучение" />
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+          <button
+            onClick={loadData}
+            className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
+            title="Обновить"
+          >
+            ↻
+          </button>
         </div>
       </div>
 
@@ -112,6 +132,38 @@ function Content({ session }: { session: AuthSession }) {
         <UrgentOrdersPanel session={session} />
       ) : (
         <>
+          {/* Section header */}
+          <div className="flex items-center gap-2.5 mb-4 px-1">
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: '#F0A500', boxShadow: '0 0 12px rgba(240,165,0,0.7)' }}
+            />
+            <span className="text-[11px] font-bold tracking-[0.10em] text-white/75 uppercase">
+              На согласовании
+            </span>
+            <span
+              className="font-mono text-[11px] px-2 py-0.5 rounded-full border"
+              style={{ background: 'rgba(240,165,0,0.12)', color: '#F0A500', borderColor: 'rgba(240,165,0,0.30)' }}
+            >
+              {submittedPlans.length}
+            </span>
+            <div className="flex-1" />
+            {submittedPlans.length > 1 && (
+              <button
+                onClick={handleApproveAll}
+                disabled={savingAll}
+                className="px-3 py-1.5 rounded-[9px] text-[12px] font-bold disabled:opacity-40 transition-all"
+                style={{
+                  background: '#F0A500', color: '#0D1117',
+                  boxShadow: '0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 8px rgba(240,165,0,0.25)',
+                  border: '1px solid #F0A500',
+                }}
+              >
+                ✓ Согласовать все
+              </button>
+            )}
+          </div>
+
           {/* Filter tabs */}
           <div className="flex items-center gap-2 mb-4">
             {STATUS_TABS.map(t => (
@@ -120,9 +172,10 @@ function Content({ session }: { session: AuthSession }) {
                 onClick={() => setFilter(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${
                   filter === t.key
-                    ? 'bg-orange-600 text-white font-medium'
-                    : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    ? 'text-white font-medium'
+                    : 'text-white/50 hover:text-white/70 hover:bg-white/10'
                 }`}
+                style={filter === t.key ? { background: 'rgba(240,165,0,0.12)', border: '1px solid rgba(240,165,0,0.30)', color: '#F0A500' } : { background: 'rgba(255,255,255,0.05)', border: '1px solid transparent' }}
               >
                 {t.label}
                 {t.key !== 'ALL' && (
@@ -167,8 +220,63 @@ function Content({ session }: { session: AuthSession }) {
               </div>
             ))}
           </div>
+
+          {/* Status bar */}
+          <div
+            className="grid grid-cols-3 gap-0 mt-6 px-4 py-2.5 rounded-xl text-[12px] items-center"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            <div className="flex items-center gap-1.5" style={{ color: '#F0A500' }}>
+              <span className="w-[7px] h-[7px] rounded-full bg-current" />
+              <b className="font-mono">{submittedPlans.length}</b>
+              <span className="text-white/60">планов ждут согласования</span>
+            </div>
+            <div className="flex items-center justify-center gap-1 text-white/55">
+              <b className="font-mono font-bold" style={{ color: '#3FB950' }}>{approvedPlans.length}</b>
+              <span>план{approvedPlans.length === 1 ? '' : 'а'} согласован{approvedPlans.length === 1 ? '' : 'о'} сегодня</span>
+            </div>
+            <div className="flex items-center justify-end gap-1" style={{ color: '#388BFD' }}>
+              <b className="font-mono">{livePlans.length}</b>
+              <span>в работе</span>
+            </div>
+          </div>
         </>
       )}
     </div>
+  )
+}
+
+function TabBtn({ children, active, onClick, count, ...rest }: {
+  children: React.ReactNode
+  active: boolean
+  onClick: () => void
+  count?: number
+  [key: string]: unknown
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 py-2 rounded-[9px] text-[13px] font-semibold transition-all"
+      style={
+        active
+          ? { background: 'rgba(240,165,0,0.12)', color: '#F0A500', border: '1px solid rgba(240,165,0,0.30)' }
+          : { color: 'rgba(255,255,255,0.60)', border: '1px solid transparent' }
+      }
+      {...rest}
+    >
+      {children}
+      {count !== undefined && (
+        <span
+          className="font-mono text-[11px] px-1.5 py-0.5 rounded-full"
+          style={
+            active
+              ? { background: '#F0A500', color: '#0D1117' }
+              : { background: 'rgba(255,255,255,0.10)', color: '#fff' }
+          }
+        >
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
