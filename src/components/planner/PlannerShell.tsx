@@ -13,8 +13,10 @@ import {
   type PlannerMode, type SpanMonths,
   type PhaseEditorState, type ScheduleEditorState,
 } from './types'
-import { addMonths, daysInRange, toDateStr, nextManual, CYCLIC_CODES } from './utils'
+import { addMonths, daysInRange, toDateStr, CYCLIC_CODES } from './utils'
+import { resolveShiftStatus } from '@/lib/shifts'
 import { useTheme } from '@/lib/ThemeContext'
+import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import PlannerToolbar from './PlannerToolbar'
 import PlannerSettingsPanel from './PlannerSettings'
 import PlannerGrid from './PlannerGrid'
@@ -47,6 +49,7 @@ export default function PlannerShell({ session }: Props) {
   const [mode,         setMode]         = useState<PlannerMode>('view')
   const [showSettings, setShowSettings] = useState(false)
   const [savingKey,    setSavingKey]    = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserWithAssignment | null>(null)
 
   // ── Editor states ────────────────────────────────────────────────────────
   const [phaseEditor,    setPhaseEditor]    = useState<PhaseEditorState | null>(null)
@@ -70,10 +73,8 @@ export default function PlannerShell({ session }: Props) {
       fetchAllShiftPhases(),
     ])
     setUsers(u)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setServices(svc as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setSchedules(sch as any)
+    setServices(svc as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+    setSchedules(sch as any) // eslint-disable-line @typescript-eslint/no-explicit-any
     setPhases(ph)
     setLoading(false)
   }, [])
@@ -108,7 +109,6 @@ export default function PlannerShell({ session }: Props) {
       if (settings.onlyWithIssues) {
         const code = u.assignment?.schedule_code ?? ''
         if (!CYCLIC_CODES.has(code)) return false
-        // check if they have no phases
         const hasPhase = phases.some(p => p.employee_id === u.user_id)
         if (hasPhase) return false
       }
@@ -116,7 +116,6 @@ export default function PlannerShell({ session }: Props) {
     })
   }, [allActive, filters, settings.onlyWithIssues, phases])
 
-  // HEAD can only edit their own service
   const editableUsers = useMemo(() => {
     if (session.role_level === 'HEAD' && session.service_id) {
       return filteredUsers.filter(u => u.service_id === session.service_id)
@@ -124,34 +123,23 @@ export default function PlannerShell({ session }: Props) {
     return filteredUsers
   }, [filteredUsers, session.role_level, session.service_id])
 
-  // ── Navigation ───────────────────────────────────────────────────────────
-  const prev = () => { const r = addMonths(startYear, startMonth, -1); setStartYear(r.year); setStartMonth(r.month) }
-  const next = () => { const r = addMonths(startYear, startMonth,  1); setStartYear(r.year); setStartMonth(r.month) }
-  const goToday = () => { setStartYear(now.getFullYear()); setStartMonth(now.getMonth()) }
-
-  // ── Cell click handler ───────────────────────────────────────────────────
-  const handleCellClick = useCallback(async (user: UserWithAssignment, date: Date) => {
-    if (mode !== 'edit') return
-    const dateStr = toDateStr(date)
-    const key = `${user.user_id}_${dateStr}`
-    if (savingKey) return
-
-    const manual = manualShifts.find(m => m.user_id === user.user_id && m.shift_date === dateStr)?.shift_type ?? null
-
-    // Compute auto
-    let auto: 'I' | 'II' | null = null
-    if (user.assignment) {
+  // ── Today stats (for bottom bar) ──────────────────────────────────────────
+  const todayStr = toDateStr(new Date())
+  const todayStats = useMemo(() => {
+    let onDuty = 0
+    const todayDate = new Date()
+    filteredUsers.forEach(user => {
+      if (!user.assignment) return
+      const manualRec = manualShifts.find(m => m.user_id === user.user_id && m.shift_date === todayStr)
+      if (manualRec) {
+        if (manualRec.shift_type !== 'OFF') onDuty++
+        return
+      }
       const ap = phases.find(p =>
         p.employee_id === user.user_id &&
-        p.valid_from <= dateStr &&
-        (p.valid_to === null || p.valid_to >= dateStr)
+        p.valid_from <= todayStr &&
+        (p.valid_to === null || p.valid_to >= todayStr)
       ) ?? null
-      // Import resolveShiftStatus inline here via the api is complex; we'll let PlannerGrid handle it
-      // For cycling we just use what's visible. Use a simplified approach:
-      // We pass the cell click event and let the grid compute it.
-      // Actually, to get the auto value we need resolveShiftStatus here too.
-      // Let's import it:
-      const { resolveShiftStatus } = await import('@/lib/shifts')
       const status = resolveShiftStatus({
         schedule_code: user.assignment.schedule_code ?? '',
         shift_num: user.assignment.shift_num,
@@ -160,28 +148,41 @@ export default function PlannerShell({ session }: Props) {
         custom_work_days: user.assignment.custom_work_days,
         custom_rest_days: user.assignment.custom_rest_days,
         active_phase: ap,
-      }, date)
-      if (status.working) auto = status.phase === 'night' ? 'II' : 'I'
-    }
+      }, todayDate)
+      if (status.working) onDuty++
+    })
+    return { total: filteredUsers.length, onDuty, off: filteredUsers.length - onDuty }
+  }, [filteredUsers, phases, manualShifts, todayStr])
 
-    const next = nextManual(auto, manual)
+  // ── Navigation ───────────────────────────────────────────────────────────
+  const prev = () => { const r = addMonths(startYear, startMonth, -1); setStartYear(r.year); setStartMonth(r.month) }
+  const next = () => { const r = addMonths(startYear, startMonth,  1); setStartYear(r.year); setStartMonth(r.month) }
+  const goToday = () => { setStartYear(now.getFullYear()); setStartMonth(now.getMonth()) }
+
+  // ── Cell apply handler (popover) ─────────────────────────────────────────
+  const handleCellApply = useCallback(async (user: UserWithAssignment, date: Date, value: 'I' | 'II' | 'OFF' | null) => {
+    if (mode !== 'edit') return
+    const dateStr = toDateStr(date)
+    const key = `${user.user_id}_${dateStr}`
+    if (savingKey) return
+
     setSavingKey(key)
-    if (next === null) {
+    if (value === null) {
       await deleteDriverManualShift(user.user_id, dateStr)
       setManualShifts(prev => prev.filter(m => !(m.user_id === user.user_id && m.shift_date === dateStr)))
     } else {
-      await upsertDriverManualShift(user.user_id, dateStr, next, session.user_id)
+      await upsertDriverManualShift(user.user_id, dateStr, value, session.user_id)
       setManualShifts(prev => {
         const filtered = prev.filter(m => !(m.user_id === user.user_id && m.shift_date === dateStr))
         return [...filtered, {
-          id: key, user_id: user.user_id, shift_date: dateStr, shift_type: next,
+          id: key, user_id: user.user_id, shift_date: dateStr, shift_type: value,
           notes: null, created_by: session.user_id,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
         }]
       })
     }
     setSavingKey(null)
-  }, [mode, savingKey, manualShifts, phases, session.user_id])
+  }, [mode, savingKey, session.user_id])
 
   // ── Phase strip click ─────────────────────────────────────────────────────
   const handlePhaseStripClick = useCallback((
@@ -209,6 +210,11 @@ export default function PlannerShell({ session }: Props) {
     setScheduleEditor({ userId: user.user_id, user })
   }, [mode])
 
+  // ── User click (right panel) ─────────────────────────────────────────────
+  const handleUserClick = useCallback((user: UserWithAssignment) => {
+    setSelectedUser(prev => prev?.user_id === user.user_id ? null : user)
+  }, [])
+
   // ── Reload after edits ───────────────────────────────────────────────────
   const handlePhaseEditorSaved = useCallback(async () => {
     setPhaseEditor(null)
@@ -222,14 +228,47 @@ export default function PlannerShell({ session }: Props) {
     setUsers(u)
   }, [])
 
-  // ── services/schedules typed ─────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const typedServices  = services  as any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const typedSchedules = schedules as any[]
+  const typedServices  = services  as any[] // eslint-disable-line @typescript-eslint/no-explicit-any
+  const typedSchedules = schedules as any[] // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  // ── Selected user stats ───────────────────────────────────────────────────
+  const selectedUserStats = useMemo(() => {
+    if (!selectedUser) return null
+    let working = 0, off = 0
+    days.forEach(d => {
+      const dateStr = toDateStr(d)
+      const manualRec = manualShifts.find(m => m.user_id === selectedUser.user_id && m.shift_date === dateStr)
+      const manual = manualRec?.shift_type ?? null
+      let auto: 'I' | 'II' | null = null
+      if (selectedUser.assignment) {
+        const ap = phases.find(p =>
+          p.employee_id === selectedUser.user_id &&
+          p.valid_from <= dateStr &&
+          (p.valid_to === null || p.valid_to >= dateStr)
+        ) ?? null
+        const status = resolveShiftStatus({
+          schedule_code: selectedUser.assignment.schedule_code ?? '',
+          shift_num: selectedUser.assignment.shift_num,
+          rotation_group: selectedUser.assignment.rotation_group,
+          shift_reference_date: selectedUser.assignment.shift_reference_date,
+          custom_work_days: selectedUser.assignment.custom_work_days,
+          custom_rest_days: selectedUser.assignment.custom_rest_days,
+          active_phase: ap,
+        }, d)
+        if (status.working) auto = status.phase === 'night' ? 'II' : 'I'
+      }
+      const shown = manual ?? auto
+      if (shown && shown !== 'OFF') working++
+      else off++
+    })
+    return { working, off }
+  }, [selectedUser, days, phases, manualShifts])
 
   return (
     <div className="space-y-3">
+      {/* Shift rotation strip */}
+      <ShiftRotationStrip />
+
       {/* Toolbar */}
       <PlannerToolbar
         isLight={isLight}
@@ -274,35 +313,132 @@ export default function PlannerShell({ session }: Props) {
         </div>
       ) : (
         <>
-          <PlannerGrid
-            isLight={isLight}
-            users={editableUsers}
-            services={typedServices}
-            schedules={typedSchedules}
-            phases={phases}
-            manualShifts={manualShifts}
-            days={days}
-            settings={settings}
-            mode={mode}
-            canEdit={canEdit && mode === 'edit'}
-            session={session}
-            phaseEditorState={phaseEditor}
-            scheduleEditorState={scheduleEditor}
-            savingKey={savingKey}
-            onCellClick={handleCellClick}
-            onPhaseStripClick={handlePhaseStripClick}
-            onScheduleEditClick={handleScheduleEditClick}
-            onPhaseEditorClose={() => setPhaseEditor(null)}
-            onPhaseEditorSaved={handlePhaseEditorSaved}
-            onScheduleEditorClose={() => setScheduleEditor(null)}
-            onScheduleEditorSaved={handleScheduleEditorSaved}
-          />
+          {/* Grid + right panel */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-1 min-w-0">
+              <PlannerGrid
+                isLight={isLight}
+                users={editableUsers}
+                services={typedServices}
+                schedules={typedSchedules}
+                phases={phases}
+                manualShifts={manualShifts}
+                days={days}
+                settings={settings}
+                mode={mode}
+                canEdit={canEdit && mode === 'edit'}
+                session={session}
+                phaseEditorState={phaseEditor}
+                scheduleEditorState={scheduleEditor}
+                savingKey={savingKey}
+                selectedUserId={selectedUser?.user_id ?? null}
+                onCellApply={handleCellApply}
+                onUserClick={handleUserClick}
+                onPhaseStripClick={handlePhaseStripClick}
+                onScheduleEditClick={handleScheduleEditClick}
+                onPhaseEditorClose={() => setPhaseEditor(null)}
+                onPhaseEditorSaved={handlePhaseEditorSaved}
+                onScheduleEditorClose={() => setScheduleEditor(null)}
+                onScheduleEditorSaved={handleScheduleEditorSaved}
+              />
+            </div>
 
-          <p className={`text-[11px] text-center ${isLight ? 'text-gray-300' : 'text-white/15'}`}>
-            {mode === 'edit'
-              ? 'Клик по ячейке: авто → I → II → OFF → авто. Клик по полоске фазы — редактор фаз.'
-              : 'Переключите в режим правки для редактирования.'}
-          </p>
+            {/* Right detail panel */}
+            {selectedUser && (
+              <div className={`w-72 shrink-0 rounded-2xl border p-4 flex flex-col gap-3 ${isLight ? 'bg-white border-gray-200' : 'bg-white/[0.06] border-white/12'}`}>
+                {/* Header */}
+                <div className="flex items-start gap-2.5">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-gray-900 font-bold text-sm shrink-0">
+                    {selectedUser.full_name.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[14px] font-semibold leading-tight ${isLight ? 'text-gray-800' : 'text-white/90'}`}>
+                      {selectedUser.full_name}
+                    </div>
+                    <div className={`text-[11px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                      {selectedUser.position ?? 'Сотрудник'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedUser(null)}
+                    className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${isLight ? 'border-gray-200 text-gray-400 hover:text-gray-600' : 'border-white/10 text-white/30 hover:text-white/70'}`}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
+                  </button>
+                </div>
+
+                {/* Schedule info */}
+                <div className={`rounded-xl border p-3 ${isLight ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
+                  <div className={`text-[9px] uppercase tracking-widest font-semibold mb-2 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>Текущий график</div>
+                  <div className={`text-[14px] font-semibold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>
+                    {selectedUser.assignment?.schedule_code ?? '—'}
+                    {selectedUser.assignment?.shift_num && (
+                      <span className={`text-[11px] font-normal ml-2 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                        · коллектив {selectedUser.assignment.shift_num}
+                      </span>
+                    )}
+                  </div>
+                  {selectedUserStats && (
+                    <div className="flex gap-4 mt-2">
+                      <div>
+                        <div className={`text-[17px] font-bold font-mono leading-none ${isLight ? 'text-green-600' : 'text-green-400'}`}>{selectedUserStats.working}</div>
+                        <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>рабочих</div>
+                      </div>
+                      <div>
+                        <div className={`text-[17px] font-bold font-mono leading-none ${isLight ? 'text-gray-600' : 'text-white/60'}`}>{selectedUserStats.off}</div>
+                        <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>выходных</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                {canEdit && (
+                  <button
+                    onClick={() => { handleScheduleEditClick(selectedUser); setSelectedUser(null) }}
+                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      mode === 'edit'
+                        ? 'bg-amber-500 text-gray-900 hover:bg-amber-400'
+                        : isLight ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white/5 text-white/25 cursor-not-allowed'
+                    }`}
+                    disabled={mode !== 'edit'}
+                    title={mode !== 'edit' ? 'Включите режим правки' : undefined}
+                  >
+                    ✎ Изменить график
+                  </button>
+                )}
+
+                <div className={`text-[10px] ${isLight ? 'text-gray-300' : 'text-white/20'}`}>
+                  Нажмите на имя сотрудника в таблице для выбора · Клик ещё раз — отменить выбор
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom summary bar */}
+          <div className={`flex items-center gap-4 px-4 py-2.5 rounded-xl border text-[12px] ${isLight ? 'bg-white border-gray-200 text-gray-500' : 'bg-white/[0.04] border-white/10 text-white/50'}`}>
+            <span>
+              <span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.total}</span>
+              {' '}сотрудников
+            </span>
+            <span className={isLight ? 'text-gray-200' : 'text-white/10'}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+              Сегодня:
+              {' '}<span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.onDuty}</span>
+              {' '}на дежурстве
+            </span>
+            <span className={isLight ? 'text-gray-200' : 'text-white/10'}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full inline-block ${isLight ? 'bg-gray-300' : 'bg-white/20'}`} />
+              <span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.off}</span>
+              {' '}выходной
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] font-semibold text-green-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+              LIVE
+            </span>
+          </div>
         </>
       )}
     </div>

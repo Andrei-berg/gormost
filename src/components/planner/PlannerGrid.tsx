@@ -1,62 +1,36 @@
 'use client'
-import { useMemo, useCallback, useRef } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import type { UserWithAssignment, ShiftPhase, DriverManualShift, Schedule, Service } from '@/types'
 import type { PlannerSettings, PlannerMode, PhaseEditorState, ScheduleEditorState, CellState } from './types'
-import { CYCLIC_CODES, toDateStr, isWeekend, getMonthBoundaries, nextManual } from './utils'
-import { resolveShiftStatus } from '@/lib/shifts'
+import { CYCLIC_CODES, toDateStr, isWeekend, getMonthBoundaries } from './utils'
+import { resolveShiftStatus, getShiftForDate } from '@/lib/shifts'
 import PlannerPhaseEditor from './PlannerPhaseEditor'
 import PlannerScheduleEditor from './PlannerScheduleEditor'
 import type { AuthSession } from '@/types'
 
-// ─── DayCell ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-function DayCell({
-  cell, isToday, saving, compact, canEdit, isLight, onClick,
-}: {
-  cell: CellState
-  isToday: boolean
-  saving: boolean
-  compact: boolean
-  canEdit: boolean
-  isLight: boolean
-  onClick: () => void
-}) {
-  const shown = cell.manual ?? cell.auto
-  const isManual = cell.manual !== null
+const DOW = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+const MONTH_GEN = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 
-  let cls = `relative w-full rounded text-[10px] font-medium transition-all select-none ${compact ? 'h-5' : 'h-7'} `
+const NAME_W = 220
+const DAY_W  = 32
+const TOTAL_W = 92
 
-  if (shown === 'I') {
-    cls += isManual
-      ? isLight ? 'bg-amber-200 text-amber-800 border border-amber-400' : 'bg-amber-500/30 text-amber-200 border border-amber-500/50'
-      : isLight ? 'bg-amber-50 text-amber-400 border border-transparent' : 'bg-amber-500/10 text-amber-400/40 border border-transparent'
-    if (canEdit) cls += isLight ? ' hover:bg-amber-100 cursor-pointer' : ' hover:bg-amber-500/40 cursor-pointer'
-  } else if (shown === 'II') {
-    cls += isManual
-      ? isLight ? 'bg-blue-200 text-blue-800 border border-blue-400' : 'bg-blue-500/30 text-blue-200 border border-blue-500/50'
-      : isLight ? 'bg-blue-50 text-blue-400 border border-transparent' : 'bg-blue-500/10 text-blue-400/40 border border-transparent'
-    if (canEdit) cls += isLight ? ' hover:bg-blue-100 cursor-pointer' : ' hover:bg-blue-500/40 cursor-pointer'
-  } else if (shown === 'OFF') {
-    cls += isLight ? 'bg-gray-100 text-gray-400 border border-gray-200' : 'bg-white/5 text-white/20 border border-white/10'
-    if (canEdit) cls += isLight ? ' hover:bg-gray-200 cursor-pointer' : ' hover:bg-white/15 cursor-pointer'
-  } else {
-    cls += 'bg-transparent text-transparent border border-transparent'
-    if (canEdit) cls += isLight ? ' hover:bg-gray-100 cursor-pointer' : ' hover:bg-white/5 cursor-pointer'
-  }
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  if (isToday) cls += ' ring-1 ring-green-400/60'
-  if (saving)  cls += ' opacity-40 pointer-events-none'
+function cellTypeLabel(shown: 'I' | 'II' | 'OFF', isManual: boolean): string {
+  const src = isManual ? 'вручную' : 'авто'
+  if (shown === 'I')   return `ДЕНЬ · ${src}`
+  if (shown === 'II')  return `НОЧЬ · ${src}`
+  if (shown === 'OFF') return `ВЫХ · ${src}`
+  return '—'
+}
 
-  const label = shown === 'I' ? 'I' : shown === 'II' ? 'II' : shown === 'OFF' ? '—' : ''
-
-  return (
-    <button className={cls} onClick={canEdit ? onClick : undefined} title={isManual ? '✏ вручную' : 'авто'}>
-      <span className="flex items-center justify-center h-full">{label}</span>
-      {isManual && (
-        <span className="absolute top-0 right-0 w-1 h-1 rounded-full bg-amber-400 m-0.5" />
-      )}
-    </button>
-  )
+function blockColor(shown: 'I' | 'II' | 'OFF', isManual: boolean): string {
+  if (shown === 'I')   return isManual ? 'rgba(240,165,0,0.92)'   : 'rgba(249,115,22,0.85)'
+  if (shown === 'II')  return isManual ? 'rgba(111,168,255,0.92)' : 'rgba(56,139,253,0.78)'
+  return 'transparent'
 }
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -76,7 +50,9 @@ interface Props {
   scheduleEditorState: ScheduleEditorState | null
   savingKey: string | null
   isLight: boolean
-  onCellClick: (user: UserWithAssignment, date: Date) => void
+  selectedUserId: string | null
+  onCellApply: (user: UserWithAssignment, date: Date, value: 'I' | 'II' | 'OFF' | null) => void
+  onUserClick: (user: UserWithAssignment) => void
   onPhaseStripClick: (user: UserWithAssignment, date: Date, phase: ShiftPhase | null, e: React.MouseEvent) => void
   onScheduleEditClick: (user: UserWithAssignment) => void
   onPhaseEditorClose: () => void
@@ -89,45 +65,29 @@ interface Props {
 
 export default function PlannerGrid({
   users, services, schedules, phases, manualShifts, days, settings, mode, canEdit, session,
-  phaseEditorState, scheduleEditorState, savingKey, isLight,
-  onCellClick, onPhaseStripClick, onScheduleEditClick,
+  phaseEditorState, scheduleEditorState, savingKey, isLight, selectedUserId,
+  onCellApply, onUserClick, onPhaseStripClick, onScheduleEditClick,
   onPhaseEditorClose, onPhaseEditorSaved,
   onScheduleEditorClose, onScheduleEditorSaved,
 }: Props) {
-  // ── Theme tokens ─────────────────────────────────────────────────────────
-  const stickyBg  = isLight ? 'bg-white'              : 'bg-[#0f1428]'
-  const tableBdr  = isLight ? 'border-gray-200'        : 'border-white/10'
-  const hdrBg     = isLight ? 'bg-gray-50'             : 'bg-white/5'
-  const mutedTxt  = isLight ? 'text-gray-400'          : 'text-white/35'
-  const bodyTxt   = isLight ? 'text-gray-800'          : 'text-white/80'
-  const dimTxt    = isLight ? 'text-gray-300'          : 'text-white/20'
-  const rowAlt    = isLight ? 'bg-gray-50/60'          : 'bg-white/[0.012]'
-  const groupBg   = isLight ? 'bg-gray-100'            : 'bg-white/[0.03]'
-  const groupTxt  = isLight ? 'text-gray-500'          : 'text-white/40'
-  const cycTxt    = isLight ? 'text-violet-600/80'     : 'text-violet-400/60'
-  const normSched = isLight ? 'text-gray-400'          : 'text-white/30'
-  const weBg      = isLight ? 'bg-gray-100/60'         : 'bg-white/[0.01]'
-  const editBtn   = isLight ? 'text-gray-300 hover:text-gray-600' : 'text-white/15 hover:text-white/60'
-  const phaseLbl  = isLight ? 'text-gray-400 italic'   : 'text-white/15 italic'
-  const mbBorder  = isLight ? 'border-l-gray-300'      : 'border-l-white/20'
-  const phaseStart= isLight ? 'border-l-gray-400'      : 'border-l-white/40'
-  const sumTxt    = isLight ? 'text-gray-600'          : 'text-white/45'
-  const dayTxt    = isLight ? 'text-amber-600/80'      : 'text-amber-400/55'
-  const nightTxt  = isLight ? 'text-blue-600/80'       : 'text-blue-400/55'
-  const ovdTxt    = isLight ? 'text-gray-300'          : 'text-white/20'
   const today = toDateStr(new Date())
-  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const monthBoundaries = useMemo(() => getMonthBoundaries(days), [days])
+  // ── Tooltip + popover state ───────────────────────────────────────────────
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [popover, setPopover] = useState<{
+    x: number; y: number
+    user: UserWithAssignment; date: Date; current: 'I' | 'II' | 'OFF' | null
+  } | null>(null)
 
-  // Service map
-  const serviceMap = useMemo(() => {
-    const m = new Map<string, string>()
-    services.forEach(s => m.set(s.service_id, s.service_name))
-    return m
-  }, [services])
+  const closePopover = useCallback(() => setPopover(null), [])
+  useEffect(() => {
+    if (!popover) return
+    const handler = () => closePopover()
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [popover, closePopover])
 
-  // Phase index: userId → ShiftPhase[]
+  // ── Indexes ───────────────────────────────────────────────────────────────
   const phasesByUser = useMemo(() => {
     const idx = new Map<string, ShiftPhase[]>()
     phases.forEach(p => {
@@ -138,13 +98,21 @@ export default function PlannerGrid({
     return idx
   }, [phases])
 
-  // Manual index: userId_date → DriverManualShift
   const manualIndex = useMemo(() => {
     const idx = new Map<string, DriverManualShift>()
     manualShifts.forEach(m => idx.set(`${m.user_id}_${m.shift_date}`, m))
     return idx
   }, [manualShifts])
 
+  const serviceMap = useMemo(() => {
+    const m = new Map<string, string>()
+    services.forEach(s => m.set(s.service_id, s.service_name))
+    return m
+  }, [services])
+
+  const monthBoundaries = useMemo(() => getMonthBoundaries(days), [days])
+
+  // ── Cell computation ──────────────────────────────────────────────────────
   const getActivePhase = useCallback((userId: string, dateStr: string): ShiftPhase | null => {
     const ps = phasesByUser.get(userId) ?? []
     return ps.find(p => p.valid_from <= dateStr && (p.valid_to === null || p.valid_to >= dateStr)) ?? null
@@ -152,8 +120,7 @@ export default function PlannerGrid({
 
   const getCell = useCallback((user: UserWithAssignment, date: Date): CellState => {
     const dateStr = toDateStr(date)
-    const manual = manualIndex.get(`${user.user_id}_${dateStr}`)
-
+    const manualRec = manualIndex.get(`${user.user_id}_${dateStr}`)
     let auto: 'I' | 'II' | null = null
     if (user.assignment) {
       const ap = getActivePhase(user.user_id, dateStr)
@@ -168,35 +135,30 @@ export default function PlannerGrid({
       }, date)
       if (status.working) auto = status.phase === 'night' ? 'II' : 'I'
     }
-
-    return { auto, manual: manual ? manual.shift_type : null }
+    return { auto, manual: manualRec ? manualRec.shift_type : null }
   }, [manualIndex, getActivePhase])
 
-  const userSummary = useCallback((user: UserWithAssignment) => {
+  const userSummary = useCallback((user: UserWithAssignment, rowCells: CellState[]) => {
     let working = 0, day = 0, night = 0, overrides = 0
-    days.forEach(d => {
-      const c = getCell(user, d)
+    rowCells.forEach(c => {
       const shown = c.manual ?? c.auto
       if (shown === 'I')   { working++; day++ }
       if (shown === 'II')  { working++; night++ }
       if (c.manual !== null) overrides++
     })
     return { working, day, night, overrides }
-  }, [days, getCell])
+  }, [])
 
-  // Group by service if setting enabled
+  // ── Group by service ──────────────────────────────────────────────────────
   const grouped = useMemo(() => {
     if (!settings.groupByService) return [{ serviceId: '', label: '', users }]
-
     const order: string[] = []
     const map = new Map<string, UserWithAssignment[]>()
-
     users.forEach(u => {
       const sid = u.service_id ?? '__none__'
       if (!map.has(sid)) { map.set(sid, []); order.push(sid) }
       map.get(sid)!.push(u)
     })
-
     return order.map(sid => ({
       serviceId: sid,
       label: sid === '__none__' ? 'Без службы' : (serviceMap.get(sid) ?? sid),
@@ -204,235 +166,376 @@ export default function PlannerGrid({
     }))
   }, [users, settings.groupByService, serviceMap])
 
-  const cellW = 30
-  const nameW = 210
-  const sumW  = settings.showSummaryCol ? 100 : 0
-  const totalW = nameW + days.length * cellW + sumW
+  // ── Theme tokens ──────────────────────────────────────────────────────────
+  const t = {
+    border:    isLight ? 'border-gray-200'      : 'border-white/10',
+    hdrBg:     isLight ? 'bg-gray-50'           : 'bg-black/40',
+    hdrTxt:    isLight ? 'text-gray-400'        : 'text-white/35',
+    rowHover:  isLight ? 'hover:bg-gray-50'     : 'hover:bg-white/[0.02]',
+    nameCol:   isLight ? 'bg-white border-gray-100'       : 'bg-transparent border-white/[0.04]',
+    stickyBg:  isLight ? 'bg-white'             : 'bg-[#0d1117]',
+    svcBar:    isLight ? 'bg-gray-100'           : 'bg-black/25',
+    svcTxt:    isLight ? 'text-gray-500'         : 'text-white/50',
+    rowBdr:    isLight ? 'border-gray-100'       : 'border-white/[0.04]',
+    nameTxt:   isLight ? 'text-gray-800'         : 'text-white/85',
+    mutedTxt:  isLight ? 'text-gray-400'         : 'text-white/35',
+    dimTxt:    isLight ? 'text-gray-300'         : 'text-white/20',
+    totalBdr:  isLight ? 'border-gray-200'       : 'border-white/10',
+    weBg:      isLight ? 'bg-gray-50'            : 'bg-white/[0.01]',
+    todayBg:   isLight ? 'bg-amber-50'           : 'bg-amber-500/10',
+    todayBdr:  isLight ? 'border-amber-300/60'   : 'border-amber-400/50',
+    gridLine:  isLight ? 'border-gray-100'       : 'border-white/5',
+    editBtn:   isLight ? 'text-gray-200 hover:text-gray-500' : 'text-white/10 hover:text-white/60',
+    phaseLbl:  isLight ? 'text-gray-300 italic'  : 'text-white/15 italic',
+    phaseStart: isLight ? 'border-l-gray-400'    : 'border-l-white/40',
+    mbBorder:  isLight ? 'border-l-gray-300'     : 'border-l-white/20',
+    cycTxt:    isLight ? 'text-violet-600/80'    : 'text-violet-400/60',
+    normSched: isLight ? 'text-gray-400'         : 'text-white/30',
+    sumTxt:    isLight ? 'text-gray-600'         : 'text-white/50',
+    warningTxt: isLight ? 'text-amber-500'       : 'text-amber-400',
+  }
+
+  const totalGridW = NAME_W + days.length * DAY_W + TOTAL_W
 
   if (days.length === 0) {
-    return <div className={`text-center py-16 text-sm ${dimTxt}`}>Нет дней в выбранном периоде</div>
+    return <div className={`text-center py-16 text-sm ${t.dimTxt}`}>Нет дней в выбранном периоде</div>
   }
 
   return (
     <div className="relative">
-      {/* ── Table ── */}
-      <div ref={scrollRef} className={`overflow-x-auto rounded-xl border ${tableBdr}`}>
-        <table className="border-collapse" style={{ minWidth: totalW }}>
-          {/* Month header */}
-          <thead>
-            <tr className={hdrBg}>
-              <th
-                className={`sticky left-0 z-20 ${stickyBg} px-3 py-2 text-left text-xs ${mutedTxt} border-r ${tableBdr}`}
-                style={{ minWidth: nameW }}
-              >
-                Сотрудник
-              </th>
-              {days.map((d, i) => {
-                const mb   = monthBoundaries.find(b => b.idx === i)
-                const isWE = isWeekend(d)
-                const isTd = toDateStr(d) === today
-                return (
-                  <th
-                    key={i}
-                    className={`text-center text-[10px] font-medium border-b ${tableBdr} ${
-                      mb   ? `border-l-2 ${mbBorder}` : ''
-                    } ${isWE ? `${weBg} ${dimTxt}` : mutedTxt} ${isTd ? '!text-green-500' : ''}`}
-                    style={{ width: cellW, minWidth: cellW }}
-                  >
-                    {mb && (
-                      <div className={`text-[9px] border-b ${tableBdr} pb-0.5 mb-0.5 whitespace-nowrap px-1 ${isLight ? 'text-gray-400' : 'text-white/25'}`}>
-                        {mb.label}
-                      </div>
-                    )}
-                    <div>{d.getDate()}</div>
-                    <div className={`text-[9px] ${isWE ? 'text-red-400/60' : dimTxt}`}>
-                      {['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]}
-                    </div>
-                  </th>
-                )
-              })}
-              {settings.showSummaryCol && (
-                <th
-                  className={`sticky right-0 z-20 ${stickyBg} px-2 py-2 text-xs ${mutedTxt} border-l ${tableBdr}`}
-                  style={{ minWidth: sumW }}
+      {/* ── Scrollable grid ── */}
+      <div className={`overflow-x-auto rounded-xl border ${t.border}`}>
+        <div style={{ minWidth: totalGridW }}>
+
+          {/* ── Sticky header ── */}
+          <div
+            className={`sticky top-0 z-10 flex border-b ${t.border} ${t.hdrBg} font-mono`}
+          >
+            {/* Name col */}
+            <div
+              style={{ width: NAME_W, minWidth: NAME_W }}
+              className={`px-4 py-2.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest ${t.hdrTxt} sticky left-0 ${t.hdrBg} z-10 border-r ${t.border}`}
+            >
+              Сотрудник <span className={`text-[9px] ${t.dimTxt}`}>▾</span>
+            </div>
+
+            {/* Day columns */}
+            {days.map((d, di) => {
+              const isWE = isWeekend(d)
+              const isTd = toDateStr(d) === today
+              const mb = monthBoundaries.find(b => b.idx === di)
+              const shiftNum = getShiftForDate(d).shiftNumber
+              // Mark shift change (when shift wraps 4→1)
+              const prevShift = di > 0 ? getShiftForDate(days[di - 1]).shiftNumber : null
+              const isShiftChange = prevShift !== null && shiftNum !== prevShift
+
+              return (
+                <div
+                  key={di}
+                  style={{ width: DAY_W, minWidth: DAY_W }}
+                  className={`relative flex flex-col items-center justify-center py-1.5 border-l ${t.gridLine} text-[10px]
+                    ${isWE ? t.weBg : ''}
+                    ${isTd ? t.todayBg : ''}
+                    ${mb ? `border-l-2 ${t.mbBorder}` : ''}
+                  `}
                 >
-                  Итого
-                </th>
+                  {mb && (
+                    <div className={`absolute top-0 left-0 right-0 text-[8px] text-center pb-0.5 border-b ${t.border} ${t.dimTxt} whitespace-nowrap overflow-hidden`}>
+                      {mb.label}
+                    </div>
+                  )}
+                  <span className={`text-[12px] font-semibold leading-none ${isTd ? 'text-amber-400' : isWE ? t.dimTxt : t.hdrTxt}`}>
+                    {d.getDate()}
+                  </span>
+                  <span className={`text-[9px] mt-0.5 ${isTd ? 'text-amber-400/70' : isWE ? 'text-red-400/50' : t.dimTxt}`}>
+                    {DOW[d.getDay()]}
+                  </span>
+                  {isShiftChange && (
+                    <span className="absolute top-0.5 right-0.5 text-[7px] font-bold text-white/20">С{shiftNum}</span>
+                  )}
+                  {isTd && (
+                    <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400/50`} />
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Total col */}
+            <div
+              style={{ width: TOTAL_W, minWidth: TOTAL_W }}
+              className={`flex items-center justify-center text-[11px] font-semibold uppercase tracking-widest ${t.hdrTxt} border-l ${t.totalBdr}`}
+            >
+              Итого
+            </div>
+          </div>
+
+          {/* ── Body ── */}
+          {grouped.map(group => (
+            <div key={group.serviceId}>
+              {/* Service bar */}
+              {settings.groupByService && group.label && (
+                <div className={`flex items-center gap-2 px-4 py-2 border-b ${t.border} border-t ${t.border} ${t.svcBar}`}>
+                  <span className={`text-[11px] font-bold uppercase tracking-widest ${t.svcTxt}`}>{group.label}</span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${t.border} ${t.mutedTxt} font-medium normal-case tracking-normal ${isLight ? 'bg-white' : 'bg-white/5'}`}>
+                    {group.users.length} чел.
+                  </span>
+                  <span className={`ml-auto ${t.dimTxt} text-[11px]`}>▾</span>
+                </div>
               )}
-            </tr>
-          </thead>
 
-          <tbody>
-            {grouped.map(group => (
-              <>
-                {/* Service group header */}
-                {settings.groupByService && group.label && (
-                  <tr key={`grp_${group.serviceId}`} className={groupBg}>
-                    <td
-                      colSpan={days.length + (settings.showSummaryCol ? 2 : 1)}
-                      className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-b ${tableBdr} ${groupTxt}`}
+              {/* Rows */}
+              {group.users.length === 0 && (
+                <div className={`px-4 py-6 text-center text-xs ${t.dimTxt}`}>Нет сотрудников</div>
+              )}
+
+              {group.users.map((user) => {
+                const schedCode   = user.assignment?.schedule_code ?? ''
+                const hasCyclic   = CYCLIC_CODES.has(schedCode)
+                const userPhases  = phasesByUser.get(user.user_id) ?? []
+                const hasIssue    = hasCyclic && userPhases.length === 0 && canEdit
+                const isSelected  = user.user_id === selectedUserId
+                const rowCells    = days.map(d => getCell(user, d))
+                const { working, day, night, overrides } = userSummary(user, rowCells)
+                const isSaving    = savingKey?.startsWith(user.user_id)
+
+                return (
+                  <div key={user.user_id}>
+                    {/* Main employee row */}
+                    <div
+                      className={`flex border-b ${t.rowBdr} ${t.rowHover} ${isSaving ? 'opacity-60' : ''}`}
+                      style={{ height: settings.compactRows ? 32 : 44 }}
                     >
-                      {group.label}
-                      <span className={`ml-2 font-normal normal-case ${dimTxt}`}>{group.users.length} чел.</span>
-                    </td>
-                  </tr>
-                )}
-
-                {/* Employee rows */}
-                {group.users.length === 0 && (
-                  <tr key={`empty_${group.serviceId}`}>
-                    <td colSpan={days.length + (settings.showSummaryCol ? 2 : 1)} className={`px-3 py-4 text-center text-xs ${dimTxt}`}>
-                      Нет сотрудников
-                    </td>
-                  </tr>
-                )}
-                {group.users.map((user, ri) => {
-                  const schedCode   = user.assignment?.schedule_code ?? ''
-                  const hasCyclic   = CYCLIC_CODES.has(schedCode)
-                  const userPhases  = phasesByUser.get(user.user_id) ?? []
-                  const { working, day, night, overrides } = userSummary(user)
-                  const rowBg = ri % 2 === 0 ? '' : rowAlt
-                  const hasIssue = hasCyclic && userPhases.length === 0 && canEdit
-
-                  return (
-                    <>
-                      {/* Main employee row */}
-                      <tr
-                        key={user.user_id}
-                        className={`${rowBg} ${settings.showPhaseStrips && hasCyclic ? 'border-b-0' : `border-b ${tableBdr}`}`}
+                      {/* Name cell */}
+                      <div
+                        style={{ width: NAME_W, minWidth: NAME_W }}
+                        className={`sticky left-0 z-[5] px-3 flex flex-col justify-center gap-0.5 border-r ${t.rowBdr} cursor-pointer ${isSelected ? (isLight ? 'bg-amber-50' : 'bg-amber-500/10') : t.stickyBg}`}
+                        onClick={() => onUserClick(user)}
                       >
-                        {/* Employee name cell */}
-                        <td className={`sticky left-0 z-10 ${stickyBg} px-3 py-1 border-r ${tableBdr}`} style={{ minWidth: nameW }}>
-                          <div className="flex items-center gap-1.5">
-                            {hasIssue && <span title="Нет фаз для циклического графика" className="text-amber-400 text-[10px]">⚠️</span>}
-                            <div className={`text-xs truncate max-w-[155px] ${bodyTxt}`}>{user.full_name}</div>
-                            {canEdit && (
-                              <button
-                                onClick={() => onScheduleEditClick(user)}
-                                className={`ml-auto text-[10px] shrink-0 transition-colors ${editBtn}`}
-                                title="Изменить график"
-                              >✎</button>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            {schedCode && (
-                              <span className={`text-[10px] font-medium ${hasCyclic ? cycTxt : normSched}`}>{schedCode}</span>
-                            )}
-                            {user.assignment?.shift_num && (
-                              <span className={`text-[10px] ${dimTxt}`}>С{user.assignment.shift_num}</span>
-                            )}
-                          </div>
-                        </td>
+                        <div className="flex items-center gap-1.5">
+                          {hasIssue && (
+                            <span className={`text-[10px] shrink-0 ${t.warningTxt}`} title="Нет фаз для циклического графика">⚠</span>
+                          )}
+                          <span className={`text-[13px] font-medium truncate ${isSelected ? 'text-amber-400' : t.nameTxt}`}>
+                            {user.full_name}
+                          </span>
+                          {canEdit && (
+                            <button
+                              onClick={e => { e.stopPropagation(); onScheduleEditClick(user) }}
+                              className={`ml-auto text-[10px] shrink-0 transition-colors ${t.editBtn}`}
+                              title="Изменить график"
+                            >✎</button>
+                          )}
+                        </div>
+                        <div className={`flex items-center gap-1.5`}>
+                          {schedCode && (
+                            <span className={`text-[10px] font-mono font-medium ${hasCyclic ? t.cycTxt : t.normSched}`}>
+                              {schedCode}
+                            </span>
+                          )}
+                          {user.assignment?.shift_num && (
+                            <span className={`text-[10px] font-mono ${t.dimTxt}`}>С{user.assignment.shift_num}</span>
+                          )}
+                        </div>
+                      </div>
 
-                        {/* Day cells */}
+                      {/* Day cells */}
+                      {days.map((d, di) => {
+                        const cell = rowCells[di]
+                        const shown = cell.manual ?? cell.auto
+                        const isManual = cell.manual !== null
+                        const isOff = shown === 'OFF'
+                        const blockShown = (!isOff && shown) ? shown as 'I' | 'II' : null
+                        const isWE = isWeekend(d)
+                        const isTd = toDateStr(d) === today
+                        const mb = monthBoundaries.find(b => b.idx === di)
+                        const isActive = popover?.user.user_id === user.user_id && popover?.date === d
+
+                        // Block joining (visual merge of adjacent same-type cells)
+                        const leftShown  = di > 0 ? (rowCells[di - 1].manual ?? rowCells[di - 1].auto) : null
+                        const rightShown = di < days.length - 1 ? (rowCells[di + 1].manual ?? rowCells[di + 1].auto) : null
+                        const joinsLeft  = shown !== null && !isOff && leftShown === shown
+                        const joinsRight = shown !== null && !isOff && rightShown === shown
+
+                        const dateStr = toDateStr(d)
+                        const isSavingCell = savingKey === `${user.user_id}_${dateStr}`
+
+                        return (
+                          <div
+                            key={di}
+                            style={{ width: DAY_W, minWidth: DAY_W }}
+                            className={`relative border-l ${t.gridLine} flex items-center justify-center
+                              ${isWE ? t.weBg : ''}
+                              ${isTd ? t.todayBg : ''}
+                              ${mb ? `border-l-2 ${t.mbBorder}` : ''}
+                              ${canEdit ? 'cursor-pointer' : ''}
+                              ${isSavingCell ? 'opacity-30' : ''}
+                              ${isActive ? (isLight ? 'bg-amber-50' : 'bg-amber-500/10') : ''}
+                            `}
+                            onMouseEnter={(e) => {
+                              if (isActive) return
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              const shiftNum = getShiftForDate(d).shiftNumber
+                              const txt = `${d.getDate()} ${MONTH_GEN[d.getMonth()]} · ${DOW[d.getDay()]}${shown && !isOff ? ` · ${cellTypeLabel(shown as 'I' | 'II' | 'OFF', isManual)}` : shown === 'OFF' ? ' · ВЫХ · вручную' : ' · ВЫХ'} · Смена ${shiftNum}`
+                              setTooltip({ x: rect.left + rect.width / 2, y: rect.top, text: txt })
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                            onClick={(e) => {
+                              if (!canEdit) return
+                              e.stopPropagation()
+                              setTooltip(null)
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setPopover({ x: rect.left + rect.width / 2, y: rect.bottom + 4, user, date: d, current: shown as 'I' | 'II' | 'OFF' | null })
+                            }}
+                          >
+                            {/* Today column borders */}
+                            {isTd && <span className={`absolute inset-y-0 left-0 w-px ${isLight ? 'bg-amber-300/60' : 'bg-amber-400/50'}`} />}
+                            {isTd && <span className={`absolute inset-y-0 right-0 w-px ${isLight ? 'bg-amber-300/60' : 'bg-amber-400/50'}`} />}
+
+                            {/* Work block */}
+                            {blockShown && (
+                              <div
+                                className="absolute flex items-center justify-center"
+                                style={{
+                                  left:   joinsLeft  ? -1    : 2,
+                                  right:  joinsRight ? -1    : 2,
+                                  top: settings.compactRows ? 3 : 6,
+                                  bottom: settings.compactRows ? 3 : 6,
+                                  backgroundColor: blockColor(blockShown, isManual),
+                                  borderRadius: `${joinsLeft ? 0 : 4}px ${joinsRight ? 0 : 4}px ${joinsRight ? 0 : 4}px ${joinsLeft ? 0 : 4}px`,
+                                  outline: isManual ? '1px dashed rgba(255,255,255,0.5)' : 'none',
+                                  outlineOffset: -2,
+                                }}
+                              >
+                                {isManual && <span className="absolute top-0.5 right-0.5 text-[7px] text-white/70 leading-none">✎</span>}
+                              </div>
+                            )}
+
+                            {/* OFF manual marker */}
+                            {isOff && (
+                              <div
+                                className="absolute inset-x-0.5 text-center"
+                                style={{ top: settings.compactRows ? 3 : 6, bottom: settings.compactRows ? 3 : 6 }}
+                              >
+                                <span className={`text-[9px] font-mono ${isLight ? 'text-red-300' : 'text-red-400/60'}`}>—</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+
+                      {/* Total cell */}
+                      <div
+                        style={{ width: TOTAL_W, minWidth: TOTAL_W }}
+                        className={`sticky right-0 z-[5] flex flex-col items-center justify-center border-l ${t.totalBdr} font-mono gap-0.5 ${t.stickyBg}`}
+                      >
+                        <span className={`text-[12px] font-bold leading-none ${working === 0 ? t.dimTxt : t.sumTxt}`}>{working}р</span>
+                        {(day > 0 || night > 0) && (
+                          <span className={`text-[9px] ${t.dimTxt}`}>
+                            {day > 0 ? `I:${day}` : ''}{day > 0 && night > 0 ? ' ' : ''}{night > 0 ? `II:${night}` : ''}
+                          </span>
+                        )}
+                        {overrides > 0 && <span className={`text-[8px] ${t.mutedTxt}`}>✎{overrides}</span>}
+                      </div>
+                    </div>
+
+                    {/* Phase strip */}
+                    {settings.showPhaseStrips && hasCyclic && (
+                      <div className={`flex border-b ${t.rowBdr}`} style={{ height: 6 }}>
+                        <div
+                          style={{ width: NAME_W, minWidth: NAME_W }}
+                          className={`sticky left-0 z-[5] px-3 flex items-center border-r ${t.rowBdr} ${t.stickyBg}`}
+                        >
+                          {userPhases.length === 0 && canEdit && (
+                            <span className={`text-[8px] ${t.phaseLbl}`}>+ фаза</span>
+                          )}
+                        </div>
                         {days.map((d, di) => {
                           const dateStr = toDateStr(d)
-                          const key = `${user.user_id}_${dateStr}`
-                          const cell = getCell(user, d)
+                          const phase = getActivePhase(user.user_id, dateStr)
                           const mb = monthBoundaries.find(b => b.idx === di)
+                          const isStart = phase?.valid_from === dateStr
+                          const cell = rowCells[di]
+                          const isWorking = (cell.manual ?? cell.auto) !== null && (cell.manual ?? cell.auto) !== 'OFF'
+
+                          let bgCls = 'bg-transparent'
+                          if (phase && isWorking) {
+                            bgCls = phase.phase === 'day' ? 'bg-amber-500/35' : 'bg-blue-500/35'
+                          }
+
                           return (
-                            <td
+                            <div
                               key={di}
-                              className={`p-0.5 ${mb ? `border-l-2 ${mbBorder}` : ''} ${isWeekend(d) ? weBg : ''}`}
-                            >
-                              <DayCell
-                                cell={cell}
-                                isToday={dateStr === today}
-                                saving={savingKey === key}
-                                compact={settings.compactRows}
-                                canEdit={canEdit}
-                                isLight={isLight}
-                                onClick={() => onCellClick(user, d)}
-                              />
-                            </td>
+                              style={{ width: DAY_W, minWidth: DAY_W }}
+                              className={`${bgCls} ${isStart ? `border-l-2 ${t.phaseStart}` : `border-l ${t.gridLine}`} ${mb ? `border-l-2 ${t.mbBorder}` : ''} ${canEdit ? 'cursor-pointer hover:brightness-125' : ''}`}
+                              title={phase ? `${phase.phase === 'day' ? '☀️ День' : '🌙 Ночь'} · с ${phase.valid_from}${phase.valid_to ? ` по ${phase.valid_to}` : ''}` : canEdit ? 'Нажмите чтобы добавить фазу' : 'Нет фазы'}
+                              onClick={canEdit ? e => onPhaseStripClick(user, d, phase, e) : undefined}
+                            />
                           )
                         })}
+                        <div style={{ width: TOTAL_W, minWidth: TOTAL_W }} className={`sticky right-0 z-[5] border-l ${t.totalBdr} ${t.stickyBg}`} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
 
-                        {/* Summary */}
-                        {settings.showSummaryCol && (
-                          <td className={`sticky right-0 z-10 ${stickyBg} px-2 py-1 border-l ${tableBdr}`} style={{ minWidth: sumW }}>
-                            <div className="text-[10px] space-y-0.5">
-                              <div className={`font-medium ${sumTxt}`}>{working}р</div>
-                              {(day > 0 || night > 0) && (
-                                <div className="flex gap-1.5">
-                                  {day   > 0 && <span className={dayTxt}>I:{day}</span>}
-                                  {night > 0 && <span className={nightTxt}>II:{night}</span>}
-                                </div>
-                              )}
-                              {overrides > 0 && <div className={ovdTxt}>✏{overrides}</div>}
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-
-                      {/* Phase strip */}
-                      {settings.showPhaseStrips && hasCyclic && (
-                        <tr
-                          key={`${user.user_id}_strip`}
-                          className={`${rowBg} border-b ${tableBdr}`}
-                        >
-                          <td className={`sticky left-0 z-10 ${stickyBg} border-r ${tableBdr} px-3 py-0`} style={{ minWidth: nameW }}>
-                            <span className={`text-[9px] ${phaseLbl}`}>
-                              {userPhases.length === 0
-                                ? (canEdit ? '+ добавить фазу' : 'нет фаз')
-                                : `${userPhases.length} фаз`}
-                            </span>
-                          </td>
-                          {days.map((d, di) => {
-                            const dateStr = toDateStr(d)
-                            const phase = getActivePhase(user.user_id, dateStr)
-                            const mb = monthBoundaries.find(b => b.idx === di)
-                            const isStart = phase?.valid_from === dateStr
-
-                            // Only color when the worker is actually on duty that day
-                            const cell = getCell(user, d)
-                            const isWorking = (cell.manual ?? cell.auto) !== null
-
-                            let bgCls = 'bg-transparent'
-                            if (phase && isWorking) {
-                              if (phase.phase === 'day')   bgCls = 'bg-amber-500/35'
-                              if (phase.phase === 'night') bgCls = 'bg-blue-500/35'
-                            }
-
-                            return (
-                              <td
-                                key={di}
-                                className={`p-0 ${bgCls} ${isStart ? `border-l-2 ${phaseStart}` : ''} ${mb ? `border-l-2 ${mbBorder}` : ''} ${
-                                  canEdit ? 'cursor-pointer hover:brightness-125' : ''
-                                }`}
-                                style={{ height: 6 }}
-                                title={
-                                  phase
-                                    ? `${phase.phase === 'day' ? '☀️ День' : '🌙 Ночь'} · с ${phase.valid_from}${phase.valid_to ? ` по ${phase.valid_to}` : ''}`
-                                    : canEdit ? 'Нажмите чтобы добавить фазу' : 'Нет фазы'
-                                }
-                                onClick={canEdit ? e => onPhaseStripClick(user, d, phase, e) : undefined}
-                              />
-                            )
-                          })}
-                          {settings.showSummaryCol && (
-                            <td className={`sticky right-0 z-10 ${stickyBg} border-l ${tableBdr} p-0`} style={{ minWidth: sumW }} />
-                          )}
-                        </tr>
-                      )}
-                    </>
-                  )
-                })}
-              </>
-            ))}
-
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={days.length + (settings.showSummaryCol ? 2 : 1)} className={`px-4 py-12 text-center text-sm ${dimTxt}`}>
-                  Нет сотрудников по выбранным фильтрам
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          {users.length === 0 && (
+            <div className={`px-4 py-12 text-center text-sm ${t.dimTxt}`}>
+              Нет сотрудников по выбранным фильтрам
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Phase editor popup ── */}
+      {/* ── Fixed tooltip ── */}
+      {tooltip && (
+        <div
+          style={{ position: 'fixed', top: tooltip.y - 36, left: tooltip.x, transform: 'translateX(-50%)', zIndex: 300, pointerEvents: 'none' }}
+          className="bg-[rgba(8,12,28,0.96)] border border-white/18 text-white/90 text-[11px] font-mono px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-2xl"
+        >
+          {tooltip.text}
+        </div>
+      )}
+
+      {/* ── Cell popover ── */}
+      {popover && canEdit && (
+        <div
+          style={{ position: 'fixed', top: popover.y, left: popover.x, transform: 'translateX(-50%)', zIndex: 300 }}
+          className="bg-[rgba(8,12,28,0.97)] border border-white/18 rounded-xl p-2 flex gap-1 shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { onCellApply(popover.user, popover.date, 'I'); closePopover() }}
+            className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-gray-900 cursor-pointer border-0"
+            style={{ background: 'rgba(249,115,22,0.85)' }}
+          >
+            День
+          </button>
+          <button
+            onClick={() => { onCellApply(popover.user, popover.date, 'II'); closePopover() }}
+            className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-white cursor-pointer border-0"
+            style={{ background: 'rgba(56,139,253,0.78)' }}
+          >
+            Ночь
+          </button>
+          <button
+            onClick={() => { onCellApply(popover.user, popover.date, 'OFF'); closePopover() }}
+            className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-white/50 cursor-pointer border border-white/15 bg-transparent"
+          >
+            Выходной
+          </button>
+          <button
+            onClick={() => { onCellApply(popover.user, popover.date, null); closePopover() }}
+            className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-red-400 cursor-pointer border border-red-500/30 bg-transparent"
+          >
+            × Отменить
+          </button>
+        </div>
+      )}
+
+      {/* ── Phase editor ── */}
       {phaseEditorState && (
         <PlannerPhaseEditor
           userId={phaseEditorState.userId}
@@ -449,28 +552,20 @@ export default function PlannerGrid({
         />
       )}
 
-      {/* ── Schedule editor popup ── */}
+      {/* ── Schedule editor ── */}
       {scheduleEditorState && (
-        <div
-          className="fixed z-9999 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{ zIndex: 9999 }}
-        >
-          <PlannerScheduleEditor
-            user={scheduleEditorState.user}
-            schedules={schedules}
-            session={session}
-            onClose={onScheduleEditorClose}
-            onSaved={onScheduleEditorSaved}
-          />
-        </div>
-      )}
-
-      {/* backdrop for schedule editor */}
-      {scheduleEditorState && (
-        <div
-          className="fixed inset-0 bg-black/40 z-[9998]"
-          onClick={onScheduleEditorClose}
-        />
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={onScheduleEditorClose} />
+          <div className="fixed z-[9999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <PlannerScheduleEditor
+              user={scheduleEditorState.user}
+              schedules={schedules}
+              session={session}
+              onClose={onScheduleEditorClose}
+              onSaved={onScheduleEditorSaved}
+            />
+          </div>
+        </>
       )}
     </div>
   )
