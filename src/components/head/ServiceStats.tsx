@@ -4,35 +4,32 @@ interface Props {
   plans: WorkPlanWithItems[]
 }
 
+function KpiCard({ label, value, color, delta, muted }: {
+  label: string; value: number; color: string; delta: string; muted?: boolean
+}) {
+  return (
+    <div className={`glass rounded-xl px-4 py-3 ${muted ? 'opacity-70' : ''}`}>
+      <div className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.06em]">{label}</div>
+      <div className={`font-mono text-[28px] font-bold leading-[1.05] mt-1.5 ${color}`}>{value}</div>
+      <div className="text-[11px] text-white/30 mt-1.5 font-mono">{delta}</div>
+    </div>
+  )
+}
+
 export default function ServiceStats({ plans }: Props) {
-  const drafts    = plans.filter(p => p.status === 'DRAFT').length
+  const total     = plans.length
+  const drafts    = plans.filter(p => p.status === 'DRAFT' || p.status === 'REJECTED').length
   const submitted = plans.filter(p => p.status === 'SUBMITTED').length
-  const approved  = plans.filter(p => p.status === 'APPROVED').length
-  const rejected  = plans.filter(p => p.status === 'REJECTED').length
+  const approved  = plans.filter(p => ['APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(p.status)).length
   const totalItems = plans.reduce((sum, p) => sum + p.items.length, 0)
 
   return (
     <div className="grid grid-cols-5 gap-3 mb-4">
-      <div className="glass rounded-xl p-3 text-center">
-        <div className="text-xl font-bold text-white font-mono">{plans.length}</div>
-        <div className="text-xs text-white/40">Планов</div>
-      </div>
-      <div className="glass rounded-xl p-3 text-center">
-        <div className="text-xl font-bold text-slate-400 font-mono">{drafts}</div>
-        <div className="text-xs text-white/40">Черновик</div>
-      </div>
-      <div className="glass rounded-xl p-3 text-center">
-        <div className="text-xl font-bold text-orange-400 font-mono">{submitted}</div>
-        <div className="text-xs text-white/40">На согл.</div>
-      </div>
-      <div className="glass rounded-xl p-3 text-center">
-        <div className="text-xl font-bold text-green-400 font-mono">{approved}</div>
-        <div className="text-xs text-white/40">Согласовано</div>
-      </div>
-      <div className="glass rounded-xl p-3 text-center">
-        <div className="text-xl font-bold text-cyan-400 font-mono">{totalItems}</div>
-        <div className="text-xs text-white/40">Позиций</div>
-      </div>
+      <KpiCard label="Всего планов"  value={total}     color="text-white"         delta="в системе" />
+      <KpiCard label="Черновик"      value={drafts}    color="text-white/55"      delta="требуют действий" muted />
+      <KpiCard label="На согл."      value={submitted} color="text-white/55"      delta="у гл. инженера"   muted />
+      <KpiCard label="Согласовано"   value={approved}  color="text-white/55"      delta="к выполнению"     muted />
+      <KpiCard label="Позиций"       value={totalItems} color="text-[#5DA8FF]"   delta="в активных планах" />
     </div>
   )
 }

@@ -142,12 +142,12 @@ export default function PlanList({ plans, session, onRefresh, onCreatePlan }: Pr
             {/* Section header */}
             <button
               onClick={() => toggle(section.key)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-white/5 transition-colors"
             >
-              <span className="text-base">{section.icon}</span>
-              <span className="font-medium text-white text-sm flex-1 text-left">{section.label}</span>
-              <span className="text-xs text-white/35 bg-white/8 px-2 py-0.5 rounded-full">{sectionPlans.length}</span>
-              <span className="text-white/25 ml-1 text-xs">{isOpen ? '▲' : '▼'}</span>
+              <span className="text-[11px] font-bold text-white/50 uppercase tracking-[0.08em]">{section.label}</span>
+              <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-white/[0.06] text-white/70">{sectionPlans.length}</span>
+              <span className="flex-1" />
+              <span className="text-white/25 text-xs">{isOpen ? '▲' : '▼'}</span>
             </button>
 
             {/* Plans grouped by date */}

@@ -25,15 +25,16 @@ export default function HeadPage() {
   )
 }
 
-function getDeadlineTimer(): string | null {
+function getDeadlineCountdown(): string | null {
   const now = new Date()
   const deadline = new Date(now)
   deadline.setHours(16, 0, 0, 0)
-  if (now >= deadline) return null
   const diff = deadline.getTime() - now.getTime()
+  if (diff <= 0) return null
   const h = Math.floor(diff / 3600000)
   const m = Math.floor((diff % 3600000) / 60000)
-  return h > 0 ? `${h}ч ${m}м до совещания` : `${m} мин до совещания`
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
 function Content({ session }: { session: AuthSession }) {
@@ -44,7 +45,7 @@ function Content({ session }: { session: AuthSession }) {
   const [showCreate, setShowCreate] = useState(false)
   const [showTaskSheet, setShowTaskSheet] = useState(false)
   const [tab, setTab] = useState<'plans' | 'staff' | 'transport' | 'incoming'>('plans')
-  const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineTimer())
+  const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineCountdown())
 
   const loadData = useCallback(async () => {
     const [raw, svcs] = await Promise.all([
@@ -63,9 +64,9 @@ function Content({ session }: { session: AuthSession }) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Refresh deadline timer every minute
+  // Refresh deadline timer every second
   useEffect(() => {
-    const t = setInterval(() => setTimerLabel(getDeadlineTimer()), 60000)
+    const t = setInterval(() => setTimerLabel(getDeadlineCountdown()), 1000)
     return () => clearInterval(t)
   }, [])
 
@@ -91,52 +92,54 @@ function Content({ session }: { session: AuthSession }) {
       <ServiceStats plans={plans} />
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setTab('plans')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'plans' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          📋 Планы работ
-        </button>
-        <button
-          onClick={() => setTab('staff')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          👷 Состав смены
-        </button>
-        <button
-          onClick={() => setTab('transport')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'transport' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          🚛 Транспорт
-        </button>
-        <button
-          onClick={() => setTab('incoming')}
-          className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'incoming' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
-        >
-          🔗 Запросы от служб
-          {pendingCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-        <div className="ml-auto flex items-center gap-2">
+      <div className="glass rounded-xl flex items-center gap-1 p-1 mb-4 flex-wrap">
+        <div className="flex items-center gap-1 flex-1 flex-wrap">
+          {([
+            { key: 'plans',    label: 'Планы работ',     count: plans.length },
+            { key: 'staff',    label: 'Состав смены',    count: null },
+            { key: 'transport',label: 'Транспорт',       count: null },
+            { key: 'incoming', label: 'Запросы от служб',count: incomingRequests.length },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                tab === t.key ? 'bg-white/[0.08] text-white' : 'text-white/50 hover:bg-white/[0.04] hover:text-white/80'
+              }`}
+            >
+              {t.label}
+              {t.count !== null && t.count > 0 && (
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-mono ${
+                  tab === t.key ? 'bg-amber-500/20 text-amber-400' : 'bg-white/[0.06] text-white/40'
+                }`}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
           <HelpPanel panelTitle="Начальник службы" panelEmoji="🏢" sections={HEAD_HELP} showWorkflow />
           <GuidedTour steps={HEAD_TOUR} storageKey="tour_head_v1" trigger="Обучение" />
+          <div className="w-px h-4 bg-white/10 mx-1" />
           <button
             onClick={() => setShowTaskSheet(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white/60 hover:bg-white/[0.08] hover:text-white/90 transition-all"
           >
-            🖨 План-задание
+            🖨 План-задание →
           </button>
           <Link
             href="/hr-tools"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-sm font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white/60 hover:bg-white/[0.08] hover:text-white/90 transition-all"
           >
             📊 Аналитика →
           </Link>
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+          <button
+            onClick={loadData}
+            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white flex items-center justify-center text-sm transition-all"
+          >
+            ⟳
+          </button>
         </div>
       </div>
 

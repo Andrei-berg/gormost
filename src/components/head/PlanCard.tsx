@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement, WorkAssignmentWithUser } from '@/types'
-import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG, VehicleType } from '@/types'
+import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
@@ -25,6 +25,15 @@ const SERVICE_NAMES: Record<string, string> = {
   'SRV-CCTV': 'Видеонаблюдение',
 }
 
+const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+function fmtDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const dd = d.getDate().toString().padStart(2, '0')
+  const mm = (d.getMonth() + 1).toString().padStart(2, '0')
+  return `${DAY_NAMES[d.getDay()]} ${dd}.${mm}`
+}
+
 interface Props {
   plan: WorkPlanWithItems
   session: AuthSession
@@ -39,10 +48,16 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showPermit, setShowPermit] = useState(false)
 
+  // Expand DRAFT/REJECTED by default so user can add items; others collapsed
+  const [isExpanded, setIsExpanded] = useState(
+    ['DRAFT', 'REJECTED'].includes(plan.status)
+  )
+
   const canEdit = ['DRAFT', 'REJECTED', 'SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)
   const canSubmit = canEdit && plan.items.length > 0
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
+  const shiftShort = plan.shift_type === 'DAY' ? 'день' : 'ночь'
 
   // Load brigade assignments when plan is in execution phase
   const [brigadeMap, setBrigadeMap] = useState<Map<string, WorkAssignmentWithUser[]>>(new Map())
@@ -121,12 +136,141 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
     onRefresh()
   }
 
+  // Derive display title from first item
+  const planTitle = plan.items.length > 0
+    ? [plan.items[0].work_description, plan.items[0].location].filter(Boolean).join(' · ')
+    : `Новый план · ${plan.shift_type === 'DAY' ? 'день' : 'ночь'}`
+
+  const svcMeta = SERVICE_META[plan.service_id]
+  const svcCode = plan.service_id.replace('SRV-', '')
+  const totalPeople = totalWorkers + totalBrigadiers + totalMasters + totalForemen
+
   return (
     <>
     <div className="glass rounded-xl overflow-hidden">
-      {/* Rejected banner */}
-      {plan.status === 'REJECTED' && plan.chief_notes && (
-        <div className="px-4 pt-3 pb-0">
+      {/* ── Compact header row ── */}
+      <div className="grid grid-cols-[minmax(120px,auto)_1fr_auto_auto] items-center gap-3 px-4 py-3">
+
+        {/* Status chip */}
+        <span
+          className={`inline-flex items-center text-[11px] px-2.5 py-1 rounded-full border font-bold whitespace-nowrap ${statusCfg.bg}`}
+          style={{ color: statusCfg.color }}
+        >
+          {statusCfg.label}
+        </span>
+
+        {/* Title + meta */}
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white truncate">{planTitle}</div>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="font-mono text-[11px] text-white/50">{fmtDate(plan.plan_date)} · {shiftShort}</span>
+            {svcMeta && (
+              <>
+                <span className="text-white/20">·</span>
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded border"
+                  style={{ color: svcMeta.color, borderColor: `${svcMeta.color}40`, background: `${svcMeta.color}18` }}
+                >
+                  {svcMeta.emoji} {svcCode}
+                </span>
+              </>
+            )}
+            {plan.items.length > 0 && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="text-[11px] text-white/50">
+                  <b className="font-mono text-white/80">{plan.items.length}</b> {plan.items.length === 1 ? 'позиция' : plan.items.length < 5 ? 'позиции' : 'позиций'}
+                </span>
+              </>
+            )}
+            {totalPeople > 0 && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="text-[11px] text-white/50">
+                  <b className="font-mono text-white/80">{totalPeople}</b> чел.
+                </span>
+              </>
+            )}
+            {totalVehicles > 0 && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="text-[11px] text-white/50">
+                  <b className="font-mono text-white/80">{totalVehicles}</b> ед. техники
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {submitError && (
+            <span className="text-[10px] text-red-400">Ошибка</span>
+          )}
+          {canSubmit && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-[#0D1117] disabled:opacity-50 transition-all"
+            >
+              {submitting ? '⏳' : '✓'} {submitting ? 'Отправка...' : plan.status === 'REJECTED' ? 'Повторно' : 'Подать на согл.'}
+            </button>
+          )}
+          {plan.status === 'SUBMITTED' && (
+            <button
+              onClick={handleRecall}
+              disabled={acting}
+              className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.05] border border-white/15 text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
+            >
+              {acting ? '...' : '↩ Отозвать'}
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setIsExpanded(v => !v)}
+              className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.05] border border-white/15 text-white/60 hover:bg-white/10 transition-all"
+            >
+              ✎ Редактировать
+            </button>
+          )}
+          {(plan.status === 'DRAFT' || plan.status === 'REJECTED') && (
+            <button
+              onClick={handleDelete}
+              disabled={acting}
+              title="Удалить план"
+              className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400/60 text-xs hover:bg-red-500/25 hover:text-red-400 transition-all disabled:opacity-50 flex items-center justify-center"
+            >
+              ✕
+            </button>
+          )}
+          <button
+            onClick={() => setShowPermit(true)}
+            title="Наряд-допуск"
+            className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400/60 text-xs hover:bg-blue-500/25 hover:text-blue-400 transition-all flex items-center justify-center"
+          >
+            🖨
+          </button>
+        </div>
+
+        {/* Expand chevron */}
+        <button
+          onClick={() => setIsExpanded(v => !v)}
+          className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${
+            isExpanded
+              ? 'bg-amber-500/12 border-amber-500/30 text-amber-400'
+              : 'bg-white/[0.05] border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60'
+          }`}
+          title={isExpanded ? 'Свернуть' : 'Развернуть'}
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" strokeWidth="2.5">
+            <path d={isExpanded ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Rejected banner (only when expanded) ── */}
+      {isExpanded && plan.status === 'REJECTED' && plan.chief_notes && (
+        <div className="px-4 pb-0">
           <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
             <div className="text-[10px] text-red-400/70 uppercase tracking-wider mb-1">Возвращён с комментарием</div>
             <div className="text-sm text-red-300">{plan.chief_notes}</div>
@@ -134,11 +278,10 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
         </div>
       )}
 
-      <div className="flex gap-0 divide-x divide-white/8">
-
-        {/* ── Left: items list ── */}
-        <div className="flex-1 min-w-0 p-4 space-y-2">
-          <div className="text-sm font-semibold text-white mb-3">{shiftLabel}</div>
+      {/* ── Expanded detail ── */}
+      {isExpanded && (
+        <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
+          <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-2">{shiftLabel}</div>
 
           {plan.items.length === 0 && (
             <div className="text-center text-white/25 text-sm py-6 border border-dashed border-white/10 rounded-lg">
@@ -187,88 +330,26 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
               </button>
             )
           )}
-        </div>
 
-        {/* ── Right: status + totals + actions ── */}
-        <div className="w-44 shrink-0 p-4 flex flex-col gap-3">
-
-          {/* Status */}
-          <div>
-            <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">Статус</div>
-            <span
-              className={`inline-flex items-center text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusCfg.bg}`}
-              style={{ color: statusCfg.color }}
-            >
-              {statusCfg.label}
-            </span>
-          </div>
-
-          {/* Headcount totals */}
+          {/* Footer totals */}
           {(totalWorkers > 0 || totalBrigadiers > 0 || totalMasters > 0 || totalForemen > 0 || totalVehicles > 0) && (
-            <div className="space-y-1.5">
-              <div className="text-[10px] text-white/30 uppercase tracking-widest">Всего</div>
-              {totalWorkers    > 0 && <TotalRow icon="👷" label="Рабочих"   count={totalWorkers} />}
-              {totalBrigadiers > 0 && <TotalRow icon="⭐" label="Бригадир"  count={totalBrigadiers} />}
-              {totalMasters    > 0 && <TotalRow icon="🎓" label="Мастер"    count={totalMasters} />}
-              {totalForemen    > 0 && <TotalRow icon="📋" label="ИТР"       count={totalForemen} />}
-              {totalVehicles   > 0 && <TotalRow icon="🚛" label="Техника"   count={totalVehicles} />}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/[0.05] text-[12px] text-white/50">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Итого:</span>
+              {totalWorkers    > 0 && <span>👷 <b className="font-mono text-white/70">{totalWorkers}</b> рабочих</span>}
+              {totalBrigadiers > 0 && <span>⭐ <b className="font-mono text-white/70">{totalBrigadiers}</b> бригадир</span>}
+              {totalMasters    > 0 && <span>🎓 <b className="font-mono text-white/70">{totalMasters}</b> мастер</span>}
+              {totalForemen    > 0 && <span>📋 <b className="font-mono text-white/70">{totalForemen}</b> ИТР</span>}
+              {totalVehicles   > 0 && <span>🚛 <b className="font-mono text-white/70">{totalVehicles}</b> техника</span>}
             </div>
           )}
-
-          <div className="flex-1" />
 
           {submitError && (
             <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">
               {submitError}
             </div>
           )}
-
-          {/* Actions */}
-          <div className="space-y-2">
-            {canSubmit && (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full py-2 rounded-lg bg-green-600/80 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-semibold transition-all"
-              >
-                {submitting
-                  ? '⏳ Отправка...'
-                  : plan.status === 'REJECTED'
-                    ? '↑ Повторно'
-                    : '↑ На согласование'
-                }
-              </button>
-            )}
-            <button
-              onClick={() => setShowPermit(true)}
-              className="w-full py-1.5 rounded-lg bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 text-xs transition-all"
-            >
-              🖨 Наряд-допуск
-            </button>
-            {/* Recall submitted plan for editing */}
-            {plan.status === 'SUBMITTED' && (
-              <button
-                onClick={handleRecall}
-                disabled={acting}
-                className="w-full py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 text-xs transition-all disabled:opacity-50"
-              >
-                {acting ? '...' : '↩ Отозвать'}
-              </button>
-            )}
-            {/* Delete only DRAFT/REJECTED */}
-            {(plan.status === 'DRAFT' || plan.status === 'REJECTED') && (
-              <button
-                onClick={handleDelete}
-                disabled={acting}
-                className="w-full py-1.5 rounded-lg bg-red-600/15 hover:bg-red-600/30 text-red-400 text-xs transition-all disabled:opacity-50"
-              >
-                {acting ? '...' : 'Удалить'}
-              </button>
-            )}
-          </div>
         </div>
-
-      </div>
+      )}
     </div>
 
     {showPermit && (
@@ -401,12 +482,4 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
   )
 }
 
-function TotalRow({ icon, label, count }: { icon: string; label: string; count: number }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-white/50">{icon} {label}</span>
-      <span className="text-sm font-semibold text-white">{count}</span>
-    </div>
-  )
-}
 
