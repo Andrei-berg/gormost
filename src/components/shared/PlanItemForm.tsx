@@ -6,7 +6,7 @@ import type {
   EmployeeStatusType,
 } from '@/types'
 import { VEHICLE_TYPE_CONFIG, SERVICE_META, EMPLOYEE_STATUS_CONFIG } from '@/types'
-import { fetchUsersWithAssignments, fetchAllCurrentStatuses } from '@/lib/api'
+import { fetchUsersWithAssignments, fetchAllCurrentStatuses } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 
 // ── Exported type used by all callers ──────────────────────────────────────

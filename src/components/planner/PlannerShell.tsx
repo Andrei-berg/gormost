@@ -5,7 +5,7 @@ import {
   fetchUsersWithAssignments, fetchServices, fetchSchedules,
   fetchAllShiftPhases, fetchDriverManualShifts,
   upsertDriverManualShift, deleteDriverManualShift,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type { DriverManualShift } from '@/types'
 import {
   DEFAULT_SETTINGS, DEFAULT_FILTERS,

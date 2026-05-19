@@ -5,7 +5,7 @@ import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
 import {
   approveWorkPlan, rejectWorkPlan,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
 
 const SVC_COLORS: Record<string, { color: string; bg: string; border: string }> = {

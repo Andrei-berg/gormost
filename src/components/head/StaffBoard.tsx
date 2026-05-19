@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchAllCurrentStatuses, fetchUsersWithAssignments } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchAllCurrentStatuses, fetchUsersWithAssignments } from '@/lib/api-client'
 import type { WorkPlanWithItems, EnrichedEmployee, EmployeeStatusType } from '@/types'
 import { EMPLOYEE_STATUS_CONFIG, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'

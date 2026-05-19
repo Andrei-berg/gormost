@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import type { EmployeeCert, User, CertType, AuthSession } from '@/types'
 import { certStatusFromDates, CERT_STATUS_CONFIG } from '@/types'
-import { linkCertToEmployee, deleteEmployeeCert } from '@/lib/api'
+import { linkCertToEmployee, deleteEmployeeCert } from '@/lib/api-client'
 
 interface Props {
   unlinked: EmployeeCert[]

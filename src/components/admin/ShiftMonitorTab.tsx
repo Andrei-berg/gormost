@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { UserWithAssignment, Service, EnrichedEmployee, EmployeeStatusType, AuthSession, Schedule } from '@/types'
 import { SERVICE_META, EMPLOYEE_STATUS_CONFIG } from '@/types'
-import { fetchAllCurrentStatuses, fetchSchedules, openShiftPhase, upsertEmployeeAssignment } from '@/lib/api'
+import { fetchAllCurrentStatuses, fetchSchedules, openShiftPhase, upsertEmployeeAssignment } from '@/lib/api-client'
 import { isWorkerOnDuty, resolveShiftStatus, isPhaseSchedule } from '@/lib/shifts'
 
 const ABSENCE_STATUSES: EmployeeStatusType[] = [

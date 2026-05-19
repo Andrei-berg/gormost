@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import type { UserWithAssignment, ShiftPhase, Service, EnrichedEmployee } from '@/types'
-import { fetchAllCurrentStatuses } from '@/lib/api'
+import { fetchAllCurrentStatuses } from '@/lib/api-client'
 import { buildStroevayaRows, type StroevayaRow } from './printForms'
 
 interface Props {

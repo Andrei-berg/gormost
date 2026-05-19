@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, approveWorkPlan } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, approveWorkPlan } from '@/lib/api-client'
 import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/types'
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'

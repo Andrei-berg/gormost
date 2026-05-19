@@ -8,7 +8,7 @@ import {
   fetchWorkPlans, fetchWorkPlanWithItems,
   createWorkPlan, submitWorkPlan,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
-} from '@/lib/api'
+} from '@/lib/api-client'
 
 interface Props {
   session: AuthSession

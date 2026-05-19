@@ -2,7 +2,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import type { UserWithAssignment, ShiftPhase, AuthSession, DriverManualShift } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
-import { upsertDriverManualShift, deleteDriverManualShift, fetchDriverManualShifts } from '@/lib/api'
+import { upsertDriverManualShift, deleteDriverManualShift, fetchDriverManualShifts } from '@/lib/api-client'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

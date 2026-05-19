@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchStatusesForPeriodWithUsers } from '@/lib/api'
-import type { StatusWithUser } from '@/lib/api'
+import { fetchStatusesForPeriodWithUsers } from '@/lib/api-client'
+import type { StatusWithUser } from '@/lib/api-client'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { AuthSession, Service } from '@/types'
 

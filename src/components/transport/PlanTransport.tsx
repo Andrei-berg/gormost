@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { Vehicle, WorkPlan, WorkPlanItemWithVehicles, VehicleAssignment, UserWithAssignment } from '@/types'
 import { SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
-import { assignVehicle, unassignVehicle, fetchVehicleAssignmentsForItems, updateVehicleAssignmentDriver } from '@/lib/api'
+import { assignVehicle, unassignVehicle, fetchVehicleAssignmentsForItems, updateVehicleAssignmentDriver } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 
 const SERVICE_NAMES: Record<string, string> = {

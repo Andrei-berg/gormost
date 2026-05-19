@@ -11,7 +11,7 @@ import {
   fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
   fetchDriverUsers, fetchVehicles,
   confirmWorkPlanZamporab, approveWorkPlanDirect, returnWorkPlanZamporab,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type {
   Request, Category, GObject, Construction, WorkType, Service,
   User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,

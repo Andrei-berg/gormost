@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlan, WorkPlanWithItems, AuthSession, Service } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
-import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api-client'
 import WorkPermitModal from './WorkPermitModal'
 
 const PERMIT_ELIGIBLE_STATUSES = [

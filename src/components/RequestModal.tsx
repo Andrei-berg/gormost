@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchUsersByService, createRequest, updateRequest, assignUsers, fetchAssignments } from '@/lib/api'
+import { fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchUsersByService, createRequest, updateRequest, assignUsers, fetchAssignments } from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, User, RequestStatus, Priority, Urgency, AuthSession } from '@/types'
 
 interface Props {

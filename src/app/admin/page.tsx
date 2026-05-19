@@ -10,7 +10,7 @@ import {
   fetchConstructions, createConstruction, updateConstruction, deleteConstruction,
   fetchWorkTypes, createWorkType, updateWorkType, deleteWorkType,
   fetchChangelog
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type { UserWithAssignment, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 import ShiftTab from '@/components/admin/ShiftTab'
 

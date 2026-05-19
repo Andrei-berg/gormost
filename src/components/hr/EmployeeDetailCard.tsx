@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchEmployeeDetail, updateUser, fetchServices, fetchSchedules, upsertEmployeeAssignment, openShiftPhase } from '@/lib/api'
+import { fetchEmployeeDetail, updateUser, fetchServices, fetchSchedules, upsertEmployeeAssignment, openShiftPhase } from '@/lib/api-client'
 import { isPhaseSchedule } from '@/lib/shifts'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { EmployeeDetail, Service, Schedule } from '@/types'

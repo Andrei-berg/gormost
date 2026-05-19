@@ -9,7 +9,7 @@ import {
   fetchWorkAssignmentsForItems, createWorkAssignment, deleteWorkAssignment,
   markWorkPlanAssigned, startWorkPlan, completeWorkPlan,
   fetchUsersWithAssignments,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import { isWorkerOnDuty, getShiftForDate } from '@/lib/shifts'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'

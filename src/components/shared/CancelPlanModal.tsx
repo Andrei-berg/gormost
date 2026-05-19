@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { cancelWorkPlan } from '@/lib/api'
+import { cancelWorkPlan } from '@/lib/api-client'
 import type { AuthSession } from '@/types'
 
 interface Props {

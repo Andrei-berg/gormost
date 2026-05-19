@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, fetchUsers } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, fetchUsers } from '@/lib/api-client'
 import type { WorkPlanWithItems, Service, User } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 

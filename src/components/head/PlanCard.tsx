@@ -8,7 +8,7 @@ import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan, recallWorkPlan,
   fetchWorkAssignmentsForItems,
-} from '@/lib/api'
+} from '@/lib/api-client'
 
 const BRIGADE_ROLE_ICONS: Record<string, string> = {
   WORKER: '👷', BRIGADIER: '⭐', MASTER: '🦺', ITR: '📋', DRIVER: '🚗',

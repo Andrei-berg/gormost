@@ -5,7 +5,7 @@ import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems, confirmWorkPlanBoss,
-} from '@/lib/api'
+} from '@/lib/api-client'
 
 interface Props {
   session: AuthSession

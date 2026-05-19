@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import type { Vehicle, VehicleType, User } from '@/types'
 import { VEHICLE_TYPE_CONFIG, VEHICLE_STATUS_CONFIG } from '@/types'
-import { createVehicle, updateVehicle } from '@/lib/api'
+import { createVehicle, updateVehicle } from '@/lib/api-client'
 
 interface Props {
   vehicle?: Vehicle

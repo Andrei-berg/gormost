@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { AuthSession, UserWithAssignment, Service, Schedule, ShiftPhase } from '@/types'
-import { fetchUsersWithAssignments, fetchServices, fetchSchedules, fetchAllShiftPhases } from '@/lib/api'
+import { fetchUsersWithAssignments, fetchServices, fetchSchedules, fetchAllShiftPhases } from '@/lib/api-client'
 import RosterTable from './RosterTable'
 import TabeTable from './TabeTable'
 import CoverageTable from './CoverageTable'

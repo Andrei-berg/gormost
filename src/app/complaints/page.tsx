@@ -2,9 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchRemarks, createRemark, fetchRequests } from '@/lib/api'
-import { supabase } from '@/lib/supabase'
-import { logAction } from '@/lib/logger'
+import { fetchRemarks, createRemark, fetchRequests, fetchAllRemarks, logAction } from '@/lib/api-client'
 import EmptyState from '@/components/EmptyState'
 import type { AuthSession, Remark } from '@/types'
 
@@ -40,11 +38,9 @@ function Content({ session }: { session: AuthSession }) {
 
   const loadData = useCallback(async () => {
     // Using remarks table as complaints storage
-    const { data } = await supabase.from('remarks')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const data = await fetchAllRemarks()
     // Map remarks to complaint-like structure
-    const mapped: Complaint[] = (data || []).map((r: any) => ({
+    const mapped: Complaint[] = data.map((r: any) => ({
       id: r.id,
       source: r.remark_text?.split('|')[0] || '',
       description: r.remark_text?.split('|').slice(1).join('|') || r.remark_text || '',

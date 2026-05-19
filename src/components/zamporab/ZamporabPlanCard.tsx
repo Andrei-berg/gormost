@@ -8,7 +8,7 @@ import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
   createCrossServiceRequest,
-} from '@/lib/api'
+} from '@/lib/api-client'
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { CertType, EmployeeCert, User, RenewalType, ReturnStatus } from '@/types'
-import { upsertLinkedCert, deleteEmployeeCert } from '@/lib/api'
+import { upsertLinkedCert, deleteEmployeeCert } from '@/lib/api-client'
 
 interface Props {
   employee: User

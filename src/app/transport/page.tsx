@@ -14,7 +14,7 @@ import {
   fetchOpenBreakdowns,
   fetchVehicleBreakdowns,
   fetchDriverUsers,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type {
   AuthSession, VehicleWithAssignments, VehicleBreakdownWithVehicle,
   User, UserWithAssignment,

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { WorkPlan, AuthSession, ShiftType } from '@/types'
-import { createWorkPlan } from '@/lib/api'
+import { createWorkPlan } from '@/lib/api-client'
 
 interface SlotOption {
   date: string

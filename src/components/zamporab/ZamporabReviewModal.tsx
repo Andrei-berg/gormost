@@ -11,7 +11,7 @@ import {
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   createCrossServiceRequest, assignVehicle, unassignVehicle, fetchWorkPlanWithItems,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 

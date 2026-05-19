@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service, ShiftPhase, AuthSession, Schedule } from '@/types'
 import { resolveShiftStatus, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
-import { openShiftPhase, closeShiftPhase, deleteShiftPhase, upsertEmployeeAssignment } from '@/lib/api'
+import { openShiftPhase, closeShiftPhase, deleteShiftPhase, upsertEmployeeAssignment } from '@/lib/api-client'
 
 interface Props {
   users: UserWithAssignment[]

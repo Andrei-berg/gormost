@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { createWorkPlan, createWorkPlanItem, createCrossServiceRequest, fetchUsers } from '@/lib/api'
+import { createWorkPlan, createWorkPlanItem, createCrossServiceRequest, fetchUsers } from '@/lib/api-client'
 import type { WorkPlan, AuthSession, ShiftType, User } from '@/types'
 import { SERVICE_META } from '@/types'
 

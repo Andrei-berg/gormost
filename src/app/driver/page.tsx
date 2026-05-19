@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchVehicleByDriver } from '@/lib/api'
+import { fetchVehicleByDriver } from '@/lib/api-client'
 import type { AuthSession, VehicleWithAssignments } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
 

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, Service, AuthSession, Schedule, EmployeeAssignmentWithScheduleCode } from '@/types'
-import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api'
+import { fetchUsersWithAssignments, upsertEmployeeAssignment, fetchServices, fetchSchedules, openShiftPhase } from '@/lib/api-client'
 import { getShiftForDate, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
 import ScheduleBadge from '@/components/help/ScheduleBadge'
 import { DRIVER_GROUPS, getDriverGroup } from '@/lib/driverGroups'

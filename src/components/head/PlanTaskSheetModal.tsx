@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, AuthSession, UserWithAssignment, EmployeeStatusType } from '@/types'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
-import { fetchUsersWithAssignments, fetchActiveStatusesOnDate } from '@/lib/api'
+import { fetchUsersWithAssignments, fetchActiveStatusesOnDate } from '@/lib/api-client'
 import { isWorkerOnDuty, getShiftNumberForDate } from '@/lib/shifts'
 import { useTheme } from '@/lib/ThemeContext'
 

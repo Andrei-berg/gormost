@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { setEmployeeStatus } from '@/lib/api'
+import { setEmployeeStatus } from '@/lib/api-client'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { EnrichedEmployee, EmployeeStatusType, UserWithAssignment } from '@/types'
 import StatusHistory from './StatusHistory'

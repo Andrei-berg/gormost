@@ -11,7 +11,7 @@ import {
   fetchServiceOrderTypes,
   createDirectiveWithWorkers,
   updateDirectiveStatus,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type {
   AuthSession,
   WorkPlanWithItems,

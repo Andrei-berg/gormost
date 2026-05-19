@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import type { Vehicle, VehicleStatus, VehicleType, VehicleWithAssignments, User } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
-import { updateVehicleStatus, deleteVehicle } from '@/lib/api'
+import { updateVehicleStatus, deleteVehicle } from '@/lib/api-client'
 import VehicleStatusModal from './VehicleStatusModal'
 import VehicleForm from './VehicleForm'
 import FleetTable from './FleetTable'

@@ -11,9 +11,8 @@ import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions,
   fetchWorkTypes, fetchServices, updateRequestStatus,
   fetchWorkPlans, fetchWorkPlanWithItems, startWorkPlan, completeWorkPlan,
-  fetchWorkRedirects,
-} from '@/lib/api'
-import { supabase } from '@/lib/supabase'
+  fetchWorkRedirects, fetchUserRequestIds,
+} from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems, WorkRedirect } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import AlertBanner from '@/components/AlertBanner'
@@ -76,8 +75,8 @@ function Content({ session }: { session: AuthSession }) {
     const allRedirects = await fetchWorkRedirects()
     setRedirects(allRedirects)
 
-    const { data: assignments } = await supabase.from('request_assignments').select('request_id').eq('user_id', session.user_id)
-    setMyRequestIds(new Set((assignments || []).map((a: { request_id: string }) => a.request_id)))
+    const assignedIds = await fetchUserRequestIds(session.user_id)
+    setMyRequestIds(new Set(assignedIds))
     setLastUpdated(new Date())
   }, [session.user_id, session.service_id])
 

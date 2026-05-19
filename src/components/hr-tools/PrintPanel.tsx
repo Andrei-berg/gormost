@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import type { UserWithAssignment, ShiftPhase, Schedule, Service, AuthSession, EnrichedEmployee } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
-import { fetchAllCurrentStatuses } from '@/lib/api'
+import { fetchAllCurrentStatuses } from '@/lib/api-client'
 import { printRoster, printTabel, printCoverage, printStroevaiya } from './printForms'
 
 type PrintFormType = 'roster' | 'tabel' | 'coverage' | 'stroevaya'

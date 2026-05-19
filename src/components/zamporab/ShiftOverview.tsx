@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   fetchWorkPlans, fetchWorkPlanWithItems,
   fetchAllCurrentStatuses, fetchServices, fetchUsersWithAssignments,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type { WorkPlanWithItems, EnrichedEmployee, Service, EmployeeStatusType, UserWithAssignment } from '@/types'
 import { SERVICE_META, EMPLOYEE_STATUS_CONFIG, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'

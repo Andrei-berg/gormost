@@ -7,7 +7,7 @@ import type {
 import {
   VEHICLE_BREAKDOWN_SEVERITY_CONFIG, VEHICLE_BREAKDOWN_STATUS_CONFIG, VEHICLE_TYPE_CONFIG,
 } from '@/types'
-import { createBreakdown, updateBreakdownStatus } from '@/lib/api'
+import { createBreakdown, updateBreakdownStatus } from '@/lib/api-client'
 
 interface Props {
   breakdowns: VehicleBreakdownWithVehicle[]

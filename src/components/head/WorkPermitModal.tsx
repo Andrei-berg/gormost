@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { WorkPlanWithItems, AuthSession, UserWithAssignment } from '@/types'
-import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api'
+import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 
 // ─── Russian month names ───────────────────────────────────────────────────

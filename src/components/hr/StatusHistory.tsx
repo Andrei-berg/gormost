@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchEmployeeStatusHistory } from '@/lib/api'
+import { fetchEmployeeStatusHistory } from '@/lib/api-client'
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import type { EmployeeStatus } from '@/types'
 

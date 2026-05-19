@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkAssignmentWithUser, Service, AuthSession } from '@/types'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchWorkAssignmentsForItems } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems, fetchWorkAssignmentsForItems } from '@/lib/api-client'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 
 const SERVICE_EMOJI: Record<string, string> = {

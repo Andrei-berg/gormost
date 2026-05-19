@@ -13,7 +13,7 @@ import UnlinkedCerts from '@/components/safety/UnlinkedCerts'
 import {
   fetchCertTypes, fetchAllCertsWithEmployees, fetchCertRequirements,
   fetchUsers, fetchServices, fetchUnlinkedCerts,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
 
 type Tab = 'alerts' | 'employees' | 'overview' | 'journal' | 'settings'

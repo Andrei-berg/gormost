@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchProfessions, transferEmployee } from '@/lib/api'
+import { fetchProfessions, transferEmployee } from '@/lib/api-client'
 import type { Profession } from '@/types'
 
 interface Props {

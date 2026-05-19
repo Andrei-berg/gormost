@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { updateRequestStatusRaw } from '@/lib/api-client'
 
 const STATUSES = [
   { code: 'NEW', label: 'НОВАЯ', color: '#eab308' },
@@ -30,10 +30,7 @@ export default function KanbanBoard({ requests, onRefresh }: any) {
       return
     }
 
-    await supabase
-      .from('requests')
-      .update({ status: newStatus })
-      .eq('request_id', draggedCard.request_id)
+    await updateRequestStatusRaw(draggedCard.request_id, newStatus)
     
     setDraggedCard(null)
     onRefresh()

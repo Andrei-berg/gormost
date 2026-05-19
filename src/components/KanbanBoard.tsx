@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { updateRequestStatus } from '@/lib/api'
+import { updateRequestStatus } from '@/lib/api-client'
 import RequestCard from './RequestCard'
 import EmptyState from './EmptyState'
 import type { Request, RequestStatus, Category, GObject, Construction, WorkType, Service, AuthSession } from '@/types'

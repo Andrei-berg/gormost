@@ -3,7 +3,7 @@
 // for urgent orders (поручения сверху).
 
 import { useState, useEffect } from 'react'
-import { fetchDirectivesWithWorkers } from '@/lib/api'
+import { fetchDirectivesWithWorkers } from '@/lib/api-client'
 import type { Directive, DirectiveWorkerAssignment } from '@/types'
 import { DIRECTIVE_PRIORITY_CONFIG } from '@/types'
 

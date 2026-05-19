@@ -909,6 +909,17 @@ export interface CertRequirement {
   cert_type?: CertType
 }
 
+// ─── System Alerts ───────────────────────────────────────────────────────────
+
+export type AlertLevel = 'critical' | 'warning' | 'info'
+
+export interface SystemAlert {
+  id: string
+  level: AlertLevel
+  title: string
+  detail?: string
+}
+
 /** Helpers */
 export function certStatusFromDates(expiresAt: string | null, isIndefinite = false): 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' {
   if (isIndefinite || !expiresAt) return 'VALID'

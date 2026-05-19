@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import type { ShiftPhase, AuthSession } from '@/types'
-import { saveShiftPhase, deleteShiftPhase } from '@/lib/api'
+import { saveShiftPhase, deleteShiftPhase } from '@/lib/api-client'
 import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {

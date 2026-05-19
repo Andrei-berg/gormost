@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession } from '@/types'
-import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api'
+import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api-client'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

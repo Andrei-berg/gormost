@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import type { UserWithAssignment, Schedule, AuthSession } from '@/types'
-import { upsertEmployeeAssignment } from '@/lib/api'
+import { upsertEmployeeAssignment } from '@/lib/api-client'
 import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {

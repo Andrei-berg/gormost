@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import type { CertType, CertRequirement, Service, RoleLevel } from '@/types'
 import { CERT_CATEGORY_CONFIG } from '@/types'
-import { upsertCertRequirement, deleteCertRequirement } from '@/lib/api'
+import { upsertCertRequirement, deleteCertRequirement } from '@/lib/api-client'
 
 interface Props {
   certTypes: CertType[]

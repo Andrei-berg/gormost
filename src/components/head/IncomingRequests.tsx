@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { fetchCrossServiceRequests, respondToCrossServiceRequest } from '@/lib/api'
+import { fetchCrossServiceRequests, respondToCrossServiceRequest } from '@/lib/api-client'
 import type { CrossServiceRequest, AuthSession } from '@/types'
 import { CROSS_SERVICE_STATUS_CONFIG, SERVICE_META } from '@/types'
 

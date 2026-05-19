@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { fireEmployee } from '@/lib/api'
+import { fireEmployee } from '@/lib/api-client'
 
 interface Props {
   userId: string

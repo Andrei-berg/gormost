@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, ShiftPhase, AuthSession } from '@/types'
-import { fetchAllShiftPhases, openShiftPhase, closeShiftPhase, deleteShiftPhase } from '@/lib/api'
+import { fetchAllShiftPhases, openShiftPhase, closeShiftPhase, deleteShiftPhase } from '@/lib/api-client'
 import { isPhaseSchedule } from '@/lib/shifts'
 
 interface Props {

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { WorkPlanWithItems, AuthSession } from '@/types'
-import { submitWorkPlan } from '@/lib/api'
+import { submitWorkPlan } from '@/lib/api-client'
 
 interface Props {
   plans: WorkPlanWithItems[]

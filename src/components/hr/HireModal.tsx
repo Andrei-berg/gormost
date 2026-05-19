@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { fetchProfessions, fetchSchedules, fetchServices, createEmployee } from '@/lib/api'
+import { fetchProfessions, fetchSchedules, fetchServices, createEmployee } from '@/lib/api-client'
 import type { Profession, Schedule, Service } from '@/types'
 
 interface Props {

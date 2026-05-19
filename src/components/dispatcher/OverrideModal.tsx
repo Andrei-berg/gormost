@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import type { AuthSession, WorkPlanWithItems, Service, WorkSource, OriginalPlanFate, ShiftType } from '@/types'
 import { WORK_SOURCE_CONFIG } from '@/types'
-import { createOverrideOrder } from '@/lib/api'
+import { createOverrideOrder } from '@/lib/api-client'
 
 interface Props {
   session: AuthSession

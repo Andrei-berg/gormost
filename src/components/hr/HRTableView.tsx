@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { setEmployeeStatus } from '@/lib/api'
+import { setEmployeeStatus } from '@/lib/api-client'
 import {
   EMPLOYEE_STATUS_CONFIG, SERVICE_META,
   STATUSES_WITH_DATES, OPEN_ENDED_STATUSES,

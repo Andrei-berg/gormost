@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   fetchDirectives, createDirective, updateDirectiveStatus,
   fetchWorkPlans, fetchWorkPlanWithItems, fetchServices,
-} from '@/lib/api'
+} from '@/lib/api-client'
 import type { Directive, WorkPlanWithItems, Service, AuthSession, DirectivePriority } from '@/types'
 import { DIRECTIVE_PRIORITY_CONFIG, DIRECTIVE_STATUS_CONFIG, SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 
