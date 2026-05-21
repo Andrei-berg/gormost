@@ -280,3 +280,39 @@ html:not(.dark) .home-panel-card:hover {
 .live-ring {
   animation: liveRing 2.2s infinite;
 }
+
+/* ── Header status chip pulse animations ────────────────────────── */
+@keyframes chipPulseAmber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,165,0,0); }
+  50%      { box-shadow: 0 0 0 4px rgba(240,165,0,.20); }
+}
+@keyframes chipPulseRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+  50%      { box-shadow: 0 0 0 5px rgba(248,81,73,.22); }
+}
+.chip-pulse-amber { animation: chipPulseAmber 2.4s ease-in-out infinite; }
+.chip-pulse-red   { animation: chipPulseRed   1.8s ease-in-out infinite; }
+
+/* ── Header 3-column responsive grid ───────────────────────────── */
+.hdr-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, auto) 1fr minmax(340px, auto);
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 1320px) {
+  .hdr-grid {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "left left" "center right";
+    row-gap: 8px;
+  }
+  .hdr-grid > *:nth-child(1) { grid-area: left; }
+  .hdr-grid > *:nth-child(2) { grid-area: center; }
+  .hdr-grid > *:nth-child(3) { grid-area: right; }
+}
+@media (max-width: 760px) {
+  .hdr-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "left" "center" "right";
+  }
+}

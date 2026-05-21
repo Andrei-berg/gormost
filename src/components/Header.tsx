@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
 import { logout, hasRole } from '@/lib/auth'
 import type { AuthSession } from '@/types'
 import { PANELS } from '@/types'
-import { useAlertCount } from '@/components/AlertBanner'
 import { useTheme } from '@/lib/ThemeContext'
+import { fetchVehicles, fetchAllCertsWithEmployees } from '@/lib/api-client'
+import type { Vehicle } from '@/types'
 
 interface Props {
   session: AuthSession
@@ -14,230 +14,396 @@ interface Props {
   emoji: string
   mode?: 'LIVE' | 'PLANNING' | 'REVIEW'
   showTimer?: string | null
-  lastUpdated?: Date | null  // timestamp of last data load for LIVE panels
+  lastUpdated?: Date | null
 }
 
-export default function Header({ session, title, emoji, mode = 'LIVE', showTimer, lastUpdated }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { theme, toggleTheme } = useTheme()
-  const [now, setNow] = useState(new Date())
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [secondsAgo, setSecondsAgo] = useState(0)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const shift = getCurrentShift()
-  const period = getCurrentPeriod()
-  const alertCount = useAlertCount(session)
+type SysState = 'ok' | 'warn' | 'crit'
 
+// ── Live clock ─────────────────────────────────────────────────────
+const pad = (n: number) => String(n).padStart(2, '0')
+const DOW_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
+
+function useLiveClock() {
+  const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+  return now
+}
 
-  // Reset counter when new data arrives
-  useEffect(() => {
-    setSecondsAgo(0)
-  }, [lastUpdated])
-
-  // Count up every second while in LIVE mode
-  useEffect(() => {
-    if (mode !== 'LIVE') return
-    const t = setInterval(() => setSecondsAgo(s => s + 1), 1000)
-    return () => clearInterval(t)
-  }, [mode])
+// ── Status chip data ───────────────────────────────────────────────
+function useStatusChips() {
+  const [brokenCount, setBrokenCount] = useState(0)
+  const [expiredCount, setExpiredCount] = useState(0)
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
+    async function load() {
+      try {
+        const [vehicles, certs] = await Promise.all([
+          fetchVehicles(false),
+          fetchAllCertsWithEmployees(),
+        ])
+        const today = new Date().toISOString().split('T')[0]
+        setBrokenCount((vehicles as Vehicle[]).filter(v => v.status === 'BROKEN').length)
+        setExpiredCount(
+          certs.filter(c => !c.is_indefinite && c.expires_at && c.expires_at < today && c.employee_id).length
+        )
+      } catch {
+        // keep last values on error
       }
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    load()
+    const t = setInterval(load, 120_000)
+    return () => clearInterval(t)
   }, [])
 
-  const visiblePanels = PANELS.filter(p => hasRole(session, p.roles))
-  const regularPanels = visiblePanels.filter(p => p.id !== 'admin')
-  const systemPanels = visiblePanels.filter(p => p.id === 'admin')
+  const sysState: SysState =
+    brokenCount === 0 && expiredCount === 0 ? 'ok'
+    : (brokenCount >= 5 || expiredCount >= 20) ? 'crit'
+    : 'warn'
 
-  const handleLogout = () => {
-    logout()
-    router.replace('/login')
+  return { brokenCount, expiredCount, sysState }
+}
+
+// ── Status chip component ──────────────────────────────────────────
+interface ChipProps {
+  tone: SysState
+  icon: string
+  count?: number
+  label: string
+  title: string
+  onClick: () => void
+}
+
+function StatusChip({ tone, icon, count, label, title, onClick }: ChipProps) {
+  const base = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all whitespace-nowrap cursor-pointer'
+  const styles: Record<SysState, string> = {
+    ok:   'bg-green-500/8 border-green-500/30 text-green-400',
+    warn: 'bg-amber-500/10 border-amber-500/40 text-amber-300 chip-pulse-amber',
+    crit: 'bg-red-500/12 border-red-500/45 text-red-300 chip-pulse-red',
+  }
+  const dotColor: Record<SysState, string> = {
+    ok: 'bg-green-500',
+    warn: 'bg-amber-500',
+    crit: 'bg-red-500',
   }
 
   return (
-    <header className="glass-strong rounded-2xl p-4 mb-6 relative z-50">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        {/* Left: Panel info */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/')} className="text-3xl hover:scale-110 transition-transform" title="На главную">
-            {emoji}
-          </button>
+    <button type="button" onClick={onClick} title={title} className={`${base} ${styles[tone]}`}>
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor[tone]}`} />
+      <span className="text-[13px] leading-none">{icon}</span>
+      {typeof count !== 'undefined' && (
+        <span className="font-mono font-bold tabular-nums">{count}</span>
+      )}
+      <span className="text-[11px] hidden lg:inline">{label}</span>
+    </button>
+  )
+}
+
+// ── Notification popover ───────────────────────────────────────────
+function NotificationPopover({ sysState, expiredCount, brokenCount }: {
+  sysState: SysState
+  expiredCount: number
+  brokenCount: number
+}) {
+  const items: { ic: string; ttl: string; meta: string }[] = []
+  if (sysState === 'crit') items.push({ ic: '🔴', ttl: 'Критическое состояние системы', meta: 'Требуется немедленное внимание' })
+  if (sysState !== 'ok')   items.push({ ic: '🟡', ttl: '2 плана не согласованы', meta: '16:00 · совещание у зам/прораба' })
+  items.push({ ic: '🕒', ttl: 'Совещание у зам/прораба', meta: '16:00 · каб. 204 · подача планов' })
+  items.push({ ic: '🕒', ttl: 'Совещание у начальника', meta: '16:30 · каб. 301 · утверждение планов' })
+  if (expiredCount > 0) items.push({ ic: '🛡', ttl: `${expiredCount} допусков с истёкшим сроком`, meta: 'ТБиОТ · требуется продление' })
+  if (brokenCount > 0)  items.push({ ic: '🚗', ttl: `${brokenCount} ед. техники на ремонте`, meta: 'Транспорт · назначьте замену' })
+
+  return (
+    <div className="absolute right-0 top-[calc(100%+8px)] z-[60] w-[340px] glass-popup rounded-2xl p-3 shadow-2xl">
+      <h4 className="flex items-center gap-2 text-[13px] text-white font-bold px-1.5 mb-2">
+        🔔 Уведомления
+        <span className="ml-auto font-mono text-[11px] text-white/40">{items.length}</span>
+      </h4>
+      {items.map((it, i) => (
+        <div key={i} className="flex gap-2.5 items-start px-2 py-2.5 rounded-xl border-b border-white/5 last:border-b-0">
+          <span className="text-base mt-0.5 flex-shrink-0">{it.ic}</span>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white">{title}</h1>
-              {mode === 'LIVE' && (
-                <span className="flex items-center gap-1 bg-red-500/20 border border-red-500/30 text-red-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  LIVE{lastUpdated != null ? ` · ${secondsAgo}с` : ''}
-                </span>
-              )}
-              {mode === 'PLANNING' && (
-                <span className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                  ПЛАНИРОВАНИЕ
-                </span>
-              )}
-              {mode === 'REVIEW' && (
-                <span className="bg-amber-500/20 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                  ОБЗОР
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-white/50">
-              {session.full_name} · {session.position || session.role_level}
-            </p>
+            <div className="text-[12px] text-white font-semibold leading-snug">{it.ttl}</div>
+            <div className="text-[11px] text-white/40 mt-0.5 font-mono">{it.meta}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Nav drawer ─────────────────────────────────────────────────────
+const DRAWER_SECTIONS = [
+  { label: 'Основное',    ids: ['dispatcher'] },
+  { label: 'Операции',   ids: ['zamporab', 'foreman', 'head', 'chief', 'planner'] },
+  { label: 'Руководство', ids: ['boss'] },
+  { label: 'Сервисы',    ids: ['transport', 'complaints', 'hr', 'safety'] },
+  { label: 'Система',    ids: ['admin', 'driver'] },
+]
+
+function NavDrawer({ open, onClose, visiblePanels, pathname, onNavigate }: {
+  open: boolean
+  onClose: () => void
+  visiblePanels: typeof PANELS
+  pathname: string
+  onNavigate: (path: string) => void
+}) {
+  return (
+    <>
+      <div
+        className={`fixed inset-0 bg-[rgba(8,12,28,.6)] backdrop-blur-sm z-[90] transition-opacity duration-200 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+      <aside
+        className={`fixed top-0 left-0 bottom-0 w-72 glass-popup border-r border-white/10 z-[91] flex flex-col p-4 transition-transform duration-[250ms] ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <div className="flex items-center gap-2.5 px-2 pb-4 mb-2 border-b border-white/8">
+          <span className="text-2xl">🏗️</span>
+          <div>
+            <div className="text-[17px] font-bold text-white">Гормост</div>
+            <div className="text-[10px] text-white/40 font-mono uppercase tracking-[.08em]">Лефортовский тоннель</div>
           </div>
         </div>
 
-        {/* Center: Timer */}
-        {showTimer && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 text-center">
-            <div className="text-xs text-amber-400/70">Дедлайн</div>
-            <div className="text-lg font-mono font-bold text-amber-400">{showTimer}</div>
-          </div>
-        )}
-
-        {/* Right: Clock + Shift */}
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:block text-right">
-            <div className="text-lg font-mono font-bold text-white">
-              {formatDate(now)}, {formatTime(now)}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-semibold">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                {shift.shiftName}
-              </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                НДС: {shift.chiefName}
-              </span>
-            </div>
-          </div>
-          {/* Alert bell */}
-          {alertCount > 0 && (
-            <div className="relative">
-              <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">
-                {alertCount}
-              </span>
-            </div>
-          )}
-
-          {/* Theme toggle */}
+        <div className="overflow-y-auto flex-1 space-y-0.5 pb-4">
           <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/50 hover:text-white"
+            onClick={() => onNavigate('/')}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] font-medium transition-all text-left border ${
+              pathname === '/' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'text-white/60 hover:bg-white/6 hover:text-white border-transparent'
+            }`}
           >
-            {theme === 'dark' ? (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
+            <span className="text-base w-5 text-center">🏠</span>
+            <span>Главная</span>
+            {pathname === '/' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400" />}
           </button>
 
-          {/* Nav menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(v => !v)}
-              className="ml-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/50 hover:text-white"
-              title="Панели"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-12 z-[999] w-56 glass-strong rounded-2xl p-2 border border-white/10 shadow-2xl max-h-[80vh] overflow-y-auto">
-                <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Панели</div>
-                {regularPanels.map(p => {
+          {DRAWER_SECTIONS.map(sec => {
+            const panels = visiblePanels.filter(p => sec.ids.includes(p.id))
+            if (!panels.length) return null
+            return (
+              <div key={sec.label}>
+                <div className="text-[10px] text-white/30 font-bold uppercase tracking-[.08em] px-2.5 pt-3 pb-1.5">{sec.label}</div>
+                {panels.map(p => {
                   const isActive = pathname === p.path
                   return (
                     <button
                       key={p.id}
-                      onClick={() => { router.push(p.path); setMenuOpen(false) }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
+                      onClick={() => onNavigate(p.path)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] font-medium mb-0.5 transition-all text-left border ${
                         isActive
-                          ? 'bg-blue-600/30 text-white border border-blue-500/30'
-                          : 'text-white/90 hover:bg-white/10 hover:text-white'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'text-white/60 hover:bg-white/6 hover:text-white border-transparent'
                       }`}
                     >
-                      <span className="text-base">{p.emoji}</span>
+                      <span className="text-base w-5 text-center">{p.emoji}</span>
                       <span>{p.title}</span>
-                      {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                      {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400" />}
                     </button>
                   )
                 })}
-                {systemPanels.length > 0 && (
-                  <div className="border-t border-white/10 mt-2 pt-2">
-                    <div className="text-[10px] text-white/30 px-2 py-1 uppercase tracking-widest mb-1">Система</div>
-                    {systemPanels.map(p => {
-                      const isActive = pathname === p.path
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => { router.push(p.path); setMenuOpen(false) }}
-                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all text-left ${
-                            isActive
-                              ? 'bg-blue-600/30 text-white border border-blue-500/30'
-                              : 'text-white/90 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-base">{p.emoji}</span>
-                          <span>{p.title}</span>
-                          {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-                <div className="border-t border-white/10 mt-2 pt-2">
-                  <button
-                    onClick={() => { router.push('/'); setMenuOpen(false) }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-white/40 hover:bg-white/5 hover:text-white transition-all text-left"
-                  >
-                    <span className="text-base">🏠</span>
-                    <span>Главная</span>
-                  </button>
-                </div>
               </div>
-            )}
+            )
+          })}
+        </div>
+      </aside>
+    </>
+  )
+}
+
+// ── Main Header component ──────────────────────────────────────────
+export default function Header({ session, title, emoji, mode = 'LIVE', showTimer, lastUpdated: _lastUpdated }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { theme, toggleTheme } = useTheme()
+  const now = useLiveClock()
+  const { brokenCount, expiredCount, sysState } = useStatusChips()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [bellOpen, setBellOpen] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
+
+  // Close bell popover on outside click
+  useEffect(() => {
+    if (!bellOpen) return
+    const close = (e: MouseEvent) => {
+      if (!bellRef.current?.contains(e.target as Node)) setBellOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [bellOpen])
+
+  // Close drawer on navigation
+  useEffect(() => { setDrawerOpen(false) }, [pathname])
+
+  const visiblePanels = PANELS.filter(p => hasRole(session, p.roles))
+
+  // Clock display
+  const dateStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${DOW_RU[now.getDay()]}`
+  const hm = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+  const ss = pad(now.getSeconds())
+
+  // Mode badge styles
+  const modeCls = mode === 'LIVE'
+    ? 'bg-green-500/18 border-green-500/35 text-green-400'
+    : mode === 'PLANNING'
+    ? 'bg-blue-500/18 border-blue-500/35 text-blue-400'
+    : 'bg-violet-500/18 border-violet-500/35 text-violet-400'
+  const modeLabel = mode === 'LIVE' ? 'LIVE' : mode === 'PLANNING' ? 'ПЛАН' : 'ОБЗОР'
+
+  // System health chip
+  const sysIcon = { ok: '🟢', warn: '🟡', crit: '🔴' }[sysState]
+  const sysLabel = { ok: 'НОРМА', warn: 'ВНИМАНИЕ', crit: 'КРИТИЧНО' }[sysState]
+
+  // Safety chip tone
+  const safetyTone: SysState = expiredCount >= 20 ? 'crit' : expiredCount > 0 ? 'warn' : 'ok'
+
+  // Transport chip tone
+  const transportTone: SysState = brokenCount >= 5 ? 'crit' : brokenCount > 0 ? 'warn' : 'ok'
+
+  const iconBtn = 'w-[34px] h-[34px] rounded-xl bg-white/4 border border-white/10 flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all flex-shrink-0'
+
+  return (
+    <>
+      <header className="glass-strong rounded-2xl px-4 py-3 relative z-50 mb-4">
+        <div className="hdr-grid">
+          {/* LEFT: hamburger + brand + sep + panel title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setDrawerOpen(v => !v)}
+              className={`${iconBtn} flex-shrink-0`}
+              aria-label="Меню"
+            >
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <path d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            </button>
+
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2.5 px-2 py-1 -mx-2 -my-1 rounded-xl border border-transparent hover:bg-white/5 hover:border-white/10 transition-all text-left flex-shrink-0"
+              title="На главную"
+            >
+              <span className="text-[26px] leading-none">🏗️</span>
+              <div className="flex flex-col">
+                <span className="text-[18px] font-bold text-white leading-tight">Гормост</span>
+                <span className="text-[9px] font-mono text-white/40 uppercase tracking-[.08em] hidden xl:block">Лефортовский тоннель</span>
+              </div>
+            </button>
+
+            <div className="w-px h-7 bg-white/10 flex-shrink-0 hidden sm:block" />
+
+            <button
+              onClick={() => setDrawerOpen(v => !v)}
+              className="hidden sm:flex flex-col min-w-0 px-2 py-1 -mx-2 -my-1 rounded-xl border border-transparent hover:bg-white/5 hover:border-white/10 transition-all text-left"
+              title="Сменить панель"
+            >
+              <span className="text-base font-bold text-white truncate leading-tight">{emoji} {title}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-[.08em] ${modeCls}`}>
+                  {modeLabel}
+                </span>
+                {showTimer && (
+                  <span className="text-[10px] font-mono text-amber-400 font-medium">{showTimer}</span>
+                )}
+              </div>
+            </button>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="ml-2 p-2 rounded-xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 transition-all text-white/50 hover:text-red-400"
-            title="Выход"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+          {/* CENTER: date + clock */}
+          <div className="flex items-center justify-center">
+            <div className="flex items-baseline gap-3 px-3.5 py-1.5 rounded-xl border border-white/8" style={{ background: 'rgba(0,0,0,.30)' }}>
+              <span className="font-mono text-[11px] text-white/50 uppercase tracking-[.06em] font-medium whitespace-nowrap hidden md:block">{dateStr}</span>
+              <span className="font-mono text-[20px] font-bold text-white tabular-nums leading-none whitespace-nowrap">
+                {hm}<span className="text-amber-400">:{ss}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT: 3 chips + bell + theme + logout */}
+          <div className="flex items-center gap-1.5 justify-end">
+            {/* Status chips */}
+            <div className="flex items-center gap-1.5 pr-2 border-r border-white/10 mr-1">
+              <StatusChip
+                tone={sysState}
+                icon={sysIcon}
+                label={sysLabel}
+                title={`Состояние системы → Босс`}
+                onClick={() => router.push('/boss')}
+              />
+              <StatusChip
+                tone={safetyTone}
+                icon="🛡"
+                count={expiredCount}
+                label={expiredCount > 0 ? 'просроч.' : 'допусков'}
+                title={expiredCount > 0 ? `${expiredCount} просроченных допусков → ТБиОТ` : 'Все допуски действительны → ТБиОТ'}
+                onClick={() => router.push('/safety')}
+              />
+              <StatusChip
+                tone={transportTone}
+                icon="🚗"
+                count={brokenCount}
+                label={brokenCount > 0 ? 'сломано' : 'на ходу'}
+                title={brokenCount > 0 ? `${brokenCount} ед. техники неисправны → Транспорт` : 'Парк в норме → Транспорт'}
+                onClick={() => router.push('/transport')}
+              />
+            </div>
+
+            {/* Bell / notifications */}
+            <div className="relative" ref={bellRef}>
+              <button
+                onClick={() => setBellOpen(v => !v)}
+                className={`${iconBtn} relative`}
+                title="Уведомления"
+              >
+                <svg className="w-[17px] h-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" style={{ boxShadow: '0 0 0 2px rgba(8,12,28,.8)' }} />
+              </button>
+              {bellOpen && (
+                <NotificationPopover sysState={sysState} expiredCount={expiredCount} brokenCount={brokenCount} />
+              )}
+            </div>
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              className={iconBtn}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-[17px] h-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                  <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>
+                </svg>
+              ) : (
+                <svg className="w-[17px] h-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                  <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                </svg>
+              )}
+            </button>
+
+            {/* Logout */}
+            <button
+              onClick={() => { logout(); router.replace('/login') }}
+              title="Выйти"
+              className="w-[34px] h-[34px] rounded-xl bg-white/4 border border-white/10 flex items-center justify-center text-white/50 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-400 transition-all flex-shrink-0"
+            >
+              <svg className="w-[17px] h-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <NavDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        visiblePanels={visiblePanels}
+        pathname={pathname}
+        onNavigate={(path) => { router.push(path); setDrawerOpen(false) }}
+      />
+    </>
   )
 }
