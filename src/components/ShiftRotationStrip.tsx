@@ -283,12 +283,24 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
       <div className="flex flex-col gap-0" style={{ paddingRight: 14 }}>
 
         {/* Section header */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: labelColor, textTransform: 'uppercase' }}>
             Планы
           </span>
           <span className="font-mono font-bold" style={{ fontSize: 11, color: isLight ? '#8C5A00' : '#F0A500' }}>
             {stats.plans.total} план{pluralPlan(stats.plans.total)}
+          </span>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="flex items-center gap-1">
+            <span className="font-mono font-black rounded" style={{ fontSize: 9, padding: '1px 4px', background: 'rgba(240,165,0,0.18)', color: '#F0A500', border: '1px solid rgba(240,165,0,0.3)' }}>▶</span>
+            <span style={{ fontSize: 9, color: labelColor }}>в работе</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="font-mono font-black rounded" style={{ fontSize: 9, padding: '1px 4px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>✓</span>
+            <span style={{ fontSize: 9, color: labelColor }}>сделано</span>
           </span>
         </div>
 
