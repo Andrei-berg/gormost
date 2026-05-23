@@ -72,7 +72,7 @@ function Content({ session }: { session: AuthSession }) {
   }
 
   return (
-    <div className="min-h-screen p-4 max-w-[1400px] mx-auto">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
 
       <AlertBanner session={session} />

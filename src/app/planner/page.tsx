@@ -14,7 +14,7 @@ export default function PlannerPage() {
 
 function Content({ session }: { session: AuthSession }) {
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <div className="min-h-screen p-4 md:p-6 max-w-[1800px] mx-auto">
       <Header session={session} title="Планировщик смен" emoji="🗓" mode="REVIEW" />
       <PlannerShell session={session} />
     </div>

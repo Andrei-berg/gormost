@@ -140,7 +140,7 @@ export default function OnDutyMonitor({ users, services }: Props) {
       <ShiftRotationStrip referenceDate={date} />
 
       {/* Summary chips */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="glass rounded-xl p-2.5 border border-green-500/25">
           <div className={`text-xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>{onDuty.length}</div>
           <div className={`text-[11px] ${mutedTxt} mt-0.5`}>На смене</div>

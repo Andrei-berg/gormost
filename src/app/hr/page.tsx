@@ -119,7 +119,7 @@ function Content({ session }: { session: AuthSession }) {
   const withSchedule = usersWithSchedule.filter(u => u.assignment).length
 
   return (
-    <div className="min-h-screen p-4 max-w-6xl mx-auto">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Кадровый центр" emoji="👥" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Shift rotation strip */}

@@ -109,7 +109,7 @@ function Content({ session }: { session: AuthSession }) {
   const activePlans = myPlans.filter(p => p.status !== 'DONE')
 
   return (
-    <div className="min-h-screen p-4 max-w-5xl mx-auto">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" lastUpdated={lastUpdated} />
 
       <AlertBanner session={session} />
@@ -128,7 +128,7 @@ function Content({ session }: { session: AuthSession }) {
       <RedirectBanner redirectedPlans={redirectedPlans} redirects={redirects} />
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="glass rounded-xl p-4 text-center">
           <div className="text-2xl font-bold text-white font-mono">{myReqs.length}</div>
           <div className="text-xs text-white/40">Мои задачи</div>

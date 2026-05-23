@@ -73,7 +73,7 @@ function Content({ session }: { session: AuthSession }) {
   const pendingCount = incomingRequests.filter(r => r.status === 'PENDING').length
 
   return (
-    <div className="min-h-screen p-4 max-w-[1400px] mx-auto">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header
         session={session}
         title="Начальник службы"

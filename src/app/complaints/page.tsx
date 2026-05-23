@@ -81,11 +81,11 @@ function Content({ session }: { session: AuthSession }) {
   const filtered = filter === 'all' ? complaints : complaints.filter(c => c.status === filter)
 
   return (
-    <div className="min-h-screen p-4 max-w-5xl mx-auto">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Жалобы" emoji="📞" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="glass rounded-xl p-4 text-center">
           <div className="text-2xl font-bold text-white font-mono">{complaints.length}</div>
           <div className="text-xs text-white/40">Всего</div>

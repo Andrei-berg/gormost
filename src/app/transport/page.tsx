@@ -123,14 +123,14 @@ function Content({ session }: { session: AuthSession }) {
   ]
 
   return (
-    <div className="min-h-screen p-4 max-w-6xl mx-auto space-y-3">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto space-y-3">
       <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" lastUpdated={lastUpdated} />
 
       {/* Shift rotation strip */}
       <ShiftRotationStrip />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="glass rounded-xl p-4 flex flex-col gap-1">
           <div className="text-[10px] font-bold uppercase tracking-widest text-white/40">Активных</div>
           <div className="text-[36px] font-bold font-mono text-emerald-400 leading-none mt-1">{active}</div>
@@ -302,7 +302,7 @@ function Content({ session }: { session: AuthSession }) {
       )}
 
       {/* Status bar */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className={`rounded-xl px-4 py-3 border flex items-center gap-3 text-sm font-semibold ${
           broken > 0
             ? 'bg-red-500/8 border-red-500/30 text-red-400'

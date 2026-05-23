@@ -120,7 +120,7 @@ function BottomStatusBar({ overdueCount, pendingCount, safetyCount }: {
     { color: 'blu', emoji: '👥', title: 'Кадры · уведомление', sub: safetyCount > 0 ? `${safetyCount} допусков просрочено` : 'Нет уведомлений', count: safetyCount, bg: 'rgba(56,139,253,0.10)', border: 'rgba(56,139,253,0.35)', text: '#388BFD', ctBg: '#388BFD', ctText: '#fff' },
   ]
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {cells.map((c, i) => (
         <div key={i} className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
           style={{ background: c.bg, border: `1px solid ${c.border}` }}>
@@ -182,7 +182,7 @@ function Content({ session }: { session: AuthSession }) {
   ]
 
   return (
-    <div className="min-h-screen p-4 max-w-6xl mx-auto space-y-3">
+    <div className="min-h-screen p-4 max-w-[1800px] mx-auto space-y-3">
       <Header session={session} title="Начальник участка" emoji="🏠" mode="REVIEW" />
 
       <AlertBanner session={session} />
@@ -203,7 +203,7 @@ function Content({ session }: { session: AuthSession }) {
       />
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-6 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         {/* Health */}
         <div className="glass rounded-xl p-4">
           <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Здоровье</div>

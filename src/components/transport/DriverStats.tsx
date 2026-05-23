@@ -79,7 +79,7 @@ export default function DriverStats({ drivers, vehicles, date }: Props) {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <div className="bg-white/5 rounded-lg p-2 text-center">
           <div className="text-xl font-bold text-blue-400 font-mono">{onDuty.length}</div>
           <div className="text-[10px] text-white/35">В смене</div>

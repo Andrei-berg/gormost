@@ -86,7 +86,7 @@ function Content({ session }: { session: AuthSession }) {
   ]
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <div className="min-h-screen p-4 md:p-6 max-w-[1800px] mx-auto">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
 
       <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">

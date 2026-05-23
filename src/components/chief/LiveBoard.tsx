@@ -63,7 +63,7 @@ export default function LiveBoard({ onRefresh }: Props) {
   return (
     <div>
       {/* Summary bar */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Всего планов', value: activePlans.length, color: 'text-white' },
           { label: 'В работе', value: inProgress, color: 'text-violet-400' },

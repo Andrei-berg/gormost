@@ -24,7 +24,7 @@ export default function ServiceStats({ plans }: Props) {
   const totalItems = plans.reduce((sum, p) => sum + p.items.length, 0)
 
   return (
-    <div className="grid grid-cols-5 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
       <KpiCard label="Всего планов"  value={total}     color="text-white"         delta="в системе" />
       <KpiCard label="Черновик"      value={drafts}    color="text-white/55"      delta="требуют действий" muted />
       <KpiCard label="На согл."      value={submitted} color="text-white/55"      delta="у гл. инженера"   muted />

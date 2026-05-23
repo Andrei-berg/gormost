@@ -13,7 +13,7 @@ export default function ChiefStats({ plans }: Props) {
   const pct = total > 0 ? Math.round(approved / total * 100) : 0
 
   return (
-    <div className="grid grid-cols-5 gap-2.5 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
       <KpiCard
         label="Всего планов"
         value={total}
