@@ -27,11 +27,12 @@ function addDay(dateStr: string): string {
 }
 
 const SERVICE_NAMES: Record<string, string> = {
-  'SRV-ENG':  'Инженерные системы',
-  'SRV-STR':  'Строительная служба',
-  'SRV-FIRE': 'Пожарная безопасность',
-  'SRV-VENT': 'Вентиляция',
-  'SRV-CCTV': 'Видеонаблюдение',
+  'SRV-ENG':  'Гл. Энергетик',
+  'SRV-STR':  'СЭИС',
+  'SRV-FIRE': 'Пожарная',
+  'SRV-VENT': 'ЭВС',
+  'SRV-CCTV': 'ВН и СС',
+  'SRV-MECH': 'Гл. Механик',
 }
 
 // ─── Work type templates ───────────────────────────────────────────────────
@@ -46,7 +47,16 @@ interface WorkTypeConfig {
   duringMeasure2: string
 }
 
-const WORK_TYPES: Record<string, WorkTypeConfig> = {
+const EMPTY_WORK_TYPE: WorkTypeConfig = {
+  label: 'Произвольный',
+  factors: '',
+  instructionNums: '',
+  isRoadWork: false,
+  duringMeasure2: 'Соблюдать технологию выполнения работ.',
+}
+
+const WORK_TYPES_BY_SERVICE: Record<string, Record<string, WorkTypeConfig>> = {
+  'SRV-STR': {
   repair: {
     label: 'Ремонт (мост, конструкции)',
     factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа на проезжей части, работа с АГП.',
@@ -124,6 +134,12 @@ const WORK_TYPES: Record<string, WorkTypeConfig> = {
     isRoadWork: true,
     duringMeasure2: 'Соблюдать технологию выполнения работ. Работы на высоте выполнять с использованием монтажных поясов с информацией о дате проверки.',
   },
+  },
+  'SRV-ENG':  {},
+  'SRV-FIRE': {},
+  'SRV-VENT': {},
+  'SRV-CCTV': {},
+  'SRV-MECH': {},
 }
 
 // ─── Measure builders ──────────────────────────────────────────────────────
@@ -507,9 +523,14 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   }, [])
 
   // Work type selection
-  const [workTypeKey, setWorkTypeKey] = useState('repair')
+  const [workServiceId, setWorkServiceId] = useState<string>(() => plan.service_id)
+  const [workTypeKey, setWorkTypeKey] = useState<string>(() => {
+    const types = WORK_TYPES_BY_SERVICE[plan.service_id] ?? {}
+    return Object.keys(types)[0] ?? ''
+  })
   const [customWorkLabel, setCustomWorkLabel] = useState('')
-  const workTypeCfg = WORK_TYPES[workTypeKey] ?? WORK_TYPES.repair
+  const currentTypes = WORK_TYPES_BY_SERVICE[workServiceId] ?? {}
+  const workTypeCfg = currentTypes[workTypeKey] ?? EMPTY_WORK_TYPE
 
   const nextDay = addDay(plan.plan_date)
 
@@ -558,6 +579,12 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     } else {
       setIssuedBy('')
     }
+  }
+
+  const handleWorkServiceChange = (svcId: string) => {
+    setWorkServiceId(svcId)
+    const types = WORK_TYPES_BY_SERVICE[svcId] ?? {}
+    setWorkTypeKey(Object.keys(types)[0] ?? '')
   }
 
   // Supervisor chip select
@@ -698,32 +725,74 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
           {/* Work type selector */}
           <div className={sectionBg}>
             <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>Вид работ — определяет факторы, инструкции, меры по безопасности</div>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(WORK_TYPES).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setWorkTypeKey(key)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                    workTypeKey === key
-                      ? lightMode
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
-                      : lightMode
-                        ? 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
-                  }`}
-                >
-                  {cfg.label}
-                </button>
-              ))}
+
+            {/* Service switcher */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              {Object.entries(WORK_TYPES_BY_SERVICE).map(([svcId, types]) => {
+                const hasTypes = Object.keys(types).length > 0
+                const isPlanService = svcId === plan.service_id
+                const isActive = svcId === workServiceId
+                return (
+                  <button
+                    key={svcId}
+                    type="button"
+                    onClick={() => handleWorkServiceChange(svcId)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-all ${
+                      isActive
+                        ? lightMode
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-indigo-500/30 border-indigo-500/60 text-indigo-200'
+                        : lightMode
+                          ? 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                          : 'bg-white/4 border-white/8 text-white/40 hover:bg-white/8 hover:text-white/60'
+                    }`}
+                  >
+                    {SERVICE_NAMES[svcId] ?? svcId}
+                    {isPlanService && <span className="ml-1 opacity-60">↩</span>}
+                    {!hasTypes && <span className="ml-1 opacity-40">···</span>}
+                  </button>
+                )
+              })}
             </div>
-            <div className={`mt-2 text-[10px] leading-relaxed ${subtitleText}`}>
-              <span className="font-medium">Факторы:</span> {workTypeCfg.factors}
-            </div>
-            <div className={`mt-1 text-[10px] ${subtitleText}`}>
-              <span className="font-medium">Инструкции:</span> №&nbsp;{workTypeCfg.instructionNums}
-            </div>
+
+            {/* Type chips for selected service */}
+            {Object.keys(currentTypes).length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(currentTypes).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setWorkTypeKey(key)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                      workTypeKey === key
+                        ? lightMode
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
+                        : lightMode
+                          ? 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    }`}
+                  >
+                    {cfg.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-[11px] py-2 italic ${lightMode ? 'text-amber-600' : 'text-amber-400/80'}`}>
+                Виды работ для этой службы будут добавлены. Используйте поле ниже для произвольного вида.
+              </div>
+            )}
+
+            {workTypeKey && currentTypes[workTypeKey] && (
+              <>
+                <div className={`mt-2 text-[10px] leading-relaxed ${subtitleText}`}>
+                  <span className="font-medium">Факторы:</span> {workTypeCfg.factors}
+                </div>
+                <div className={`mt-1 text-[10px] ${subtitleText}`}>
+                  <span className="font-medium">Инструкции:</span> №&nbsp;{workTypeCfg.instructionNums}
+                </div>
+              </>
+            )}
             <div className="mt-2">
               <label className={lbl}>Произвольный вид работ (вписать вручную)</label>
               <input
