@@ -32,7 +32,6 @@ const SERVICE_NAMES: Record<string, string> = {
   'SRV-FIRE': 'Пожарная',
   'SRV-VENT': 'ЭВС',
   'SRV-CCTV': 'ВН и СС',
-  'SRV-MECH': 'Гл. Механик',
 }
 
 // ─── Work type templates ───────────────────────────────────────────────────
@@ -139,7 +138,6 @@ const WORK_TYPES_BY_SERVICE: Record<string, Record<string, WorkTypeConfig>> = {
   'SRV-FIRE': {},
   'SRV-VENT': {},
   'SRV-CCTV': {},
-  'SRV-MECH': {},
 }
 
 // ─── Measure builders ──────────────────────────────────────────────────────
