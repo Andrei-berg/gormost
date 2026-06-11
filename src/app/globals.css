@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════
+   SEMANTIC TOKENS
+   Dark values are the defaults; html:not(.dark) overrides them below.
+   New/refactored components should use these via arbitrary values,
+   e.g. text-[var(--text-primary)] bg-[var(--bg-card)] border-[var(--border)],
+   instead of text-white/NN + a manual light-mode override pair.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg-page-from: #0f172a;
+  --bg-page-to:   #1e293b;
+  --bg-card:      rgba(255,255,255,0.06);
+  --bg-card-strong: rgba(255,255,255,0.10);
+  --bg-hover:     rgba(255,255,255,0.10);
+  --text-primary:   #ffffff;
+  --text-secondary: rgba(255,255,255,0.60);
+  --text-muted:     rgba(255,255,255,0.40);
+  --text-faint:     rgba(255,255,255,0.25);
+  --border:         rgba(255,255,255,0.10);
+  --border-strong:  rgba(255,255,255,0.20);
+  --accent:  #F0A500;
+  --danger:  #F85149;
+  --success: #3FB950;
+  --info:    #388BFD;
+}
+html:not(.dark) {
+  --bg-page-from: #f5f6f8;
+  --bg-page-to:   #f5f6f8;
+  --bg-card:      #ffffff;
+  --bg-card-strong: #ffffff;
+  --bg-hover:     #f0f1f4;
+  --text-primary:   #323338;
+  --text-secondary: rgba(50,51,56,0.65);
+  --text-muted:     rgba(50,51,56,0.50);
+  --text-faint:     rgba(50,51,56,0.38);
+  --border:         #e6e9ef;
+  --border-strong:  #d0d4e4;
+  --accent:  #e89420;
+  --danger:  #e2445c;
+  --success: #00a651;
+  --info:    #0073ea;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -14,9 +56,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(135deg, var(--bg-page-from) 0%, var(--bg-page-to) 100%);
   min-height: 100vh;
-  color: white;
+  color: var(--text-primary);
 }
 
 /* Прокрутка */
@@ -165,10 +207,14 @@ html:not(.dark) .hover\:text-white\/60:hover { color: rgba(50,51,56,0.72); }
 html:not(.dark) .hover\:text-white\/70:hover { color: rgba(50,51,56,0.80); }
 html:not(.dark) .hover\:text-white\/80:hover { color: rgba(50,51,56,0.88); }
 html:not(.dark) .hover\:text-white\/90:hover { color: rgba(50,51,56,0.95); }
+html:not(.dark) .hover\:text-white\/40:hover { color: rgba(50,51,56,0.50); }
 
 /* ── border-white/* → Monday border #e6e9ef ── */
 html:not(.dark) .border-white     { border-color: #323338; }
+html:not(.dark) .border-white\/4  { border-color: #edeef2; }
 html:not(.dark) .border-white\/5  { border-color: #ecedf0; }
+html:not(.dark) .border-white\/6  { border-color: #eaebf0; }
+html:not(.dark) .border-white\/7  { border-color: #e9eaef; }
 html:not(.dark) .border-white\/8  { border-color: #e9eaf0; }
 html:not(.dark) .border-white\/10 { border-color: #e6e9ef; }
 html:not(.dark) .border-white\/12 { border-color: #e0e3ec; }
@@ -177,6 +223,7 @@ html:not(.dark) .border-white\/18 { border-color: #d4d8e6; }
 html:not(.dark) .border-white\/20 { border-color: #d0d4e4; }
 html:not(.dark) .border-white\/25 { border-color: #c8cde0; }
 html:not(.dark) .border-white\/30 { border-color: #bcc2dc; }
+html:not(.dark) .border-white\/40 { border-color: #aab1cc; }
 
 /* ── divide-white/* ── */
 html:not(.dark) .divide-white\/5  > :not([hidden]) ~ :not([hidden]) { border-color: #ecedf0; }
@@ -193,16 +240,24 @@ html:not(.dark) .bg-white\/8  { background-color: #f0f1f4; }
 html:not(.dark) .bg-white\/10 { background-color: #ecedf2; }
 html:not(.dark) .bg-white\/12 { background-color: #e9eaf0; }
 html:not(.dark) .bg-white\/15 { background-color: #e4e6ee; }
+html:not(.dark) .bg-white\/20 { background-color: #e0e3ec; }
+html:not(.dark) .bg-white\/25 { background-color: #dbdfe9; }
+html:not(.dark) .bg-white\/30 { background-color: #d5dae6; }
 
 /* ── hover:bg-white/* → hover tints ── */
+html:not(.dark) .hover\:bg-white\/3:hover  { background-color: #f3f4f7; }
 html:not(.dark) .hover\:bg-white\/5:hover  { background-color: #f0f1f4; }
+html:not(.dark) .hover\:bg-white\/6:hover  { background-color: #eef0f4; }
 html:not(.dark) .hover\:bg-white\/8:hover  { background-color: #ecedf2; }
 html:not(.dark) .hover\:bg-white\/10:hover { background-color: #e8eaf2; }
+html:not(.dark) .hover\:bg-white\/12:hover { background-color: #e6e8f0; }
 html:not(.dark) .hover\:bg-white\/15:hover { background-color: #e2e5ef; }
 
 /* ── placeholder-white/* ── */
+html:not(.dark) .placeholder-white\/20::placeholder { color: rgba(50,51,56,0.32); }
 html:not(.dark) .placeholder-white\/25::placeholder { color: rgba(50,51,56,0.35); }
 html:not(.dark) .placeholder-white\/30::placeholder { color: rgba(50,51,56,0.40); }
+html:not(.dark) .placeholder-white\/35::placeholder { color: rgba(50,51,56,0.45); }
 html:not(.dark) .placeholder-white\/40::placeholder { color: rgba(50,51,56,0.50); }
 
 /* ── Colored text — Monday-style vibrant on white bg ── */
@@ -210,9 +265,9 @@ html:not(.dark) .text-red-300    { color: #e2445c; }
 html:not(.dark) .text-red-400    { color: #c8364d; }
 html:not(.dark) .text-orange-300 { color: #fd7b3d; }
 html:not(.dark) .text-orange-400 { color: #e06828; }
-html:not(.dark) .text-green-300  { color: #00c875; }
+html:not(.dark) .text-green-300  { color: #009a5b; }
 html:not(.dark) .text-green-400  { color: #00b461; }
-html:not(.dark) .text-emerald-300 { color: #00c875; }
+html:not(.dark) .text-emerald-300 { color: #00935c; }
 html:not(.dark) .text-emerald-400 { color: #00a651; }
 html:not(.dark) .text-teal-400   { color: #0086af; }
 html:not(.dark) .text-blue-300   { color: #0085ff; }
@@ -225,6 +280,25 @@ html:not(.dark) .text-amber-400  { color: #fdab3d; }
 html:not(.dark) .text-amber-500  { color: #e89420; }
 html:not(.dark) .text-slate-400  { color: #676879; }
 html:not(.dark) .text-cyan-400   { color: #0086af; }
+
+/* Pale (200/300) shades — readable on dark, nearly invisible on white.
+   Map to Tailwind 600/700-grade equivalents in light mode. */
+html:not(.dark) .text-amber-200  { color: #b45309; }
+html:not(.dark) .text-amber-300  { color: #d97706; }
+html:not(.dark) .text-yellow-300 { color: #a16207; }
+html:not(.dark) .text-yellow-400 { color: #ca8a04; }
+html:not(.dark) .text-red-200    { color: #b91c1c; }
+html:not(.dark) .text-blue-200   { color: #1d4ed8; }
+html:not(.dark) .text-emerald-200 { color: #047857; }
+html:not(.dark) .text-violet-300 { color: #7c3aed; }
+html:not(.dark) .text-violet-400 { color: #8b3dd4; }
+html:not(.dark) .text-purple-300 { color: #9333ea; }
+html:not(.dark) .text-purple-400 { color: #7e22ce; }
+html:not(.dark) .text-cyan-300   { color: #0e7490; }
+html:not(.dark) .text-sky-300    { color: #0369a1; }
+html:not(.dark) .text-sky-400    { color: #0284c7; }
+html:not(.dark) .text-indigo-300 { color: #4f46e5; }
+html:not(.dark) .text-slate-300  { color: #475569; }
 
 /* ── Colored backgrounds — Monday pill/tag style ── */
 html:not(.dark) .bg-red-500\/10  { background-color: rgba(226,68,92,0.10); }
