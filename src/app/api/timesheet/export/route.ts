@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { buildMonthlyTimesheet } from '@/lib/timesheet'
 import { buildTimesheetXML, buildTimesheetCSV, buildNightPayCSV, type UserMeta } from '@/lib/export1c'
+import { verifySessionToken } from '@/lib/session-token'
 import type { UserWithAssignment } from '@/types'
 
 // Server-side Supabase client (service role для обхода RLS при экспорте)
@@ -23,6 +24,10 @@ function getSupabase() {
 }
 
 export async function GET(req: NextRequest) {
+  if (!verifySessionToken(req.cookies.get('gormost_token')?.value)) {
+    return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+  }
+
   const { searchParams } = req.nextUrl
   const now    = new Date()
   const year   = parseInt(searchParams.get('year')  ?? String(now.getFullYear()), 10)

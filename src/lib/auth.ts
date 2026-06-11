@@ -1,4 +1,4 @@
-import { loginWithPin as loginWithPinServer, logAction } from './api-client'
+import { loginWithPin as loginWithPinServer, serverLogout, logAction } from './api-client'
 import type { AuthSession, RoleLevel } from '@/types'
 
 const SESSION_KEY = 'gormost_session'
@@ -39,5 +39,6 @@ export function logout(): void {
   if (session) {
     logAction(session.user_id, 'LOGOUT', 'user', session.user_id, null)
   }
+  serverLogout()
   clearSession()
 }

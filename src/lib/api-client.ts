@@ -34,6 +34,12 @@ async function call<T>(fn: string, args: unknown[]): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fn, args }),
   })
+  if (res.status === 401 && typeof window !== 'undefined') {
+    // Session cookie missing/expired — force re-login
+    localStorage.removeItem('gormost_session')
+    window.location.href = '/login'
+    throw new Error('Сессия истекла')
+  }
   const json = await res.json()
   if (json.error) throw new Error(json.error)
   const data = json.data
@@ -881,8 +887,19 @@ export function markWorkPlanPermit(planId: string, permitNumber: string): Promis
 
 // ─── Auth + Logging ──────────────────────────────────────────────────────────
 
-export function loginWithPin(tabNumber: string, pin: string): Promise<{ ok: boolean; session?: AuthSession; error?: string }> {
-  return call('loginWithPin', [tabNumber, pin])
+export async function loginWithPin(tabNumber: string, pin: string): Promise<{ ok: boolean; session?: AuthSession; error?: string }> {
+  // Dedicated route: sets the httpOnly session cookie used by /api/db
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tabNumber, pin }),
+  })
+  return res.json()
+}
+
+export function serverLogout(): void {
+  // Fire-and-forget: clears the httpOnly session cookie
+  void fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
 }
 
 export function logAction(userId: string, actionType: string, entityType?: string | null, entityId?: string | null, details?: Record<string, unknown> | null): Promise<void> {

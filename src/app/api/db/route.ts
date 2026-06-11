@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as api from '@/lib/api'
+import { verifySessionToken } from '@/lib/session-token'
+import type { RoleLevel } from '@/types'
 
 type ApiKey = keyof typeof api
+
+// Functions that must never be reachable through the generic dispatcher
+const BLOCKED = new Set(['loginWithPin'])
+
+// Functions restricted to specific roles; everything else requires any valid session
+const ROLE_RESTRICTED: Record<string, RoleLevel[]> = {
+  createUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
+  updateUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
+  deleteUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
+}
 
 function serialize(data: unknown): unknown {
   if (data instanceof Map) return { __map: true, entries: Array.from(data.entries()) }
@@ -11,10 +23,20 @@ function serialize(data: unknown): unknown {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = verifySessionToken(req.cookies.get('gormost_token')?.value)
+    if (!auth) {
+      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+    }
+
     const { fn, args } = await req.json() as { fn: string; args: unknown[] }
-    if (!(fn in api)) {
+    if (BLOCKED.has(fn) || !(fn in api)) {
       return NextResponse.json({ error: `Unknown function: ${fn}` }, { status: 400 })
     }
+    const allowedRoles = ROLE_RESTRICTED[fn]
+    if (allowedRoles && !allowedRoles.includes(auth.role_level)) {
+      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+    }
+
     const func = api[fn as ApiKey] as (...a: unknown[]) => Promise<unknown>
     const result = await func(...args)
     return NextResponse.json({ data: serialize(result) })
