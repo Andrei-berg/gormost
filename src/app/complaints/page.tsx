@@ -1,10 +1,12 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import { fetchRemarks, createRemark, fetchRequests, fetchAllRemarks, logAction } from '@/lib/api-client'
 import EmptyState from '@/components/EmptyState'
 import type { AuthSession, Remark } from '@/types'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 interface Complaint {
   id: string
@@ -55,7 +57,7 @@ function Content({ session }: { session: AuthSession }) {
     setLastUpdated(new Date())
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   const handleSubmit = async () => {
     if (!description.trim()) return
@@ -72,7 +74,7 @@ function Content({ session }: { session: AuthSession }) {
       setSource('')
       setDescription('')
       setPriority('MEDIUM')
-      loadData()
+      reload()
     } finally {
       setSaving(false)
     }
@@ -80,9 +82,13 @@ function Content({ session }: { session: AuthSession }) {
 
   const filtered = filter === 'all' ? complaints : complaints.filter(c => c.status === filter)
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Жалобы" emoji="📞" mode="LIVE" lastUpdated={lastUpdated} />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
@@ -109,7 +115,7 @@ function Content({ session }: { session: AuthSession }) {
           </button>
         ))}
         <div className="ml-auto flex gap-2">
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+          <button onClick={reload} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
           <button onClick={() => setShowForm(!showForm)}
             className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
             + Новая жалоба

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import AlertsTab from '@/components/safety/AlertsTab'
@@ -15,6 +15,8 @@ import {
   fetchUsers, fetchServices, fetchUnlinkedCerts,
 } from '@/lib/api-client'
 import type { AuthSession, CertType, EmployeeCert, CertRequirement, User, Service } from '@/types'
+import { useLoadData } from '@/lib/useLoadData'
+import { DataErrorBanner } from '@/components/DataState'
 
 type Tab = 'alerts' | 'employees' | 'overview' | 'journal' | 'settings'
 type SettingsSubTab = 'matrix' | 'catalog' | 'requirements' | 'unlinked'
@@ -39,7 +41,6 @@ function Content({ session }: { session: AuthSession }) {
   const [requirements, setRequirements] = useState<CertRequirement[]>([])
   const [employees, setEmployees]       = useState<User[]>([])
   const [services, setServices]         = useState<Service[]>([])
-  const [loading, setLoading]           = useState(true)
 
   const loadData = useCallback(async () => {
     const [cts, certs, unlinkedCerts, reqs, emps, svcs] = await Promise.all([
@@ -56,10 +57,9 @@ function Content({ session }: { session: AuthSession }) {
     setRequirements(reqs)
     setEmployees(emps)
     setServices(svcs)
-    setLoading(false)
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   function navigateToJournal(status?: string, service?: string) {
     setJournalFilter(prev => ({
@@ -88,6 +88,8 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 md:p-6 max-w-[1800px] mx-auto">
       <Header session={session} title="ТБиОТ" emoji="🛡️" mode="REVIEW" />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <div className="flex gap-1 p-1 glass-strong rounded-2xl mb-6 w-fit flex-wrap">
         {MAIN_TABS.map((t) => (
@@ -124,7 +126,7 @@ function Content({ session }: { session: AuthSession }) {
               employees={employees}
               services={services}
               session={session}
-              onRefresh={loadData}
+              onRefresh={reload}
             />
           )}
           {tab === 'employees' && (
@@ -134,7 +136,7 @@ function Content({ session }: { session: AuthSession }) {
               employees={employees}
               services={services}
               session={session}
-              onRefresh={loadData}
+              onRefresh={reload}
             />
           )}
           {tab === 'overview' && (
@@ -179,16 +181,16 @@ function Content({ session }: { session: AuthSession }) {
                 ))}
               </div>
               {settingsSubTab === 'catalog' && (
-                <CatalogTab certTypes={certTypes} onRefresh={loadData} />
+                <CatalogTab certTypes={certTypes} onRefresh={reload} />
               )}
               {settingsSubTab === 'requirements' && (
-                <RequirementsTab certTypes={certTypes} requirements={requirements} services={services} onRefresh={loadData} />
+                <RequirementsTab certTypes={certTypes} requirements={requirements} services={services} onRefresh={reload} />
               )}
               {settingsSubTab === 'matrix' && (
-                <CertMatrix certTypes={certTypes} allCerts={allCerts} employees={employees} services={services} session={session} onRefresh={loadData} />
+                <CertMatrix certTypes={certTypes} allCerts={allCerts} employees={employees} services={services} session={session} onRefresh={reload} />
               )}
               {settingsSubTab === 'unlinked' && (
-                <UnlinkedCerts unlinked={unlinked} employees={employees} session={session} onRefresh={loadData} />
+                <UnlinkedCerts unlinked={unlinked} employees={employees} session={session} onRefresh={reload} />
               )}
             </div>
           )}

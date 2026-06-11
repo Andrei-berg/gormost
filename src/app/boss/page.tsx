@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import OverviewCharts from '@/components/boss/OverviewCharts'
@@ -11,6 +11,8 @@ import EmptyState from '@/components/EmptyState'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { BOSS_TOUR, BOSS_HELP } from '@/components/help/tours'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function BossPage() {
   return (
@@ -157,7 +159,7 @@ function Content({ session }: { session: AuthSession }) {
     setTotalDeployed(ps.totalDeployed); setAllUsers(users)
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   const pendingApproval = requests.filter(r => r.approved_by_zamporab && !r.approved_by_boss)
   const donePercent = stats.total > 0 ? Math.round(((stats.byStatus['DONE'] || 0) / stats.total) * 100) : 0
@@ -170,7 +172,7 @@ function Content({ session }: { session: AuthSession }) {
 
   const handleApprove = async (reqId: string) => {
     await approveRequest(reqId, 'boss', session.user_id)
-    loadData()
+    reload()
   }
 
   const TABS: { id: typeof tab; label: string; badge?: number }[] = [
@@ -181,9 +183,13 @@ function Content({ session }: { session: AuthSession }) {
     { id: 'log',     label: 'Журнал' },
   ]
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto space-y-3">
       <Header session={session} title="Начальник участка" emoji="🏠" mode="REVIEW" />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <AlertBanner session={session} />
       <GuidedTour steps={BOSS_TOUR} storageKey="tour_boss_v1" />
@@ -289,7 +295,7 @@ function Content({ session }: { session: AuthSession }) {
         <div className="flex-1" />
         <HelpPanel panelTitle="Начальник участка" panelEmoji="🏠" sections={BOSS_HELP} />
         <GuidedTour steps={BOSS_TOUR} storageKey="tour_boss_v1" trigger="Обучение" />
-        <button onClick={loadData}
+        <button onClick={reload}
           className="px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white hover:bg-white/10 transition-all">
           🔄
         </button>

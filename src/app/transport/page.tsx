@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
@@ -20,6 +20,8 @@ import type {
   User, UserWithAssignment,
 } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 type TabId = 'fleet' | 'plan' | 'defects' | 'drivers'
 type DriverFilterInit = 'all' | 'onshift' | 'offshift' | 'vac'
@@ -70,11 +72,11 @@ function Content({ session }: { session: AuthSession }) {
     setBreakdowns(bd)
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   const handleRefresh = () => {
     if (tab === 'defects') loadAllBreakdowns()
-    else loadData()
+    else reload()
   }
 
   // KPI counts
@@ -122,9 +124,13 @@ function Content({ session }: { session: AuthSession }) {
     { id: 'drivers', label: 'Водители',   badge: driverUsers.length || null },
   ]
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto space-y-3">
       <Header session={session} title="Транспорт" emoji="🚗" mode="LIVE" lastUpdated={lastUpdated} />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       {/* Shift rotation strip */}
       <ShiftRotationStrip />
@@ -246,7 +252,7 @@ function Content({ session }: { session: AuthSession }) {
           vehicles={vehicles}
           drivers={driverUsers as User[]}
           canEdit={canEdit}
-          onRefresh={loadData}
+          onRefresh={reload}
         />
       )}
 
@@ -269,7 +275,7 @@ function Content({ session }: { session: AuthSession }) {
                 сегодня
               </button>
             )}
-            <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm ml-auto">↻</button>
+            <button onClick={reload} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm ml-auto">↻</button>
           </div>
           <PlanTransport
             plans={plans}
@@ -277,7 +283,7 @@ function Content({ session }: { session: AuthSession }) {
             userId={session.user_id}
             planDate={planDate}
             driverUsers={driverUsers}
-            onRefresh={loadData}
+            onRefresh={reload}
           />
         </div>
       )}

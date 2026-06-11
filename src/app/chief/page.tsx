@@ -11,6 +11,8 @@ import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { CHIEF_TOUR, CHIEF_HELP } from '@/components/help/tours'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function ChiefPage() {
   return (
@@ -49,7 +51,7 @@ function Content({ session }: { session: AuthSession }) {
     setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   const submittedPlans = plans.filter(p => p.status === 'SUBMITTED')
   const approvedPlans  = plans.filter(p => p.status === 'APPROVED')
@@ -68,12 +70,16 @@ function Content({ session }: { session: AuthSession }) {
     setSavingAll(true)
     await Promise.all(submittedPlans.map(p => approveWorkPlan(p.id, session.user_id)))
     setSavingAll(false)
-    loadData()
+    reload()
   }
+
+  if (loading) return <PanelLoader />
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Главный инженер" emoji="🔧" mode="PLANNING" />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <AlertBanner session={session} />
       <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" />
@@ -116,7 +122,7 @@ function Content({ session }: { session: AuthSession }) {
           <HelpPanel panelTitle="Главный инженер" panelEmoji="🔧" sections={CHIEF_HELP} showWorkflow currentStatus={plans.find(p => p.status === 'SUBMITTED')?.status} />
           <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" trigger="Обучение" />
           <button
-            onClick={loadData}
+            onClick={reload}
             className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
             title="Обновить"
@@ -213,7 +219,7 @@ function Content({ session }: { session: AuthSession }) {
                         plan={plan}
                         session={session}
                         services={services}
-                        onRefresh={loadData}
+                        onRefresh={reload}
                       />
                     ))}
                 </div>

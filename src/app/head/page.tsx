@@ -16,6 +16,8 @@ import { HEAD_TOUR, HEAD_HELP } from '@/components/help/tours'
 import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 import HeadTransportTab from '@/components/head/HeadTransportTab'
 import DraftPlansSection from '@/components/head/DraftPlansSection'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function HeadPage() {
   return (
@@ -62,7 +64,7 @@ function Content({ session }: { session: AuthSession }) {
     }
   }, [session.service_id])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   // Refresh deadline timer every second
   useEffect(() => {
@@ -71,6 +73,8 @@ function Content({ session }: { session: AuthSession }) {
   }, [])
 
   const pendingCount = incomingRequests.filter(r => r.status === 'PENDING').length
+
+  if (loading) return <PanelLoader />
 
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
@@ -81,6 +85,7 @@ function Content({ session }: { session: AuthSession }) {
         mode="PLANNING"
         showTimer={timerLabel ?? undefined}
       />
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
       <AlertBanner session={session} />
       <GuidedTour steps={HEAD_TOUR} storageKey="tour_head_v1" />
       <WhatNextBanner
@@ -135,7 +140,7 @@ function Content({ session }: { session: AuthSession }) {
             📊 Аналитика →
           </Link>
           <button
-            onClick={loadData}
+            onClick={reload}
             className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white flex items-center justify-center text-sm transition-all"
           >
             ⟳
@@ -145,11 +150,11 @@ function Content({ session }: { session: AuthSession }) {
 
       {tab === 'plans' && (
         <>
-          <DraftPlansSection plans={plans} session={session} onRefresh={loadData} />
+          <DraftPlansSection plans={plans} session={session} onRefresh={reload} />
           <PlanList
             plans={plans}
             session={session}
-            onRefresh={loadData}
+            onRefresh={reload}
             onCreatePlan={() => setShowCreate(true)}
           />
           {showCreate && (
@@ -157,7 +162,7 @@ function Content({ session }: { session: AuthSession }) {
               session={session}
               existingPlans={rawPlans}
               onClose={() => setShowCreate(false)}
-              onSaved={loadData}
+              onSaved={reload}
             />
           )}
         </>

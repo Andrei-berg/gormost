@@ -14,6 +14,8 @@ import OverrideModal from '@/components/dispatcher/OverrideModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
 import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 import { HelpPanel } from '@/components/help'
 import { DISPATCHER_HELP } from '@/components/help/tours'
 
@@ -67,11 +69,11 @@ function DispatcherContent({ session }: { session: AuthSession }) {
     setLastUpdated(new Date())
   }, [filterService])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
   useEffect(() => {
-    const t = setInterval(loadData, 30000)
+    const t = setInterval(reload, 30000)
     return () => clearInterval(t)
-  }, [loadData])
+  }, [reload])
 
   const kpi = {
     total: requests.length,
@@ -80,9 +82,13 @@ function DispatcherContent({ session }: { session: AuthSession }) {
     critical: requests.filter(r => r.priority === 'CRITICAL' || r.urgency === 'EMERGENCY').length,
   }
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Диспетчерская" emoji="🗂️" mode="LIVE" lastUpdated={lastUpdated} />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <KPICards {...kpi} />
 
@@ -128,7 +134,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
         view={view} onViewChange={setView}
         filterService={filterService} onFilterChange={setFilterService}
         services={services}
-        onRefresh={loadData}
+        onRefresh={reload}
         onNewRequest={() => { setSelectedReq(null); setShowModal(true) }}
       />
 
@@ -140,7 +146,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
             workTypes={workTypes} services={services}
             showService
             onCardClick={r => { setSelectedReq(r); setShowModal(true) }}
-            onStatusChange={loadData}
+            onStatusChange={reload}
           />
         </div>
       ) : (
@@ -151,7 +157,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       )}
 
       {showModal && (
-        <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />
+        <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={reload} />
       )}
 
       {showOverrideModal && (
@@ -160,7 +166,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
           activePlans={activePlans}
           services={services}
           onClose={() => setShowOverrideModal(false)}
-          onSuccess={loadData}
+          onSuccess={reload}
         />
       )}
     </div>

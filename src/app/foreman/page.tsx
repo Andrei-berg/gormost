@@ -19,6 +19,8 @@ import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { FOREMAN_TOUR, FOREMAN_HELP } from '@/components/help/tours'
 import WorkPermitLauncher from '@/components/head/WorkPermitLauncher'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function ForemanPage() {
   return (
@@ -80,11 +82,11 @@ function Content({ session }: { session: AuthSession }) {
     setLastUpdated(new Date())
   }, [session.user_id, session.service_id])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
   useEffect(() => {
-    const t = setInterval(loadData, 30000)
+    const t = setInterval(reload, 30000)
     return () => clearInterval(t)
-  }, [loadData])
+  }, [reload])
 
   const requests = filter === 'mine'
     ? allRequests.filter(r => myRequestIds.has(r.request_id))
@@ -93,7 +95,7 @@ function Content({ session }: { session: AuthSession }) {
   const handleAction = async (reqId: string, status: RequestStatus) => {
     setActionLoading(reqId)
     await updateRequestStatus(reqId, status, session.user_id)
-    await loadData()
+    await reload()
     setActionLoading(null)
   }
 
@@ -101,16 +103,20 @@ function Content({ session }: { session: AuthSession }) {
     setPlanLoading(planId)
     if (action === 'start') await startWorkPlan(planId, session.user_id)
     else await completeWorkPlan(planId, session.user_id)
-    await loadData()
+    await reload()
     setPlanLoading(null)
   }
 
   const myReqs = allRequests.filter(r => myRequestIds.has(r.request_id))
   const activePlans = myPlans.filter(p => p.status !== 'DONE')
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Мастер/Бригадир" emoji="👷‍♂️" mode="LIVE" lastUpdated={lastUpdated} />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <AlertBanner session={session} />
 
@@ -248,7 +254,7 @@ function Content({ session }: { session: AuthSession }) {
             showWorkflow
           />
           <GuidedTour steps={FOREMAN_TOUR} storageKey="tour_foreman_v1" trigger="Обучение" />
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
+          <button onClick={reload} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm">↻</button>
         </div>
       </div>
 

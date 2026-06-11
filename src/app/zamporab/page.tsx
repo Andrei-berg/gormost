@@ -31,6 +31,8 @@ import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function ZamPorabPage() {
   return (
@@ -96,7 +98,7 @@ function Content({ session }: { session: AuthSession }) {
     }
   }, [session.service_id])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   useEffect(() => {
     const update = () => {
@@ -117,7 +119,7 @@ function Content({ session }: { session: AuthSession }) {
 
   const handleApprove = async (reqId: string) => {
     await approveRequest(reqId, 'zamporab', session.user_id)
-    loadData()
+    reload()
   }
 
   const unapproved = requests.filter(r => r.approved_by_head && !r.approved_by_zamporab).length
@@ -134,6 +136,8 @@ function Content({ session }: { session: AuthSession }) {
     { id: 'directives', label: 'Поручения' },
   ]
 
+  if (loading) return <PanelLoader />
+
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Зам/Прораб" emoji="👷" mode="PLANNING" showTimer={`До 16:30: ${timerText}`} />
@@ -142,6 +146,8 @@ function Content({ session }: { session: AuthSession }) {
       <div className="mb-3">
         <ShiftRotationStrip />
       </div>
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       <AlertBanner session={session} />
       <GuidedTour steps={ZAMPORAB_TOUR} storageKey="tour_zamporab_v1" />
@@ -188,7 +194,7 @@ function Content({ session }: { session: AuthSession }) {
           >
             → План работ
           </button>
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm border border-white/10">↻</button>
+          <button onClick={reload} className="px-3 py-1.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-sm border border-white/10">↻</button>
         </div>
       </div>
 
@@ -222,7 +228,7 @@ function Content({ session }: { session: AuthSession }) {
                     services={services}
                     session={session}
                     onOpen={() => setReviewPlan(plan)}
-                    onRefresh={loadData}
+                    onRefresh={reload}
                   />
                 ))}
               </div>
@@ -303,7 +309,7 @@ function Content({ session }: { session: AuthSession }) {
           driverUsers={driverUsers}
           vehicles={vehicles}
           onClose={() => setReviewPlan(null)}
-          onSaved={() => { setReviewPlan(null); loadData() }}
+          onSaved={() => { setReviewPlan(null); reload() }}
         />
       )}
 
@@ -363,7 +369,7 @@ function Content({ session }: { session: AuthSession }) {
                     categories={categories} objects={objects} constructions={constructions}
                     workTypes={workTypes} services={services}
                     onCardClick={r => { setSelectedReq(r); setShowModal(true) }}
-                    onStatusChange={loadData}
+                    onStatusChange={reload}
                   />
                 ) : (
                   <EmptyState message="Нет заявок" />
@@ -379,7 +385,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'directives' && <UrgentOrdersPanel session={session} />}
 
       {showModal && (
-        <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={loadData} />
+        <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={reload} />
       )}
       {showSummary && (
         <WorkPlanSummaryModal session={session} onClose={() => setShowSummary(false)} />

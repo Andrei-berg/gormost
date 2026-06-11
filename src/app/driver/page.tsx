@@ -1,10 +1,12 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import { fetchVehicleByDriver } from '@/lib/api-client'
 import type { AuthSession, VehicleWithAssignments } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
+import { useLoadData } from '@/lib/useLoadData'
+import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
 export default function DriverPage() {
   return (
@@ -24,15 +26,15 @@ function Content({ session }: { session: AuthSession }) {
     setVehicle(v)
   }, [session.user_id, today])
 
-  useEffect(() => { load() }, [load])
+  const { loading, error, reload } = useLoadData(load)
+
+  if (loading) return <PanelLoader />
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto">
       <Header session={session} title="Мой транспорт" emoji="🚌" />
 
-      {vehicle === undefined && (
-        <div className="glass rounded-2xl p-8 text-center text-white/40">Загрузка...</div>
-      )}
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       {vehicle === null && (
         <div className="glass rounded-2xl p-8 text-center">

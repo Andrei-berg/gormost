@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
@@ -19,6 +19,8 @@ import ShiftTab from '@/components/admin/ShiftTab'
 import HRToolsShell from '@/components/hr-tools/HRToolsShell'
 import HRReports from '@/components/hr/HRReports'
 import type { EmployeeStatusType } from '@/types'
+import { useLoadData } from '@/lib/useLoadData'
+import { DataErrorBanner } from '@/components/DataState'
 
 type Tab = 'employees' | 'shifts' | 'analytics' | 'reports'
 type ShiftSubTab = 'schedules' | 'monitor'
@@ -47,7 +49,6 @@ function Content({ session }: { session: AuthSession }) {
   const [services, setServices] = useState<Service[]>([])
   const [assignmentMap, setAssignmentMap] = useState<Map<string, UserWithAssignment['assignment']>>(new Map())
   const [usersWithSchedule, setUsersWithSchedule] = useState<UserWithAssignment[]>([])
-  const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDismissed, setShowDismissed] = useState(false)
 
@@ -78,10 +79,9 @@ function Content({ session }: { session: AuthSession }) {
     usersWithAssign.forEach(u => aMap.set(u.user_id, u.assignment))
     setAssignmentMap(aMap)
     setLastUpdated(new Date())
-    setLoading(false)
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const { loading, error, reload } = useLoadData(loadData)
 
   const isHead = session.role_level === 'HEAD'
   const canEdit = !isHead
@@ -121,6 +121,8 @@ function Content({ session }: { session: AuthSession }) {
   return (
     <div className="min-h-screen p-4 max-w-[1800px] mx-auto">
       <Header session={session} title="Кадровый центр" emoji="👥" mode="LIVE" lastUpdated={lastUpdated} />
+
+      {error && <DataErrorBanner error={error} onRetry={reload} />}
 
       {/* Shift rotation strip */}
       <div className="glass rounded-xl p-2.5 mb-4 border border-white/8">
@@ -223,7 +225,7 @@ function Content({ session }: { session: AuthSession }) {
                 currentUserId={session.user_id}
                 onNameClick={(uid) => { setSelectedEditMode(false); setSelectedUserId(uid) }}
                 onNameDoubleClick={(uid) => { setSelectedEditMode(true); setSelectedEditKey(k => k + 1); setSelectedUserId(uid) }}
-                onRefresh={loadData}
+                onRefresh={reload}
                 services={services}
                 assignmentMap={assignmentMap}
               />
@@ -237,7 +239,7 @@ function Content({ session }: { session: AuthSession }) {
                     employees={g.employees}
                     canEdit={canEdit}
                     currentUserId={session.user_id}
-                    onRefresh={loadData}
+                    onRefresh={reload}
                     onNameClick={(uid) => setSelectedUserId(uid)}
                     assignmentMap={assignmentMap}
                   />
@@ -250,7 +252,7 @@ function Content({ session }: { session: AuthSession }) {
                     employees={noServiceEmployees}
                     canEdit={canEdit}
                     currentUserId={session.user_id}
-                    onRefresh={loadData}
+                    onRefresh={reload}
                     onNameClick={(uid) => setSelectedUserId(uid)}
                     assignmentMap={assignmentMap}
                   />
@@ -325,7 +327,7 @@ function Content({ session }: { session: AuthSession }) {
               users={usersWithSchedule}
               services={services}
               session={session}
-              onRefreshUsers={loadData}
+              onRefreshUsers={reload}
             />
           )}
         </div>
@@ -362,7 +364,7 @@ function Content({ session }: { session: AuthSession }) {
         <HireModal
           currentUserId={session.user_id}
           onClose={() => setShowHireModal(false)}
-          onSuccess={() => { setShowHireModal(false); loadData() }}
+          onSuccess={() => { setShowHireModal(false); reload() }}
         />
       )}
       {dismissTarget && (
@@ -371,7 +373,7 @@ function Content({ session }: { session: AuthSession }) {
           employeeName={dismissTarget.name}
           currentUserId={session.user_id}
           onClose={() => setDismissTarget(null)}
-          onSuccess={() => { setDismissTarget(null); loadData() }}
+          onSuccess={() => { setDismissTarget(null); reload() }}
         />
       )}
       {transferTarget && (
@@ -380,7 +382,7 @@ function Content({ session }: { session: AuthSession }) {
           employeeName={transferTarget.name}
           currentUserId={session.user_id}
           onClose={() => setTransferTarget(null)}
-          onSuccess={() => { setTransferTarget(null); loadData() }}
+          onSuccess={() => { setTransferTarget(null); reload() }}
         />
       )}
     </div>
