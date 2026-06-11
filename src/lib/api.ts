@@ -17,7 +17,7 @@ import type {
   Directive, DirectivePriority, DirectiveStatus,
   DirectiveWorkerAssignment, ServiceOrderType,
   CertType, EmployeeCert, CertRequirement,
-  AuthSession, RoleLevel, AlertLevel, SystemAlert,
+  AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
 } from '@/types'
 import { certStatusFromDates } from '@/types'
 
@@ -2377,6 +2377,39 @@ export async function fetchSystemAlerts(opts: { role: RoleLevel; serviceId?: str
   }
 
   return alerts
+}
+
+// ─── Home page live counters ─────────────────────────────────────────────────
+
+export async function fetchHomeCounters(): Promise<HomeCounters> {
+  const today = new Date().toISOString().split('T')[0]
+  const [vehiclesRes, certsRes, remarksRes, plansRes] = await Promise.all([
+    supabase.from('vehicles').select('status'),
+    supabase.from('employee_certs').select('expires_at').not('expires_at', 'is', null),
+    supabase.from('remarks').select('id', { count: 'exact', head: true }).eq('is_critical', true),
+    supabase.from('work_plans').select('status').eq('plan_date', today),
+  ])
+  const vehicles = (vehiclesRes.data || []) as { status: string }[]
+  const certs = (certsRes.data || []) as { expires_at: string | null }[]
+  const plans = (plansRes.data || []) as { status: string }[]
+
+  let expired = 0, expiringSoon = 0
+  for (const c of certs) {
+    const st = certStatusFromDates(c.expires_at)
+    if (st === 'EXPIRED') expired++
+    else if (st === 'EXPIRING_SOON') expiringSoon++
+  }
+
+  return {
+    brokenVehicles: vehicles.filter(v => v.status === 'BROKEN').length,
+    maintenanceVehicles: vehicles.filter(v => v.status === 'MAINTENANCE').length,
+    expiredCerts: expired,
+    expiringSoonCerts: expiringSoon,
+    newComplaints: remarksRes.count || 0,
+    plansSubmitted: plans.filter(p => p.status === 'SUBMITTED').length,
+    plansApproved: plans.filter(p => p.status === 'APPROVED').length,
+    plansPlanned: plans.filter(p => p.status === 'PLANNED').length,
+  }
 }
 
 // ─── Simple raw helpers (used by migrated client components) ─────────────────

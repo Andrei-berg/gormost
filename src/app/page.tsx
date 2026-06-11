@@ -3,7 +3,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, logout, hasRole } from '@/lib/auth'
 import { getCurrentShift, formatDate, formatTime } from '@/lib/shifts'
-import type { AuthSession } from '@/types'
+import { fetchHomeCounters } from '@/lib/api-client'
+import type { AuthSession, HomeCounters } from '@/types'
 import { PANELS } from '@/types'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import PanelCard from '@/components/home/PanelCard'
@@ -15,19 +16,57 @@ type GroupName = 'Оперативные' | 'Аналитика' | 'Сервис
 interface HomeMeta { group: GroupName; status?: PanelStatus; pill?: string; accentColor: string }
 
 const HOME_META: Record<string, HomeMeta> = {
-  dispatcher: { group: 'Оперативные', status: 'live',  accentColor: '#F0A500' },
-  zamporab:   { group: 'Оперативные', status: 'warn', pill: '2 плана',      accentColor: '#F0A500' },
-  foreman:    { group: 'Оперативные',                  accentColor: '#8B5CF6' },
-  head:       { group: 'Оперативные',                  accentColor: '#8B5CF6' },
-  driver:     { group: 'Оперативные',                  accentColor: '#388BFD' },
-  boss:       { group: 'Аналитика',   status: 'warn',  accentColor: '#388BFD' },
-  transport:  { group: 'Аналитика',   status: 'crit', pill: '9 сломано',    accentColor: '#F85149' },
-  complaints: { group: 'Аналитика',   status: 'warn', pill: '3 новые',     accentColor: '#F0A500' },
-  chief:      { group: 'Аналитика',   status: 'warn', pill: '4 на согл.',  accentColor: '#22D3EE' },
-  hr:         { group: 'Сервисы',     status: 'crit', pill: '57 допусков', accentColor: '#F85149' },
-  safety:     { group: 'Сервисы',     status: 'crit', pill: 'критично',    accentColor: '#F85149' },
-  planner:    { group: 'Сервисы',                      accentColor: '#3FB950' },
-  admin:      { group: 'Сервисы',                      accentColor: '#64748B' },
+  dispatcher: { group: 'Оперативные', status: 'live', accentColor: '#F0A500' },
+  zamporab:   { group: 'Оперативные', accentColor: '#F0A500' },
+  foreman:    { group: 'Оперативные', accentColor: '#8B5CF6' },
+  head:       { group: 'Оперативные', accentColor: '#8B5CF6' },
+  driver:     { group: 'Оперативные', accentColor: '#388BFD' },
+  boss:       { group: 'Аналитика',   accentColor: '#388BFD' },
+  transport:  { group: 'Аналитика',   accentColor: '#F85149' },
+  complaints: { group: 'Аналитика',   accentColor: '#F0A500' },
+  chief:      { group: 'Аналитика',   accentColor: '#22D3EE' },
+  hr:         { group: 'Сервисы',     accentColor: '#F85149' },
+  safety:     { group: 'Сервисы',     accentColor: '#F85149' },
+  planner:    { group: 'Сервисы',     accentColor: '#3FB950' },
+  admin:      { group: 'Сервисы',     accentColor: '#64748B' },
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
+  return many
+}
+
+/** Live status + pill per panel, computed from real counters */
+function liveMeta(id: string, c: HomeCounters | null): { status?: PanelStatus; pill?: string } {
+  if (!c) return {}
+  switch (id) {
+    case 'zamporab':
+      return c.plansApproved > 0
+        ? { status: 'warn', pill: `${c.plansApproved} ${plural(c.plansApproved, 'план', 'плана', 'планов')}` }
+        : {}
+    case 'chief':
+      return c.plansSubmitted > 0 ? { status: 'warn', pill: `${c.plansSubmitted} на согл.` } : {}
+    case 'boss':
+      return c.plansPlanned > 0 ? { status: 'warn', pill: `${c.plansPlanned} к совещанию` } : {}
+    case 'transport':
+      return c.brokenVehicles > 0 ? { status: 'crit', pill: `${c.brokenVehicles} сломано` } : {}
+    case 'complaints':
+      return c.newComplaints > 0
+        ? { status: 'warn', pill: `${c.newComplaints} ${plural(c.newComplaints, 'новая', 'новые', 'новых')}` }
+        : {}
+    case 'hr':
+      return c.expiredCerts > 0
+        ? { status: 'crit', pill: `${c.expiredCerts} ${plural(c.expiredCerts, 'допуск', 'допуска', 'допусков')}` }
+        : {}
+    case 'safety':
+      if (c.expiredCerts > 0) return { status: 'crit', pill: 'критично' }
+      if (c.expiringSoonCerts > 0) return { status: 'warn', pill: `${c.expiringSoonCerts} истекают` }
+      return {}
+    default:
+      return {}
+  }
 }
 
 const GROUPS: GroupName[] = ['Оперативные', 'Аналитика', 'Сервисы']
@@ -40,12 +79,14 @@ export default function HomePage() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [now, setNow] = useState(new Date())
   const [menuOpen, setMenuOpen] = useState(false)
+  const [counters, setCounters] = useState<HomeCounters | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setSession(s)
+    fetchHomeCounters().then(setCounters).catch(() => setCounters(null))
   }, [router])
 
   useEffect(() => {
@@ -207,14 +248,24 @@ export default function HomePage() {
         </div>
 
         {/* ── ALERT BANNERS ── */}
-        <div className="flex flex-col gap-2">
-          <AlertBanner variant="red" onClick={() => router.push('/safety')}>
-            <strong>57 допусков просрочено</strong> · ТБиОТ требует внимания
-          </AlertBanner>
-          <AlertBanner variant="amber" onClick={() => router.push('/transport')}>
-            <strong>9 ед. техники сломано</strong> · Транспорт · 3 на ремонте, 6 ждут диагностики
-          </AlertBanner>
-        </div>
+        {counters && (counters.expiredCerts > 0 || counters.brokenVehicles > 0) && (
+          <div className="flex flex-col gap-2">
+            {counters.expiredCerts > 0 && (
+              <AlertBanner variant="red" onClick={() => router.push('/safety')}>
+                <strong>
+                  {counters.expiredCerts} {plural(counters.expiredCerts, 'допуск просрочен', 'допуска просрочено', 'допусков просрочено')}
+                </strong>{' '}
+                · ТБиОТ требует внимания
+              </AlertBanner>
+            )}
+            {counters.brokenVehicles > 0 && (
+              <AlertBanner variant="amber" onClick={() => router.push('/transport')}>
+                <strong>{counters.brokenVehicles} ед. техники сломано</strong> · Транспорт
+                {counters.maintenanceVehicles > 0 && <> · {counters.maintenanceVehicles} на обслуживании</>}
+              </AlertBanner>
+            )}
+          </div>
+        )}
 
         {/* ── PANEL GRID ── */}
         {GROUPS.map(group => {
@@ -226,12 +277,13 @@ export default function HomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {panels.map(p => {
                   const m = HOME_META[p.id]
+                  const live = liveMeta(p.id, counters)
                   return (
                     <PanelCard
                       key={p.id}
                       panel={p}
-                      status={m?.status}
-                      pill={m?.pill}
+                      status={live.status ?? m?.status}
+                      pill={live.pill}
                       accentColor={m?.accentColor}
                       isLight={isLight}
                       onClick={() => router.push(p.path)}
@@ -257,8 +309,6 @@ export default function HomePage() {
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(63,185,80,0.7)]" />
             Гормост
           </span>
-          <span className="opacity-35">·</span>
-          <span>v2026.04.01</span>
           <span className="opacity-35">·</span>
           <span>Лефортовский тоннель</span>
           <span className="opacity-35">·</span>

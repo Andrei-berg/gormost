@@ -920,6 +920,19 @@ export interface SystemAlert {
   detail?: string
 }
 
+// ─── Home page live counters ─────────────────────────────────────────────────
+
+export interface HomeCounters {
+  brokenVehicles: number
+  maintenanceVehicles: number
+  expiredCerts: number
+  expiringSoonCerts: number
+  newComplaints: number
+  plansSubmitted: number
+  plansApproved: number
+  plansPlanned: number
+}
+
 /** Helpers */
 export function certStatusFromDates(expiresAt: string | null, isIndefinite = false): 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' {
   if (isIndefinite || !expiresAt) return 'VALID'

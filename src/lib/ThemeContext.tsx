@@ -9,7 +9,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'light',
+  theme: 'dark',
   toggleTheme: () => {},
 })
 
@@ -18,11 +18,11 @@ function applyTheme(t: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  const [theme, setTheme] = useState<Theme>('dark')
 
   useEffect(() => {
     const stored = localStorage.getItem('gormost-theme') as Theme | null
-    const initial = stored ?? 'light'
+    const initial = stored ?? 'dark'
     setTheme(initial)
     applyTheme(initial)
   }, [])

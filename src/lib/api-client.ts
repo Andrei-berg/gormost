@@ -19,7 +19,7 @@ import type {
   DirectiveWorkerAssignment, ServiceOrderType,
   CertType, EmployeeCert, CertRequirement,
   DriverManualShift,
-  AuthSession, RoleLevel, AlertLevel, SystemAlert,
+  AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
 } from '@/types'
 
 export interface StatusWithUser extends EmployeeStatus {
@@ -893,6 +893,12 @@ export function logAction(userId: string, actionType: string, entityType?: strin
 
 export function fetchSystemAlerts(opts: { role: RoleLevel; serviceId?: string | null }): Promise<SystemAlert[]> {
   return call('fetchSystemAlerts', [opts])
+}
+
+// ─── Home page live counters ─────────────────────────────────────────────────
+
+export function fetchHomeCounters(): Promise<HomeCounters> {
+  return call('fetchHomeCounters', [])
 }
 
 // ─── Raw helpers ─────────────────────────────────────────────────────────────
