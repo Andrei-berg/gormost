@@ -9,6 +9,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Non-multiple-of-5 alpha modifiers used across the app (bg-white/3,
+      // border-white/8, …). Without these, Tailwind generates no rule and
+      // borders silently fall back to the preflight default color.
+      opacity: {
+        '2': '0.02',
+        '3': '0.03',
+        '4': '0.04',
+        '6': '0.06',
+        '7': '0.07',
+        '8': '0.08',
+        '12': '0.12',
+        '14': '0.14',
+        '16': '0.16',
+        '18': '0.18',
+      },
       colors: {
         service: {
           str: '#8b5cf6',
