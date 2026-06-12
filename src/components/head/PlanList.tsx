@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import type { WorkPlanWithItems, AuthSession, WorkPlanStatus } from '@/types'
-import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import type { WorkPlanWithItems, AuthSession } from '@/types'
 import PlanCard from './PlanCard'
 import CancelPlanModal from '@/components/shared/CancelPlanModal'
 
@@ -162,7 +161,7 @@ export default function PlanList({ plans, session, onRefresh, onCreatePlan }: Pr
                     </h3>
                     <div className="space-y-2">
                       {byDate[date]
-                        .sort((a, b) => (a.shift_type === 'DAY' ? -1 : 1))
+                        .sort((a) => (a.shift_type === 'DAY' ? -1 : 1))
                         .map(plan => {
                           const isOverdue = plan.plan_date < today && !['DONE', 'REDIRECTED', 'CANCELLED'].includes(plan.status)
                           const canCancel = isOverdue && plan.status !== 'REJECTED'

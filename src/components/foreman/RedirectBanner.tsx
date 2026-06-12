@@ -16,7 +16,6 @@ export default function RedirectBanner({ redirectedPlans, redirects }: Props) {
         const redirect = redirects.find(r => r.from_plan_id === plan.id)
         const srcCfg = redirect ? WORK_SOURCE_CONFIG[redirect.ordered_by_source] : null
         const isRedirected = plan.status === 'REDIRECTED'
-        const isSuspended = plan.status === 'SUSPENDED'
 
         return (
           <div

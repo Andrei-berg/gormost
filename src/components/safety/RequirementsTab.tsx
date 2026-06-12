@@ -33,14 +33,6 @@ export default function RequirementsTab({ certTypes, requirements, services, onR
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  // Group requirements by cert type for display
-  const grouped = certTypes
-    .filter((ct) => ct.is_active)
-    .map((ct) => ({
-      certType: ct,
-      reqs: requirements.filter((r) => r.cert_type_id === ct.id),
-    }))
-    .filter((g) => g.reqs.length > 0 || false)
 
   const allWithReqs = requirements.length
 

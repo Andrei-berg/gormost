@@ -68,14 +68,25 @@ export async function GET(req: NextRequest) {
     }
 
     // Нормализуем в UserWithAssignment — добавляем schedule_code на верхний уровень assignment
-    const users: UserWithAssignment[] = (rawUsers ?? []).map((u: any) => {
+    type RawPhase = {
+      id: string; phase: 'day' | 'night'; anchor_date: string; schedule_code: string
+      is_alternating?: boolean; valid_from: string; valid_to: string | null
+    }
+    type RawAssignment = NonNullable<UserWithAssignment['assignment']> & {
+      schedule?: { code?: string; name?: string } | null
+      active_phase?: RawPhase[] | RawPhase | null
+    }
+    type RawUserRow = Omit<UserWithAssignment, 'assignment'> & {
+      assignment: RawAssignment | RawAssignment[] | null
+    }
+    const users: UserWithAssignment[] = ((rawUsers ?? []) as RawUserRow[]).map(u => {
       const asgn = Array.isArray(u.assignment) ? u.assignment[0] : u.assignment
       if (!asgn) return { ...u, assignment: null }
 
       // Найти активную фазу: valid_to IS NULL или valid_to >= сегодня
       const today = new Date().toISOString().split('T')[0]
-      const phases: any[] = Array.isArray(asgn.active_phase) ? asgn.active_phase : []
-      const activePhase = phases.find((p: any) =>
+      const phases: RawPhase[] = Array.isArray(asgn.active_phase) ? asgn.active_phase : []
+      const activePhase = phases.find(p =>
         (!p.valid_to || p.valid_to >= today) && p.valid_from <= today
       ) ?? null
 

@@ -28,6 +28,18 @@ interface SpotlightRect {
 
 const PAD = 8  // spotlight padding
 
+function getAutoPlacement(rect: DOMRect, cardH: number, cardW: number): string {
+  const spaceBottom = window.innerHeight - rect.bottom
+  const spaceTop = rect.top
+  const spaceRight = window.innerWidth - rect.right
+  const spaceLeft = rect.left
+  if (spaceBottom >= cardH + 32) return 'bottom'
+  if (spaceTop >= cardH + 32) return 'top'
+  if (spaceRight >= cardW + 32) return 'right'
+  if (spaceLeft >= cardW + 32) return 'left'
+  return 'center'
+  }
+
 export default function GuidedTour({ steps, storageKey, onComplete, forceShow, trigger }: Props) {
   const [active, setActive] = useState(false)
   const [step, setStep] = useState(0)
@@ -121,18 +133,6 @@ export default function GuidedTour({ steps, storageKey, onComplete, forceShow, t
     animFrame.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animFrame.current)
   }, [active, measureTarget])
-
-  function getAutoPlacement(rect: DOMRect, cardH: number, cardW: number): string {
-    const spaceBottom = window.innerHeight - rect.bottom
-    const spaceTop = rect.top
-    const spaceRight = window.innerWidth - rect.right
-    const spaceLeft = rect.left
-    if (spaceBottom >= cardH + 32) return 'bottom'
-    if (spaceTop >= cardH + 32) return 'top'
-    if (spaceRight >= cardW + 32) return 'right'
-    if (spaceLeft >= cardW + 32) return 'left'
-    return 'center'
-  }
 
   function handleComplete() {
     localStorage.setItem(storageKey, '1')

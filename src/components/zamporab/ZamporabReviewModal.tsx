@@ -207,7 +207,6 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
     onSaved()
   }
 
-  const otherServices = ALL_SERVICES.filter(id => id !== plan.service_id)
 
   return (
     <>

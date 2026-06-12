@@ -96,35 +96,6 @@ function getDokladnayaNotes(row: StatusWithUser): string {
   }
 }
 
-// Reason label for other report tabs
-function getReasonLabel(row: StatusWithUser): string {
-  const meta = row.metadata
-  switch (row.status) {
-    case 'Bolnichniy':
-      return meta?.sick_leave_number ? `б/л №${meta.sick_leave_number}` : 'больничный'
-    case 'SVO':
-      return 'СВО'
-    case 'Mobilizovan':
-      return meta?.order_number ? `мобилизация, пр. №${meta.order_number}` : 'мобилизация'
-    case 'Komandirovka':
-      return 'командировка'
-    case 'Otgul': {
-      const basis = meta?.otgul_basis
-      return basis === 'za_svoy_schet' ? 'отгул (за свой счёт)' : 'отгул (за отработанное)'
-    }
-    case 'Otpusk':
-    case 'Uchebniy_otpusk':
-      return meta?.leave_type ? `отпуск (${meta.leave_type})` : 'отпуск'
-    case 'Dekret':
-      return 'декрет'
-    case 'Troydoustroyen_s_SVO':
-      return 'трудоустроен с СВО'
-    case 'Voennie_sbory':
-      return 'военные сборы'
-    default:
-      return EMPLOYEE_STATUS_CONFIG[row.status]?.label ?? row.status
-  }
-}
 
 // СВО, Мобилизованные, Больничные, Военные сборы go into докладная
 const DOKLADNAYA_STATUSES = new Set(['SVO', 'Mobilizovan', 'Bolnichniy', 'Voennie_sbory'])
@@ -223,7 +194,17 @@ const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'dokladnaya',    label: 'Докладная' },
 ]
 
-export default function HRReports({ session, services }: Props) {
+function EmptyRow({ cols, label }: { cols: number; label: string }) {
+  return (
+    <tr>
+      <td colSpan={cols} className="px-3 py-8 text-center text-white/30 text-xs">
+        Нет данных за {label}
+      </td>
+    </tr>
+  )
+}
+
+export default function HRReports({ services }: Props) {
   const today = new Date().toISOString().split('T')[0]
   const currentMonth = today.slice(0, 7)
 
@@ -267,15 +248,7 @@ export default function HRReports({ session, services }: Props) {
   const thCls = 'px-3 py-2 text-left text-[10px] text-white/40 font-medium uppercase tracking-wide border-b border-white/10'
   const tdCls = 'px-3 py-2 text-xs text-white/70'
 
-  function EmptyRow({ cols }: { cols: number }) {
-    return (
-      <tr>
-        <td colSpan={cols} className="px-3 py-8 text-center text-white/30 text-xs">
-          Нет данных за {getMonthLabel(reportMonth)}
-        </td>
-      </tr>
-    )
-  }
+  const monthLabel = getMonthLabel(reportMonth)
 
   function toggleId(id: string) {
     setSelectedIds(prev => {
@@ -403,7 +376,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {svo.length === 0 ? <EmptyRow cols={5} /> : svo.map((s, i) => (
+              {svo.length === 0 ? <EmptyRow cols={5} label={monthLabel} /> : svo.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -429,7 +402,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {mobilizovan.length === 0 ? <EmptyRow cols={5} /> : mobilizovan.map((s, i) => (
+              {mobilizovan.length === 0 ? <EmptyRow cols={5} label={monthLabel} /> : mobilizovan.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -457,7 +430,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {bolnichniy.length === 0 ? <EmptyRow cols={7} /> : bolnichniy.map((s, i) => (
+              {bolnichniy.length === 0 ? <EmptyRow cols={7} label={monthLabel} /> : bolnichniy.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -494,7 +467,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {komandirovka.length === 0 ? <EmptyRow cols={4} /> : komandirovka.map((s, i) => (
+              {komandirovka.length === 0 ? <EmptyRow cols={4} label={monthLabel} /> : komandirovka.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -518,7 +491,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {otgul.length === 0 ? <EmptyRow cols={4} /> : otgul.map((s, i) => (
+              {otgul.length === 0 ? <EmptyRow cols={4} label={monthLabel} /> : otgul.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -547,7 +520,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {otpusk.length === 0 ? <EmptyRow cols={5} /> : otpusk.map((s, i) => (
+              {otpusk.length === 0 ? <EmptyRow cols={5} label={monthLabel} /> : otpusk.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -573,7 +546,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {voennie_sbory.length === 0 ? <EmptyRow cols={5} /> : voennie_sbory.map((s, i) => (
+              {voennie_sbory.length === 0 ? <EmptyRow cols={5} label={monthLabel} /> : voennie_sbory.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>
@@ -598,7 +571,7 @@ export default function HRReports({ session, services }: Props) {
               </tr>
             </thead>
             <tbody>
-              {uvolen.length === 0 ? <EmptyRow cols={4} /> : uvolen.map((s, i) => (
+              {uvolen.length === 0 ? <EmptyRow cols={4} label={monthLabel} /> : uvolen.map((s, i) => (
                 <tr key={s.id} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
                   <td className={tdCls}>{i + 1}</td>
                   <td className={tdCls}>{s.user_full_name}</td>

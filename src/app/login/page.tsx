@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginWithPin, getSession } from '@/lib/auth'
-import { getCurrentShift, getCurrentPeriod, formatDate, formatTime } from '@/lib/shifts'
+import { getCurrentShift, formatDate, formatTime } from '@/lib/shifts'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -24,7 +24,6 @@ export default function LoginPage() {
   }, [])
 
   const shift = getCurrentShift()
-  const period = getCurrentPeriod()
 
   const handleSubmit = async () => {
     if (!tabNumber.trim() || !pin.trim()) {

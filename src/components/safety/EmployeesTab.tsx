@@ -144,7 +144,6 @@ export default function EmployeesTab({ certTypes, allCerts, employees, services,
             {visibleEmployees.map(emp => {
               const certs = certsByEmp.get(emp.user_id) ?? []
               const worst = worstStatus(certs)
-              const cfg = CERT_STATUS_CONFIG[worst]
               const expired = certs.filter(c => certStatusFromDates(c.expires_at, c.is_indefinite) === 'EXPIRED').length
               const expiring = certs.filter(c => certStatusFromDates(c.expires_at, c.is_indefinite) === 'EXPIRING_SOON').length
               const isSelected = selectedEmp?.user_id === emp.user_id

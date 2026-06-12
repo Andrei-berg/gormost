@@ -263,7 +263,7 @@ function HeatmapView({ users, phases, services, days }: {
 
 // ── B: Gantt — employee × day grid ─────────────────────────────────────────
 
-function GanttView({ users, phases, services, days, year, month }: {
+function GanttView({ users, phases, services, days }: {
   users: UserWithAssignment[]; phases: ShiftPhase[]
   services: Service[]; days: Date[]; year: number; month: number
 }) {
@@ -337,7 +337,6 @@ function GanttView({ users, phases, services, days, year, month }: {
               )}
               {rows.map(({ user, days: ddays }) => {
                 const code = user.assignment?.schedule_code ?? ''
-                const totalWork = ddays.filter(d => d.working).length
                 return (
                   <tr key={user.user_id} className="border-b border-white/5 hover:bg-white/[0.02]">
                     <td className="sticky left-0 bg-slate-900/80 backdrop-blur px-3 py-1.5 text-white/80">
@@ -402,7 +401,7 @@ function GanttView({ users, phases, services, days, year, month }: {
 
 // ── C: Validator — one employee, detailed calendar ─────────────────────────
 
-function ValidatorView({ users, phases, services, days, year, month }: {
+function ValidatorView({ users, phases, services, days }: {
   users: UserWithAssignment[]; phases: ShiftPhase[]
   services: Service[]; days: Date[]; year: number; month: number
 }) {
@@ -558,7 +557,7 @@ const NORM_HOURS  = 176
 const WARN_HOURS  = 188
 const CRIT_HOURS  = 208
 
-function LaborView({ users, phases, services, days, schedules }: {
+function LaborView({ users, phases, services, days }: {
   users: UserWithAssignment[]; phases: ShiftPhase[]
   services: Service[]; days: Date[]; schedules: Schedule[]
 }) {

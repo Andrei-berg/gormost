@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
-import type { EmployeeCert, User, CertType, AuthSession } from '@/types'
+import type { EmployeeCert, User, AuthSession } from '@/types'
 import { certStatusFromDates, CERT_STATUS_CONFIG } from '@/types'
 import { linkCertToEmployee, deleteEmployeeCert } from '@/lib/api-client'
 
@@ -11,7 +11,7 @@ interface Props {
   onRefresh: () => void
 }
 
-export default function UnlinkedCerts({ unlinked, employees, session, onRefresh }: Props) {
+export default function UnlinkedCerts({ unlinked, employees, onRefresh }: Props) {
   const [search, setSearch] = useState('')
   const [linking, setLinking] = useState<string | null>(null) // cert id being linked
   const [selectedEmployee, setSelectedEmployee] = useState<Record<string, string>>({}) // certId → userId

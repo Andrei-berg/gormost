@@ -69,12 +69,6 @@ export default function ShiftPhaseManager({ users, session, onRefresh, excludeDr
     onRefresh()
   }
 
-  const uniqueCodes = [...new Set(
-    users
-      .map(u => u.assignment?.schedule_code ?? '')
-      .filter(isPhaseSchedule)
-  )].sort()
-
   return (
     <div className="space-y-4">
       {/* Header + filter */}

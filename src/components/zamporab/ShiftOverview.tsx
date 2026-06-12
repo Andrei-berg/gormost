@@ -4,7 +4,7 @@ import {
   fetchWorkPlans, fetchWorkPlansWithItems,
   fetchAllCurrentStatuses, fetchServices, fetchUsersWithAssignments,
 } from '@/lib/api-client'
-import type { WorkPlanWithItems, EnrichedEmployee, Service, EmployeeStatusType, UserWithAssignment } from '@/types'
+import type { EnrichedEmployee, Service, EmployeeStatusType, UserWithAssignment } from '@/types'
 import { SERVICE_META, EMPLOYEE_STATUS_CONFIG, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
 

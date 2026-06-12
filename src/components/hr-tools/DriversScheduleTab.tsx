@@ -503,7 +503,7 @@ export default function DriversScheduleTab({ users, phases, services, schedules,
 
 // ---- Inline assignment edit form ----
 
-function DriverEditForm({ user, schedules, session, today, saving, onSave, onCancel }: {
+function DriverEditForm({ user, schedules, today, saving, onSave, onCancel }: {
   user: UserWithAssignment
   schedules: Schedule[]
   session: AuthSession

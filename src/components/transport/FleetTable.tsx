@@ -1,5 +1,5 @@
 'use client'
-import type { Vehicle, VehicleStatus, VehicleType, VehicleWithAssignments } from '@/types'
+import type { Vehicle, VehicleWithAssignments } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
 
 interface Props {
@@ -36,7 +36,7 @@ export default function FleetTable({ vehicles, canEdit, onEditStatus, onEditVehi
           </tr>
         </thead>
         <tbody>
-          {vehicles.map((v, i) => {
+          {vehicles.map((v) => {
             const typeCfg   = VEHICLE_TYPE_CONFIG[v.vehicle_type]
             const statusCfg = VEHICLE_STATUS_CONFIG[v.status]
             const location  = v.deployment

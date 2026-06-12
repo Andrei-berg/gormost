@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
-import type { WorkPlanWithItems, WorkPlanItemWithVehicles, CrossServiceRequest, CrossServiceDraft, Service, AuthSession } from '@/types'
-import { SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG } from '@/types'
+import type { WorkPlanWithItems, WorkPlanItemWithVehicles, CrossServiceDraft, Service, AuthSession } from '@/types'
+import { SERVICE_META, CROSS_SERVICE_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import {
@@ -41,7 +41,6 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
   const svc = services.find(s => s.service_id === plan.service_id)
   const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 21:00–07:00'
-  const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
 
   // Headcount totals across all items
   const totalWorkers = plan.items.reduce((s, i) => s + (i.required_workers ?? 0), 0)

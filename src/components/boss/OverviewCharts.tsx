@@ -21,7 +21,6 @@ function DonutChart({ data, total }: {
   total: number
 }) {
   const cx = 21, cy = 21, r = 15.9155, sw = 6
-  const C = 100
 
   const segments: { color: string; dashArray: string; dashOffset: string }[] = []
   let cumulative = 0
@@ -75,42 +74,6 @@ function DonutChart({ data, total }: {
   )
 }
 
-// ── Full-circle Gauge ──────────────────────────────────────────────
-function GaugeArc({ percent }: { percent: number }) {
-  const r = 42, cx = 50, cy = 50
-  const C = 2 * Math.PI * r
-  const color = percent >= 70 ? '#3FB950' : percent >= 40 ? '#F97316' : '#EF4444'
-  const offset = C - (percent / 100) * C
-
-  return (
-    <div className="flex flex-col items-center gap-3 flex-1 justify-center">
-      <div className="relative" style={{ width: 220, height: 220 }}>
-        <svg viewBox="0 0 100 100" width="220" height="220">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={8} />
-          <circle cx={cx} cy={cy} r={r} fill="none"
-            stroke={color} strokeWidth={8} strokeLinecap="round"
-            strokeDasharray={C} strokeDashoffset={offset}
-            transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ filter: `drop-shadow(0 0 6px ${color}88)`, transition: 'stroke-dashoffset 0.8s ease' }}
-          />
-          <circle cx={cx} cy={cy} r={34} fill="none" stroke={`${color}14`} strokeWidth={1} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono font-bold leading-none" style={{ fontSize: 48, color, letterSpacing: '-0.02em' }}>
-            {percent}<span className="text-[26px] opacity-70">%</span>
-          </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold mt-1.5 font-mono" style={{ color: `${color}CC` }}>
-            Выполнено
-          </span>
-        </div>
-      </div>
-      <p className="text-[13px] text-white/50">
-        <b className="text-white font-semibold">{Math.round(percent / 100 * (percent > 0 ? 1 : 0))}</b>
-        {' '}из {' '}заявок закрыто
-      </p>
-    </div>
-  )
-}
 
 function GaugeWithSub({ percent, done, total }: { percent: number; done: number; total: number }) {
   const r = 42, cx = 50, cy = 50
@@ -290,7 +253,6 @@ function UrgencyBar({ requests }: { requests: Request[] }) {
   const emergency = requests.filter(r => r.urgency === 'EMERGENCY').length
   const urgent    = requests.filter(r => r.urgency === 'URGENT').length
   const normal    = requests.filter(r => !r.urgency || r.urgency === 'NORMAL').length
-  const total     = emergency + urgent + normal || 1
   const active    = requests.filter(r => r.status === 'IN_PROGRESS').length
 
   const segments = [

@@ -2,9 +2,9 @@
 import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchRemarks, createRemark, fetchRequests, fetchAllRemarks, logAction } from '@/lib/api-client'
+import { createRemark, fetchAllRemarks, logAction } from '@/lib/api-client'
 import EmptyState from '@/components/EmptyState'
-import type { AuthSession, Remark } from '@/types'
+import type { AuthSession } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
@@ -42,7 +42,7 @@ function Content({ session }: { session: AuthSession }) {
     // Using remarks table as complaints storage
     const data = await fetchAllRemarks()
     // Map remarks to complaint-like structure
-    const mapped: Complaint[] = data.map((r: any) => ({
+    const mapped: Complaint[] = data.map(r => ({
       id: r.id,
       source: r.remark_text?.split('|')[0] || '',
       description: r.remark_text?.split('|').slice(1).join('|') || r.remark_text || '',
@@ -140,7 +140,7 @@ function Content({ session }: { session: AuthSession }) {
             </div>
             <div>
               <label className="block text-xs text-white/50 mb-1">Приоритет</label>
-              <select value={priority} onChange={e => setPriority(e.target.value as any)}
+              <select value={priority} onChange={e => setPriority(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH')}
                 className="form-select text-sm px-3 py-2">
                 <option value="LOW">Низкий</option>
                 <option value="MEDIUM">Средний</option>

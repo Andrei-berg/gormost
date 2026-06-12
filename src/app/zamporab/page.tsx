@@ -7,14 +7,13 @@ import RequestModal from '@/components/RequestModal'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
-  fetchServices, fetchUsers, approveRequest,
+  fetchServices, approveRequest,
   fetchWorkPlans, fetchWorkPlansWithItems, fetchCrossServiceRequests,
   fetchDriverUsers, fetchVehicles,
-  confirmWorkPlanZamporab, approveWorkPlanDirect, returnWorkPlanZamporab,
-} from '@/lib/api-client'
+  confirmWorkPlanZamporab, approveWorkPlanDirect, } from '@/lib/api-client'
 import type {
   Request, Category, GObject, Construction, WorkType, Service,
-  User, AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
+  AuthSession, WorkPlanWithItems, WorkPlan, CrossServiceRequest,
   UserWithAssignment, Vehicle, WorkPlanItem,
 } from '@/types'
 import { SERVICE_META } from '@/types'
@@ -57,7 +56,6 @@ function Content({ session }: { session: AuthSession }) {
   const [constructions, setConstructions] = useState<Construction[]>([])
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [services, setServices] = useState<Service[]>([])
-  const [allUsers, setAllUsers] = useState<User[]>([])
   const [allPlans, setAllPlans] = useState<WorkPlan[]>([])
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [driverUsers, setDriverUsers] = useState<UserWithAssignment[]>([])
@@ -73,9 +71,9 @@ function Content({ session }: { session: AuthSession }) {
   const [showDone, setShowDone] = useState(false)
 
   const loadData = useCallback(async () => {
-    const [reqs, cats, objs, cons, wts, svcs, usrs, rawApproved, rawSubmittedStr, allRaw, drvUsers, vehs] = await Promise.all([
+    const [reqs, cats, objs, cons, wts, svcs, rawApproved, rawSubmittedStr, allRaw, drvUsers, vehs] = await Promise.all([
       fetchRequests(), fetchCategories(), fetchObjects(), fetchConstructions(),
-      fetchWorkTypes(), fetchServices(), fetchUsers(),
+      fetchWorkTypes(), fetchServices(),
       fetchWorkPlans({ status: 'APPROVED' }),
       fetchWorkPlans({ status: 'SUBMITTED', serviceId: 'SRV-STR' }),
       fetchWorkPlans(),
@@ -84,7 +82,7 @@ function Content({ session }: { session: AuthSession }) {
     ])
     setRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
-    setAllUsers(usrs); setAllPlans(allRaw)
+    setAllPlans(allRaw)
     setDriverUsers(drvUsers); setVehicles(vehs)
     setOwnPlanVersion(v => v + 1)
 

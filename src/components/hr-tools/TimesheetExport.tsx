@@ -64,8 +64,8 @@ export default function TimesheetExport({ year, month, serviceId }: Props) {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch (e: any) {
-      setError(e.message ?? 'Ошибка загрузки')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка загрузки')
     } finally {
       setLoading(null)
     }

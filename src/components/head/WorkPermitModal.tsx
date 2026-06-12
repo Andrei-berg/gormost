@@ -671,7 +671,6 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     ? 'block text-[10px] text-gray-500 uppercase tracking-wider mb-1'
     : 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
   const sectionBg = lightMode ? 'rounded-xl p-3 border border-gray-200 bg-gray-50' : 'rounded-xl p-3 border border-white/8 bg-white/4'
-  const titleText = lightMode ? 'text-gray-700' : 'text-white/70'
   const subtitleText = lightMode ? 'text-gray-400' : 'text-white/40'
 
   const serviceName   = SERVICE_NAMES[plan.service_id] ?? plan.service_id

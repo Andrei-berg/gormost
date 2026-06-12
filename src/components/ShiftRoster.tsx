@@ -1,7 +1,7 @@
 'use client'
 import { useMemo } from 'react'
 import { getShiftForDate, isWorkerOnDuty } from '@/lib/shifts'
-import type { UserWithAssignment, Service, EmployeeAssignmentWithScheduleCode } from '@/types'
+import type { UserWithAssignment, Service } from '@/types'
 
 interface Props {
   users: UserWithAssignment[]
@@ -21,7 +21,8 @@ const SHIFT_COLORS = [
 ]
 
 export default function ShiftRoster({ users, services, date, compact = false }: Props) {
-  const target = date ?? new Date()
+   
+  const target = useMemo(() => date ?? new Date(), [date])
   const shiftInfo = getShiftForDate(target)
   const shiftNum = shiftInfo.shiftNumber
 
@@ -36,7 +37,7 @@ export default function ShiftRoster({ users, services, date, compact = false }: 
         rotation_group: u.assignment.rotation_group,
       }, target)
     }),
-    [users, target] // eslint-disable-line react-hooks/exhaustive-deps
+    [users, target]  
   )
 
   // Group by service

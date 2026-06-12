@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import type { WorkPlanWithItems, AuthSession, UserWithAssignment, EmployeeStatusType } from '@/types'
-import { EMPLOYEE_STATUS_CONFIG } from '@/types'
+import type { WorkPlanWithItems, AuthSession, EmployeeStatusType } from '@/types'
 import { fetchUsersWithAssignments, fetchActiveStatusesOnDate } from '@/lib/api-client'
 import { isWorkerOnDuty, getShiftNumberForDate } from '@/lib/shifts'
 import { useConfirm } from '@/components/ConfirmDialog'
@@ -141,7 +140,7 @@ function generateSheetHTML(d: SheetData): string {
       ${td('', 'width:70px')}
     </tr>`).join('')
 
-  const emptyRows = Array.from({ length: EMPTY_ROWS }, (_, i) => `
+  const emptyRows = Array.from({ length: EMPTY_ROWS }, () => `
     <tr style="height:22px">
       ${td('', 'text-align:center;width:28px')}
       ${td('')}

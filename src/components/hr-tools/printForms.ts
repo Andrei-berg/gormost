@@ -347,7 +347,6 @@ export function printCoverage(
   })
 
   const norm = median(rows.map(r => r.total))
-  const maxTotal = Math.max(...rows.map(r => r.total), 1)
   const avgTotal = rows.length ? (rows.reduce((s, r) => s + r.total, 0) / rows.length).toFixed(1) : '0'
 
   const summaryTable = `
@@ -370,7 +369,7 @@ export function printCoverage(
     <th style="width:45px">Дельта</th>
   </tr>`
 
-  const tbody = rows.map(({ date, dateStr, total, byCode }) => {
+  const tbody = rows.map(({ date, total, byCode }) => {
     const dow = date.getDay()
     const isWeekend = dow === 0 || dow === 6
     const delta = total - norm

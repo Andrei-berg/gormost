@@ -202,7 +202,6 @@ export default function BrigadeAssigner({ session, services }: Props) {
                   !assignedInServiceIds.has(u.user_id) && u.service_id === svc.service_id
                 )
                 if (svcFree.length === 0) return null
-                const svcEmoji = (['SRV-ENG','SRV-STR','SRV-FIRE','SRV-VENT','SRV-CCTV'] as const)
                 return (
                   <div key={svc.service_id}>
                     <div className="flex items-center gap-1.5 mb-1.5">
@@ -436,13 +435,6 @@ function PlanAssignCard({
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
   const canAssign = plan.status === 'ASSIGNED'
-
-  const handleMarkAssigned = async () => {
-    setActing(true)
-    await markWorkPlanAssigned(plan.id, session.user_id)
-    setActing(false)
-    onRefresh()
-  }
 
   const handleStart = async () => {
     setActing(true)

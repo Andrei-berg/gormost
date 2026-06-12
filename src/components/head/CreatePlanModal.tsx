@@ -13,7 +13,6 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
   const taken = new Set(existing.map(p => `${p.plan_date}_${p.shift_type}`))
   const options: SlotOption[] = []
   const today = new Date()
-  const dow = today.getDay() // 0=Sun, 5=Fri
 
   const add = (offset: number, shift: ShiftType) => {
     const d = new Date(today)

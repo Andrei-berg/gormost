@@ -339,7 +339,6 @@ export function resolveShiftStatus(
   anchor.setHours(0, 0, 0, 0)
   const daysElapsed = Math.floor((target.getTime() - anchor.getTime()) / 86400000)
   const phase = active_phase.phase
-  const times = SHIFT_TIMES[phase]
 
   // Helper: flip phase every cycle when is_alternating is true
   const altPhase = (base: 'day' | 'night', periodDays: number): 'day' | 'night' => {

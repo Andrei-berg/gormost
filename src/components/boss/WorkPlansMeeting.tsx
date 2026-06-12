@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, Service, AuthSession } from '@/types'
-import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { SERVICE_META } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import {
   fetchWorkPlans, fetchWorkPlansWithItems, confirmWorkPlanBoss,
@@ -134,7 +134,6 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
 }) {
   const svc = services.find(s => s.service_id === plan.service_id)
   const meta = SERVICE_META[plan.service_id] ?? { emoji: '🔧' }
-  const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
 
   const totalWorkers = plan.items.reduce((sum, i) => sum + (i.required_workers || 0), 0)

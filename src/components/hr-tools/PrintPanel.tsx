@@ -1,7 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import type { UserWithAssignment, ShiftPhase, Schedule, Service, AuthSession, EnrichedEmployee } from '@/types'
-import { resolveShiftStatus } from '@/lib/shifts'
 import { fetchAllCurrentStatuses } from '@/lib/api-client'
 import { printRoster, printTabel, printCoverage, printStroevaiya } from './printForms'
 import { useConfirm } from '@/components/ConfirmDialog'
@@ -35,7 +34,7 @@ const ROSTER_COLS = [
   { key: 'status',   label: 'Сегодня'  },
 ]
 
-export default function PrintPanel({ users, phases, period, services, schedules, session }: Props) {
+export default function PrintPanel({ users, phases, period, services, schedules }: Props) {
   const confirmDialog = useConfirm()
   const [open, setOpen]           = useState(false)
   const [formType, setFormType]   = useState<PrintFormType>('roster')

@@ -36,7 +36,7 @@ interface Props {
   services: Service[]
 }
 
-export default function PlanArchive({ session, services }: Props) {
+export default function PlanArchive({ services }: Props) {
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear]   = useState(today.getFullYear())
@@ -81,7 +81,7 @@ export default function PlanArchive({ session, services }: Props) {
     }
 
     setLoading(false)
-  }, [filterService, dateFrom, dateTo, todayStr]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterService, dateFrom, dateTo, todayStr])  
 
   useEffect(() => { load() }, [load])
 

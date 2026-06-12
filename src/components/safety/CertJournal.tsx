@@ -82,7 +82,7 @@ export default function CertJournal({ allCerts, employees, services, externalFil
       })
     }
     return list
-  }, [allCerts, employees, empMap, search, serviceFilter, statusFilter, sortKey])
+  }, [allCerts, empMap, search, serviceFilter, statusFilter, sortKey])
 
   const stats = useMemo(() => {
     let expired = 0, expiringSoon = 0, valid = 0

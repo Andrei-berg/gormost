@@ -166,7 +166,7 @@ export default function CoverageOverview({ allCerts, unlinkedCount = 0, requirem
                   <div key={c.id} className={`flex items-center justify-between p-2.5 rounded-xl ${cfg.bg} border border-white/5`}>
                     <div className="min-w-0">
                       <p className="text-sm text-white font-medium truncate">
-                        {(c.employee as any)?.full_name ?? '—'}
+                        {c.employee?.full_name ?? '—'}
                       </p>
                       <p className="text-xs text-white/50 truncate">{c.cert_type?.name}</p>
                     </div>

@@ -1,6 +1,6 @@
 'use client'
 import type { Request, Category, GObject, Construction, WorkType, Service } from '@/types'
-import { STATUS_CONFIG, PRIORITY_CONFIG, URGENCY_CONFIG, SERVICE_META } from '@/types'
+import { PRIORITY_CONFIG, URGENCY_CONFIG, SERVICE_META } from '@/types'
 
 interface Props {
   request: Request

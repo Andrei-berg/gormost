@@ -35,7 +35,7 @@ export default function RosterTable({ users, services, showService }: Props) {
   const [groupBy, setGroupBy]         = useState<GroupBy>('none')
   const [showColPicker, setShowColPicker] = useState(false)
 
-  const today  = new Date()
+  const today  = useMemo(() => new Date(), [])
   const svcMap = useMemo(() => Object.fromEntries(services.map(s => [s.service_id, s.service_name])), [services])
 
   const toggleCol = (key: ColKey) => {
@@ -79,7 +79,7 @@ export default function RosterTable({ users, services, showService }: Props) {
       case 'is_driver': return a?.is_driver ? 'да' : ''
       default: return ''
     }
-  }, [svcMap, today]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [svcMap, today])  
 
   const sorted = useMemo(() =>
     [...users].sort((a, b) => {

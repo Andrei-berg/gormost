@@ -46,7 +46,6 @@ export default function PlannerToolbar({
   }
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
-  const pillBg   = 'bg-white/5 border-white/10'
   const segBg    = 'bg-white/[0.05]'
   const segOn    = 'bg-white/10 text-white font-semibold'
   const segOff   = 'text-white/40 hover:text-white/70'

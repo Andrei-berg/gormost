@@ -72,8 +72,6 @@ function Content({ session }: { session: AuthSession }) {
     return () => clearInterval(t)
   }, [])
 
-  const pendingCount = incomingRequests.filter(r => r.status === 'PENDING').length
-
   if (loading) return <PanelLoader />
 
   return (

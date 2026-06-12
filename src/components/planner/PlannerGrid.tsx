@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import type { UserWithAssignment, ShiftPhase, DriverManualShift, Schedule, Service } from '@/types'
 import type { PlannerSettings, PlannerMode, PhaseEditorState, ScheduleEditorState, CellState } from './types'
 import { CYCLIC_CODES, toDateStr, isWeekend, getMonthBoundaries } from './utils'
@@ -63,7 +63,7 @@ interface Props {
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function PlannerGrid({
-  users, services, schedules, phases, manualShifts, days, settings, mode, canEdit, session,
+  users, services, schedules, phases, manualShifts, days, settings, canEdit, session,
   phaseEditorState, scheduleEditorState, savingKey, selectedUserId,
   onCellApply, onUserClick, onPhaseStripClick, onScheduleEditClick,
   onPhaseEditorClose, onPhaseEditorSaved,

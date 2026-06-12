@@ -18,7 +18,6 @@ export default function ServiceSection({
   serviceId, serviceName, employees, canEdit, currentUserId, onRefresh, onNameClick, assignmentMap,
 }: Props) {
   const meta = SERVICE_META[serviceId]
-  const accentColor = meta?.color ?? 'rgba(255,255,255,0.4)'
 
   return (
     <div className="mb-6">

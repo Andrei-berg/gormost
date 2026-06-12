@@ -53,7 +53,6 @@ export default function DriverStats({ drivers, vehicles, date }: Props) {
     !driverVehicleMap.has(d.user_id) && !permanentMap.has(d.user_id)
   )
 
-  const delta = free.length - (vehicles.filter(v => v.status === 'ACTIVE' && v.assignments.length > 0 && !assigned.find(d => permanentMap.get(d.user_id) === v.name || driverVehicleMap.get(d.user_id) === v.name)).length)
 
   const notOnDuty = drivers.filter(d => !onDuty.find(od => od.user_id === d.user_id))
 

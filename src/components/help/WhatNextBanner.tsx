@@ -75,8 +75,7 @@ interface Props {
   onAction?: () => void
 }
 
-export default function WhatNextBanner({ role, currentStatus, planCount = 0, storageKey, onAction }: Props) {
-  const dismissKey = storageKey ?? `help_whats_next_dismissed_${role}`
+export default function WhatNextBanner({ role, currentStatus, planCount = 0, onAction }: Props) {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {

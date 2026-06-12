@@ -173,7 +173,7 @@ function InlineSelect({ value, options, emptyLabel, displayValue, onSave }: {
 }
 
 // ==================== USERS ====================
-function UsersTab({ session }: { session: AuthSession }) {
+function UsersTab(_props: { session: AuthSession }) {
   const confirmDialog = useConfirm()
   const [users, setUsers] = useState<UserWithAssignment[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -452,7 +452,7 @@ function UsersTab({ session }: { session: AuthSession }) {
 // ==================== GENERIC CRUD TAB ====================
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CrudTab<T extends Record<string, any>>({
-  title, items, idKey, nameKey, fields,
+  title, items, idKey, fields,
   onFetch, onCreate, onUpdate, onDelete,
 }: {
   title: string

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import { fetchWorkPlans, fetchWorkPlansWithItems, fetchServices, approveWorkPlan } from '@/lib/api-client'
@@ -212,7 +212,7 @@ function Content({ session }: { session: AuthSession }) {
                 </h3>
                 <div className="space-y-3">
                   {grouped[date]
-                    .sort((a, b) => (a.shift_type === 'DAY' ? -1 : 1))
+                    .sort((a) => (a.shift_type === 'DAY' ? -1 : 1))
                     .map(plan => (
                       <ChiefPlanCard
                         key={plan.id}
