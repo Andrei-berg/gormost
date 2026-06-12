@@ -13,6 +13,7 @@ import {
 } from '@/lib/api-client'
 import type { UserWithAssignment, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 import ShiftTab from '@/components/admin/ShiftTab'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'ADMIN',           label: 'Администратор',      defaultPosition: 'Администратор' },
@@ -173,6 +174,7 @@ function InlineSelect({ value, options, emptyLabel, displayValue, onSave }: {
 
 // ==================== USERS ====================
 function UsersTab({ session }: { session: AuthSession }) {
+  const confirmDialog = useConfirm()
   const [users, setUsers] = useState<UserWithAssignment[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -216,7 +218,7 @@ function UsersTab({ session }: { session: AuthSession }) {
   }
 
   const handleDelete = async (u: UserWithAssignment) => {
-    if (!confirm(`Деактивировать ${u.full_name}?`)) return
+    if (!(await confirmDialog(`Деактивировать ${u.full_name}?`, { confirmLabel: 'Деактивировать' }))) return
     await deleteUser(u.user_id); load()
   }
 
@@ -463,6 +465,7 @@ function CrudTab<T extends Record<string, any>>({
   onUpdate: (id: string, item: Partial<T>) => Promise<unknown>
   onDelete: (id: string) => Promise<unknown>
 }) {
+  const confirmDialog = useConfirm()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<T | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
@@ -492,7 +495,7 @@ function CrudTab<T extends Record<string, any>>({
   }
 
   const handleDelete = async (item: T) => {
-    if (!confirm('Удалить?')) return
+    if (!(await confirmDialog('Удалить?', { confirmLabel: 'Удалить' }))) return
     await onDelete(String(item[idKey])); onFetch()
   }
 

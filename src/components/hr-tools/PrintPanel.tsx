@@ -4,6 +4,7 @@ import type { UserWithAssignment, ShiftPhase, Schedule, Service, AuthSession, En
 import { resolveShiftStatus } from '@/lib/shifts'
 import { fetchAllCurrentStatuses } from '@/lib/api-client'
 import { printRoster, printTabel, printCoverage, printStroevaiya } from './printForms'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 type PrintFormType = 'roster' | 'tabel' | 'coverage' | 'stroevaya'
 
@@ -35,6 +36,7 @@ const ROSTER_COLS = [
 ]
 
 export default function PrintPanel({ users, phases, period, services, schedules, session }: Props) {
+  const confirmDialog = useConfirm()
   const [open, setOpen]           = useState(false)
   const [formType, setFormType]   = useState<PrintFormType>('roster')
   const [orgName, setOrgName]     = useState('ГБУ "Горомст"')
@@ -110,7 +112,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
     if (formType === 'tabel')    html = printTabel(users, phases, period, opts)
     if (formType === 'coverage') html = printCoverage(users, phases, period, schedules, opts)
     if (formType === 'stroevaya') {
-      if (!enrichedUsers) { alert('Данные ещё загружаются, попробуйте через секунду'); return }
+      if (!enrichedUsers) { void confirmDialog('Данные ещё загружаются, попробуйте через секунду', { alert: true }); return }
       html = printStroevaiya(enrichedUsers, users, phases, services, {
         orgName,
         dateStr: stroDate,
@@ -128,7 +130,7 @@ export default function PrintPanel({ users, phases, period, services, schedules,
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const win = window.open(url, '_blank')
-    if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
+    if (!win) { URL.revokeObjectURL(url); void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
     win.focus()
     setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
   }

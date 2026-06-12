@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/lib/ThemeContext'
+import { DialogProvider } from '@/components/ConfirmDialog'
 
 export const metadata: Metadata = {
   title: 'Гормост — Система управления работами',
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }} />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <DialogProvider>{children}</DialogProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

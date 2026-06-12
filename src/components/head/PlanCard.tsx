@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement, WorkAssignmentWithUser } from '@/types'
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export default function PlanCard({ plan, session, onRefresh }: Props) {
+  const confirmDialog = useConfirm()
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -97,7 +99,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
 
   // Recall from SUBMITTED → DRAFT for editing
   const handleRecall = async () => {
-    if (!confirm('Отозвать план на доработку? Он вернётся в черновики.')) return
+    if (!(await confirmDialog('Отозвать план на доработку? Он вернётся в черновики.', { confirmLabel: 'Отозвать', danger: false }))) return
     setActing(true)
     try {
       await recallWorkPlan(plan.id, session.user_id)
@@ -109,7 +111,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
 
   // Delete only DRAFT/REJECTED plans
   const handleDelete = async () => {
-    if (!confirm('Удалить план?')) return
+    if (!(await confirmDialog('Удалить план?', { confirmLabel: 'Удалить' }))) return
     setActing(true)
     try {
       await deleteWorkPlan(plan.id, session.user_id)

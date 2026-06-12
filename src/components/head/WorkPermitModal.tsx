@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import type { WorkPlanWithItems, AuthSession, UserWithAssignment } from '@/types'
 import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Russian month names ───────────────────────────────────────────────────
 const RU_MONTHS = [
@@ -511,6 +512,7 @@ interface Props {
 }
 
 export default function WorkPermitModal({ plan, session, onClose, onPermitPrinted }: Props) {
+  const confirmDialog = useConfirm()
   // Theme toggle — default light (print document form)
   const [lightMode, setLightMode] = useState(true)
 
@@ -650,7 +652,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const win = window.open(url, '_blank')
-    if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
+    if (!win) { URL.revokeObjectURL(url); void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
     win.focus()
     setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
     // Mark permit as created in DB

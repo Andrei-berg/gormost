@@ -4,6 +4,7 @@ import type { WorkPlanWithItems, AuthSession, UserWithAssignment, EmployeeStatus
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import { fetchUsersWithAssignments, fetchActiveStatusesOnDate } from '@/lib/api-client'
 import { isWorkerOnDuty, getShiftNumberForDate } from '@/lib/shifts'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Permanent tasks defaults per service ────────────────────────────────────
 
@@ -269,6 +270,7 @@ interface Props {
 }
 
 export default function PlanTaskSheetModal({ plans, session, defaultDate, onClose }: Props) {
+  const confirmDialog = useConfirm()
   const serviceId = session.service_id ?? ''
   const serviceName = SERVICE_NAMES[serviceId] ?? serviceId
 
@@ -383,7 +385,7 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const win = window.open(url, '_blank')
-    if (!win) { URL.revokeObjectURL(url); alert('Разрешите всплывающие окна в браузере'); return }
+    if (!win) { URL.revokeObjectURL(url); void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
     win.focus()
     setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
   }

@@ -16,6 +16,7 @@ import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import WithTooltip from '@/components/help/WithTooltip'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 import DirectiveAlert from '@/components/foreman/DirectiveAlert'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
@@ -388,6 +389,7 @@ function PlanAssignCard({
   compact?: boolean
 }) {
   // Hooks must run unconditionally — keep them above the split-view early return
+  const confirmDialog = useConfirm()
   const [acting, setActing] = useState(false)
 
   // Plan-level progress: sum of required vs assigned across all items
@@ -450,7 +452,7 @@ function PlanAssignCard({
   }
 
   const handleComplete = async () => {
-    if (!confirm('Завершить план работ?')) return
+    if (!(await confirmDialog('Завершить план работ?', { confirmLabel: 'Завершить', danger: false }))) return
     setActing(true)
     await completeWorkPlan(plan.id, session.user_id)
     setActing(false)

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service, ShiftPhase, AuthSession, Schedule } from '@/types'
 import { resolveShiftStatus, isPhaseSchedule, isCustomSchedule, customScheduleLabel } from '@/lib/shifts'
 import { openShiftPhase, closeShiftPhase, deleteShiftPhase, upsertEmployeeAssignment } from '@/lib/api-client'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface Props {
   users: UserWithAssignment[]
@@ -67,6 +68,7 @@ interface DriverRow {
 }
 
 export default function DriversScheduleTab({ users, phases, services, schedules, session, onPhasesChanged }: Props) {
+  const confirmDialog = useConfirm()
   const now = new Date()
   const [year,  setYear]  = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -459,7 +461,7 @@ export default function DriversScheduleTab({ users, phases, services, schedules,
                                     {session && (
                                       <button
                                         onClick={async () => {
-                                          if (confirm(`Удалить фазу ${p.phase === 'day' ? '☀ день' : '🌙 ночь'} (${p.valid_from}→${p.valid_to ?? 'сейчас'})?`)) {
+                                          if (await confirmDialog(`Удалить фазу ${p.phase === 'day' ? '☀ день' : '🌙 ночь'} (${p.valid_from}→${p.valid_to ?? 'сейчас'})?`, { confirmLabel: 'Удалить' })) {
                                             await deleteShiftPhase(p.id, session.user_id)
                                             onPhasesChanged?.()
                                           }

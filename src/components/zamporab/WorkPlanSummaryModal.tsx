@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession } from '@/types'
 import { fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,7 @@ function addDays(d: string, n: number): string {
 }
 
 export default function WorkPlanSummaryModal({ session, onClose }: Props) {
+  const confirmDialog = useConfirm()
   const today = todayStr()
 
   const [dateFrom,   setDateFrom]   = useState(today)
@@ -296,7 +298,7 @@ export default function WorkPlanSummaryModal({ session, onClose }: Props) {
   const handlePrint = () => {
     const html = generateSummaryHTML(plans, dateFrom, dateTo, signerName, signerPos)
     const win = window.open('', '_blank')
-    if (!win) { alert('Разрешите всплывающие окна в браузере'); return }
+    if (!win) { void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
     win.document.write(html)
     win.document.close()
     win.focus()

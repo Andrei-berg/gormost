@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { useState, useMemo } from 'react'
 import type { Vehicle, VehicleStatus, VehicleType, VehicleWithAssignments, User } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
@@ -100,6 +101,7 @@ function VehicleSpecs({ v }: { v: Vehicle }) {
 type ViewMode = 'tiles' | 'table'
 
 export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Props) {
+  const confirmDialog = useConfirm()
   const [statusVehicle, setStatusVehicle] = useState<Vehicle | null>(null)
   const [editVehicle, setEditVehicle]     = useState<Vehicle | null>(null)
   const [showAddForm, setShowAddForm]     = useState(false)
@@ -143,7 +145,7 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
   }, [vehicles])
 
   const handleDelete = async (v: Vehicle) => {
-    if (!confirm(`Удалить «${v.name}» (${v.plate})?`)) return
+    if (!(await confirmDialog(`Удалить «${v.name}» (${v.plate})?`, { confirmLabel: 'Удалить' }))) return
     await deleteVehicle(v.id)
     onRefresh()
   }

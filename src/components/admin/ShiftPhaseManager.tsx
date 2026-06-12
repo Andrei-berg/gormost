@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { useState, useEffect, useCallback } from 'react'
 import type { UserWithAssignment, ShiftPhase, AuthSession } from '@/types'
 import { fetchAllShiftPhases, openShiftPhase, closeShiftPhase, deleteShiftPhase } from '@/lib/api-client'
@@ -18,6 +19,7 @@ const PHASE_COLOR: Record<'day' | 'night', string> = {
 }
 
 export default function ShiftPhaseManager({ users, session, onRefresh, excludeDrivers }: Props) {
+  const confirmDialog = useConfirm()
   const [allPhases, setAllPhases] = useState<ShiftPhase[]>([])
   const [loading, setLoading] = useState(false)
   const [openFormFor, setOpenFormFor] = useState<string | null>(null)
@@ -53,7 +55,7 @@ export default function ShiftPhaseManager({ users, session, onRefresh, excludeDr
   const today = new Date().toISOString().split('T')[0]
 
   const handleDelete = async (phase: ShiftPhase) => {
-    if (!confirm('Удалить запись о фазе?')) return
+    if (!(await confirmDialog('Удалить запись о фазе?', { confirmLabel: 'Удалить' }))) return
     await deleteShiftPhase(phase.id, session.user_id)
     await load()
     onRefresh()
