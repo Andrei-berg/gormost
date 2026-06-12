@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   fetchDirectivesWithWorkers,
   fetchWorkPlans,
-  fetchWorkPlanWithItems,
+  fetchWorkPlansWithItems,
   fetchWorkAssignmentsForItems,
   fetchServiceOrderTypes,
   createDirectiveWithWorkers,
@@ -76,7 +76,7 @@ export default function UrgentOrdersPanel({ session }: { session: AuthSession })
     setDirectives(dirs as DirectiveWithWorkers[])
 
     // Build brigade slots — all workers across active plan items
-    const withItems = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
+    const withItems = await fetchWorkPlansWithItems(rawPlans.map(p => p.id))
     const allItemIds = withItems.flatMap(p => (p?.items ?? []).map(i => i.id))
     const assignments = allItemIds.length > 0
       ? await fetchWorkAssignmentsForItems(allItemIds)

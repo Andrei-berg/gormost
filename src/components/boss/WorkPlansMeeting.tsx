@@ -4,7 +4,7 @@ import type { WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import {
-  fetchWorkPlans, fetchWorkPlanWithItems, confirmWorkPlanBoss,
+  fetchWorkPlans, fetchWorkPlansWithItems, confirmWorkPlanBoss,
 } from '@/lib/api-client'
 
 interface Props {
@@ -21,8 +21,8 @@ export default function WorkPlansMeeting({ session, services }: Props) {
     setLoading(true)
     // Load PLANNED plans (confirmed by zamporab, awaiting boss meeting)
     const raw = await fetchWorkPlans({ statuses: ['PLANNED', 'BOSS_CONFIRMED'] })
-    const full = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(full.filter(Boolean) as WorkPlanWithItems[])
+    const full = await fetchWorkPlansWithItems(raw.map(p => p.id))
+    setPlans(full)
     setLoading(false)
   }, [])
 

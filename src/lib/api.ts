@@ -653,6 +653,42 @@ export async function fetchWorkPlanWithItems(planId: string): Promise<WorkPlanWi
   }
 }
 
+/** Batch variant of fetchWorkPlanWithItems: 4 queries total instead of 4 per plan */
+export async function fetchWorkPlansWithItems(planIds: string[]): Promise<WorkPlanWithItems[]> {
+  if (planIds.length === 0) return []
+  const [plansRes, itemsRes] = await Promise.all([
+    supabase.from('work_plans').select('*').in('id', planIds),
+    supabase.from('work_plan_items').select('*').in('plan_id', planIds).order('sort_order'),
+  ])
+  const plans = (plansRes.data || []) as WorkPlan[]
+  const items = (itemsRes.data || []) as WorkPlanItem[]
+  const itemIds = items.map(i => i.id)
+  const [vaRes, csRes] = await Promise.all([
+    itemIds.length > 0
+      ? supabase.from('vehicle_assignments').select('*, vehicle:vehicles(*)').in('plan_item_id', itemIds)
+      : Promise.resolve({ data: [] }),
+    itemIds.length > 0
+      ? supabase.from('cross_service_requests').select('*').in('from_plan_item_id', itemIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  const allAssignments = (vaRes.data || []) as Array<VehicleAssignment & { vehicle: Vehicle }>
+  const allCrossReqs = (csRes.data || []) as CrossServiceRequest[]
+  const byId = new Map(plans.map(p => [p.id, p]))
+  return planIds
+    .map(id => byId.get(id))
+    .filter((p): p is WorkPlan => p !== undefined)
+    .map(plan => ({
+      ...plan,
+      items: items
+        .filter(i => i.plan_id === plan.id)
+        .map(item => ({
+          ...item,
+          vehicles: allAssignments.filter(a => a.plan_item_id === item.id).map(a => a.vehicle),
+          cross_requests: allCrossReqs.filter(r => r.from_plan_item_id === item.id),
+        })),
+    }))
+}
+
 export async function createWorkPlan(
   data: Pick<WorkPlan, 'service_id' | 'plan_date' | 'shift_type'>,
   userId: string

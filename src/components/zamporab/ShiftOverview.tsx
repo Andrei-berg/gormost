@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import {
-  fetchWorkPlans, fetchWorkPlanWithItems,
+  fetchWorkPlans, fetchWorkPlansWithItems,
   fetchAllCurrentStatuses, fetchServices, fetchUsersWithAssignments,
 } from '@/lib/api-client'
 import type { WorkPlanWithItems, EnrichedEmployee, Service, EmployeeStatusType, UserWithAssignment } from '@/types'
@@ -70,8 +70,7 @@ export default function ShiftOverview() {
       fetchWorkPlans({ planDate: todayStr }),
       fetchUsersWithAssignments(),
     ])
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    const plans = withItems.filter(Boolean) as WorkPlanWithItems[]
+    const plans = await fetchWorkPlansWithItems(raw.map(p => p.id))
 
     const assignmentMap = new Map<string, UserWithAssignment>(
       userAssignments.map(u => [u.user_id, u])

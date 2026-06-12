@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkAssignmentWithUser, Service, AuthSession } from '@/types'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchWorkAssignmentsForItems } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems, fetchWorkAssignmentsForItems } from '@/lib/api-client'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 
 const SERVICE_EMOJI: Record<string, string> = {
@@ -64,8 +64,7 @@ export default function PlanArchive({ session, services }: Props) {
     // Exclude today and future — this is an archive
     const pastPlans = rawPlans.filter(p => p.plan_date < todayStr)
 
-    const full = await Promise.all(pastPlans.map(p => fetchWorkPlanWithItems(p.id)))
-    const validPlans = full.filter(Boolean) as WorkPlanWithItems[]
+    const validPlans = await fetchWorkPlansWithItems(pastPlans.map(p => p.id))
     setPlans(validPlans)
 
     const allItemIds = validPlans.flatMap(p => p.items.map(i => i.id))

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession } from '@/types'
-import { fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -279,8 +279,8 @@ export default function WorkPlanSummaryModal({ session, onClose }: Props) {
         dateTo,
         statuses: ['BOSS_CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'PLANNED'],
       })
-      const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-      setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+      const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
+      setPlans(withItems)
       setLoaded(true)
     } finally {
       setLoading(false)

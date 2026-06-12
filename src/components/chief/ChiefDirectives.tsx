@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   fetchDirectives, createDirective, updateDirectiveStatus,
-  fetchWorkPlans, fetchWorkPlanWithItems, fetchServices,
+  fetchWorkPlans, fetchWorkPlansWithItems, fetchServices,
 } from '@/lib/api-client'
 import type { Directive, WorkPlanWithItems, Service, AuthSession, DirectivePriority } from '@/types'
 import { DIRECTIVE_PRIORITY_CONFIG, DIRECTIVE_STATUS_CONFIG, SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
@@ -29,10 +29,10 @@ export default function ChiefDirectives({ session }: { session: AuthSession }) {
       fetchServices(),
       fetchWorkPlans({ statuses: ['IN_PROGRESS', 'ASSIGNED', 'BOSS_CONFIRMED'] }),
     ])
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
     setDirectives(dirs)
     setServices(svcs)
-    setActivePlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    setActivePlans(withItems)
     setLoading(false)
   }, [])
 

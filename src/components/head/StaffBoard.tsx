@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchAllCurrentStatuses, fetchUsersWithAssignments } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems, fetchAllCurrentStatuses, fetchUsersWithAssignments } from '@/lib/api-client'
 import type { WorkPlanWithItems, EnrichedEmployee, EmployeeStatusType } from '@/types'
 import { EMPLOYEE_STATUS_CONFIG, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
@@ -94,7 +94,7 @@ export default function StaffBoard({ serviceId }: Props) {
       return { ...emp, onDuty }
     })
 
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
     setEmployees(myEmpsWithDuty)
     setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
     setLoading(false)

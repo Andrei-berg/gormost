@@ -335,6 +335,11 @@ export function fetchWorkPlanWithItems(planId: string): Promise<WorkPlanWithItem
   return call('fetchWorkPlanWithItems', [planId])
 }
 
+/** Batch variant: one round trip and 4 DB queries for any number of plans */
+export function fetchWorkPlansWithItems(planIds: string[]): Promise<WorkPlanWithItems[]> {
+  return call('fetchWorkPlansWithItems', [planIds])
+}
+
 export function createWorkPlan(
   data: Pick<WorkPlan, 'service_id' | 'plan_date' | 'shift_type'>,
   userId: string

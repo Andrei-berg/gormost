@@ -12,7 +12,7 @@ import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
 import OverrideModal from '@/components/dispatcher/OverrideModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
-import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlanWithItems } from '@/lib/api-client'
+import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
@@ -63,8 +63,8 @@ function DispatcherContent({ session }: { session: AuthSession }) {
     // Load active plans for override modal
     const today = new Date().toISOString().split('T')[0]
     const rawActivePlans = await fetchWorkPlans({ planDate: today, statuses: ['ASSIGNED', 'IN_PROGRESS', 'BOSS_CONFIRMED', 'FAST_TRACK'] })
-    const withItems = await Promise.all(rawActivePlans.map(p => fetchWorkPlanWithItems(p.id)))
-    setActivePlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    const withItems = await fetchWorkPlansWithItems(rawActivePlans.map(p => p.id))
+    setActivePlans(withItems)
 
     setLastUpdated(new Date())
   }, [filterService])

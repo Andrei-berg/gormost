@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, approveWorkPlan } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems, fetchServices, approveWorkPlan } from '@/lib/api-client'
 import type { WorkPlanWithItems, WorkPlanStatus, Service, AuthSession } from '@/types'
 import ChiefStats from '@/components/chief/ChiefStats'
 import ChiefPlanCard from '@/components/chief/ChiefPlanCard'
@@ -47,8 +47,8 @@ function Content({ session }: { session: AuthSession }) {
   const loadData = useCallback(async () => {
     const [raw, svcs] = await Promise.all([fetchWorkPlans(), fetchServices()])
     setServices(svcs)
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
+    setPlans(withItems)
   }, [])
 
   const { loading, error, reload } = useLoadData(loadData)

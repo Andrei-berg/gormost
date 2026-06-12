@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchServices, fetchUsers } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems, fetchServices, fetchUsers } from '@/lib/api-client'
 import type { WorkPlanWithItems, Service, User } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 
@@ -21,8 +21,8 @@ export default function LiveBoard({ onRefresh }: Props) {
       fetchServices(),
       fetchUsers(true),
     ])
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
+    setPlans(withItems)
     setServices(svcs)
     setUsers(usrs)
     setLoading(false)

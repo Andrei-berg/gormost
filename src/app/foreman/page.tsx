@@ -10,7 +10,7 @@ import RedirectBanner from '@/components/foreman/RedirectBanner'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions,
   fetchWorkTypes, fetchServices, updateRequestStatus,
-  fetchWorkPlans, fetchWorkPlanWithItems, startWorkPlan, completeWorkPlan,
+  fetchWorkPlans, fetchWorkPlansWithItems, startWorkPlan, completeWorkPlan,
   fetchWorkRedirects, fetchUserRequestIds,
 } from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, AuthSession, RequestStatus, WorkPlanWithItems, WorkRedirect } from '@/types'
@@ -61,8 +61,8 @@ function Content({ session }: { session: AuthSession }) {
     setAllRequests(reqs); setCategories(cats); setObjects(objs)
     setConstructions(cons); setWorkTypes(wts); setServices(svcs)
 
-    const plansWithItems = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
-    setMyPlans(plansWithItems.filter(Boolean) as WorkPlanWithItems[])
+    const plansWithItems = await fetchWorkPlansWithItems(rawPlans.map(p => p.id))
+    setMyPlans(plansWithItems)
 
     // Load redirected/suspended plans for this service
     const rawRedirected = await fetchWorkPlans({
@@ -70,8 +70,8 @@ function Content({ session }: { session: AuthSession }) {
       planDate: today,
       statuses: ['REDIRECTED', 'SUSPENDED', 'FAST_TRACK'],
     })
-    const redirectedWithItems = await Promise.all(rawRedirected.map(p => fetchWorkPlanWithItems(p.id)))
-    setRedirectedPlans(redirectedWithItems.filter(Boolean) as WorkPlanWithItems[])
+    const redirectedWithItems = await fetchWorkPlansWithItems(rawRedirected.map(p => p.id))
+    setRedirectedPlans(redirectedWithItems)
 
     // Load redirect records
     const allRedirects = await fetchWorkRedirects()

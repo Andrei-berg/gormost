@@ -5,7 +5,7 @@ import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
 import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 import {
-  fetchWorkPlans, fetchWorkPlanWithItems,
+  fetchWorkPlans, fetchWorkPlansWithItems,
   createWorkPlan, submitWorkPlan,
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
 } from '@/lib/api-client'
@@ -35,8 +35,8 @@ export default function ZamporabOwnPlan({ session, services, refreshAt }: Props)
       serviceId,
       statuses: ['DRAFT', 'REJECTED', 'SUBMITTED'],
     })
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
+    setPlans(withItems)
     setLoading(false)
   }, [serviceId])
 

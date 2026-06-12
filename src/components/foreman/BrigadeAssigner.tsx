@@ -5,7 +5,7 @@ import type {
   WorkAssignmentWithUser, WorkAssignmentRole, Service, AuthSession,
 } from '@/types'
 import {
-  fetchWorkPlans, fetchWorkPlanWithItems,
+  fetchWorkPlans, fetchWorkPlansWithItems,
   fetchWorkAssignmentsForItems, createWorkAssignment, deleteWorkAssignment,
   markWorkPlanAssigned, startWorkPlan, completeWorkPlan,
   fetchUsersWithAssignments,
@@ -68,8 +68,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
       fetchUsersWithAssignments(),
     ])
 
-    const full = await Promise.all(rawPlans.map(p => fetchWorkPlanWithItems(p.id)))
-    const validPlans = full.filter(Boolean) as WorkPlanWithItems[]
+    const validPlans = await fetchWorkPlansWithItems(rawPlans.map(p => p.id))
     setPlans(validPlans)
 
     const onDuty = allUsers.filter(u => {

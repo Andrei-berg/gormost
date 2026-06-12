@@ -8,7 +8,7 @@ import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import {
   fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes,
   fetchServices, fetchUsers, approveRequest,
-  fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests,
+  fetchWorkPlans, fetchWorkPlansWithItems, fetchCrossServiceRequests,
   fetchDriverUsers, fetchVehicles,
   confirmWorkPlanZamporab, approveWorkPlanDirect, returnWorkPlanZamporab,
 } from '@/lib/api-client'
@@ -89,8 +89,8 @@ function Content({ session }: { session: AuthSession }) {
     setOwnPlanVersion(v => v + 1)
 
     const allPending = [...rawApproved, ...rawSubmittedStr]
-    const pendingWithItems = await Promise.all(allPending.map(p => fetchWorkPlanWithItems(p.id)))
-    setPendingPlans(pendingWithItems.filter(Boolean) as WorkPlanWithItems[])
+    const pendingWithItems = await fetchWorkPlansWithItems(allPending.map(p => p.id))
+    setPendingPlans(pendingWithItems)
 
     if (session.service_id) {
       const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })

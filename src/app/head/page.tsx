@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
-import { fetchWorkPlans, fetchWorkPlanWithItems, fetchCrossServiceRequests, fetchServices } from '@/lib/api-client'
+import { fetchWorkPlans, fetchWorkPlansWithItems, fetchCrossServiceRequests, fetchServices } from '@/lib/api-client'
 import type { WorkPlanWithItems, WorkPlan, AuthSession, CrossServiceRequest, Service } from '@/types'
 import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
@@ -56,8 +56,8 @@ function Content({ session }: { session: AuthSession }) {
     ])
     setRawPlans(raw)
     setServices(svcs)
-    const withItems = await Promise.all(raw.map(p => fetchWorkPlanWithItems(p.id)))
-    setPlans(withItems.filter(Boolean) as WorkPlanWithItems[])
+    const withItems = await fetchWorkPlansWithItems(raw.map(p => p.id))
+    setPlans(withItems)
     if (session.service_id) {
       const incoming = await fetchCrossServiceRequests({ toServiceId: session.service_id })
       setIncomingRequests(incoming)
