@@ -2,7 +2,6 @@
 import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service } from '@/types'
 import { resolveShiftStatus, getShiftForDate } from '@/lib/shifts'
-import { useTheme } from '@/lib/ThemeContext'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 
 // Absence types (sick/vacation) require migration 025 — currently only schedule-based
@@ -30,9 +29,6 @@ const SERVICE_EMOJI: Record<string, string> = {
 }
 
 export default function OnDutyMonitor({ users, services }: Props) {
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
-
   const [viewDate, setViewDate] = useState(() => new Date().toISOString().split('T')[0])
   const [filterService, setFilterService] = useState('')
   const [showOffDuty, setShowOffDuty] = useState(false)
@@ -87,28 +83,28 @@ export default function OnDutyMonitor({ users, services }: Props) {
     })
   }
 
-  // ── Theming tokens ─────────────────────────────────────────────────────────
-  const wrapBdr  = isLight ? 'border-gray-200'         : 'border-white/10'
-  const rowBg    = isLight ? 'hover:bg-gray-50'         : 'hover:bg-white/[0.03]'
-  const rowBdr   = isLight ? 'border-gray-100'          : 'border-white/[0.06]'
-  const svcTxt   = isLight ? 'text-gray-800'            : 'text-white/85'
-  const mutedTxt = isLight ? 'text-gray-400'            : 'text-white/30'
-  const dimTxt   = isLight ? 'text-gray-300'            : 'text-white/20'
-  const expandBg = isLight ? 'bg-gray-50'               : 'bg-white/[0.02]'
-  const workerTxt= isLight ? 'text-gray-700'            : 'text-white/75'
-  const posTxt   = isLight ? 'text-gray-400'            : 'text-white/25'
-  const chipBg   = isLight ? 'bg-white border-gray-200' : 'bg-white/3 border-white/[0.07]'
-  const hdrTxt   = isLight ? 'text-gray-900'            : 'text-white'
-  const shiftTxt = isLight ? 'text-gray-400'            : 'text-white/30'
-  const cntGreen = isLight ? 'bg-green-100 text-green-700'  : 'bg-green-500/15 text-green-400'
-  const cntGray  = isLight ? 'bg-gray-100 text-gray-500'    : 'bg-white/5 text-white/30'
+  // Theme handled in CSS: dark classes are canonical, globals.css maps them in light mode
+  const wrapBdr  = 'border-white/10'
+  const rowBg    = 'hover:bg-white/[0.03]'
+  const rowBdr   = 'border-white/[0.06]'
+  const svcTxt   = 'text-white/85'
+  const mutedTxt = 'text-white/30'
+  const dimTxt   = 'text-white/20'
+  const expandBg = 'bg-white/[0.02]'
+  const workerTxt= 'text-white/75'
+  const posTxt   = 'text-white/25'
+  const chipBg   = 'bg-white/3 border-white/[0.07]'
+  const hdrTxt   = 'text-white'
+  const shiftTxt = 'text-white/30'
+  const cntGreen = 'bg-green-500/15 text-green-400'
+  const cntGray  = 'bg-white/5 text-white/30'
 
   return (
     <div className="glass rounded-2xl p-4 space-y-3">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <h3 className={`text-sm font-bold flex items-center gap-2 ${hdrTxt}`}>
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isToday ? 'bg-green-400 animate-pulse' : isLight ? 'bg-gray-300' : 'bg-white/30'}`} />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isToday ? 'bg-green-400 animate-pulse' : 'bg-white/30'}`} />
           {isToday ? 'Кто на смене сейчас' : 'Состав смены на дату'}
         </h3>
         {isToday && (
@@ -142,23 +138,23 @@ export default function OnDutyMonitor({ users, services }: Props) {
       {/* Summary chips */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="glass rounded-xl p-2.5 border border-green-500/25">
-          <div className={`text-xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>{onDuty.length}</div>
+          <div className={`text-xl font-bold text-green-400`}>{onDuty.length}</div>
           <div className={`text-[11px] ${mutedTxt} mt-0.5`}>На смене</div>
         </div>
         <div
-          className={`glass rounded-xl p-2.5 border cursor-pointer transition-colors ${isLight ? 'border-gray-200 hover:border-gray-300' : 'border-white/10 hover:border-white/20'}`}
+          className={`glass rounded-xl p-2.5 border cursor-pointer transition-colors border-white/10 hover:border-white/20`}
           onClick={() => setShowOffDuty(v => !v)}
           title="Нажмите, чтобы показать/скрыть"
         >
           <div className={`text-xl font-bold ${mutedTxt}`}>{offToday.length}</div>
           <div className={`text-[11px] ${dimTxt} mt-0.5`}>Выходной</div>
         </div>
-        <div className={`glass rounded-xl p-2.5 border opacity-40 ${isLight ? 'border-gray-200' : 'border-amber-500/15'}`} title="Будет доступно после migration 025">
-          <div className={`text-xl font-bold ${isLight ? 'text-amber-500' : 'text-amber-400/50'}`}>—</div>
+        <div className={`glass rounded-xl p-2.5 border opacity-40 border-amber-500/15`} title="Будет доступно после migration 025">
+          <div className={`text-xl font-bold text-amber-400/50`}>—</div>
           <div className={`text-[11px] ${dimTxt} mt-0.5`}>Больничный</div>
         </div>
-        <div className={`glass rounded-xl p-2.5 border opacity-40 ${isLight ? 'border-gray-200' : 'border-blue-500/15'}`} title="Будет доступно после migration 025">
-          <div className={`text-xl font-bold ${isLight ? 'text-blue-500' : 'text-blue-400/50'}`}>—</div>
+        <div className={`glass rounded-xl p-2.5 border opacity-40 border-blue-500/15`} title="Будет доступно после migration 025">
+          <div className={`text-xl font-bold text-blue-400/50`}>—</div>
           <div className={`text-[11px] ${dimTxt} mt-0.5`}>Отпуск</div>
         </div>
       </div>
@@ -189,12 +185,12 @@ export default function OnDutyMonitor({ users, services }: Props) {
                   {/* Day/night breakdown */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     {dayCount > 0 && (
-                      <span className={`text-[10px] ${isLight ? 'text-amber-600' : 'text-amber-400/70'}`}>
+                      <span className={`text-[10px] text-amber-400/70`}>
                         ☀ {dayCount}
                       </span>
                     )}
                     {nightCount > 0 && (
-                      <span className={`text-[10px] ${isLight ? 'text-blue-600' : 'text-blue-400/70'}`}>
+                      <span className={`text-[10px] text-blue-400/70`}>
                         🌙 {nightCount}
                       </span>
                     )}
@@ -219,7 +215,7 @@ export default function OnDutyMonitor({ users, services }: Props) {
                       >
                         {e.phase ? (
                           <span
-                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? (isLight ? 'text-amber-500' : 'text-amber-300') : (isLight ? 'text-blue-500' : 'text-blue-300')}`}
+                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? 'text-amber-300' : 'text-blue-300'}`}
                             title={e.shiftStart && e.shiftEnd ? `${e.shiftStart}–${e.shiftEnd}` : undefined}
                           >
                             {e.phase === 'day' ? '☀' : '🌙'}
@@ -243,12 +239,12 @@ export default function OnDutyMonitor({ users, services }: Props) {
           })}
 
           {/* Totals footer row */}
-          <div className={`flex items-center gap-4 px-3 py-2 ${isLight ? 'bg-gray-50' : 'bg-white/[0.02]'}`}>
+          <div className={`flex items-center gap-4 px-3 py-2 bg-white/[0.02]`}>
             <span className={`text-[10px] ${mutedTxt}`}>
-              Итого: <span className={`font-semibold ${isLight ? 'text-gray-600' : 'text-white/60'}`}>{onDuty.length} чел.</span>
+              Итого: <span className={`font-semibold text-white/60`}>{onDuty.length} чел.</span>
             </span>
-            {totalDay > 0 && <span className={`text-[10px] ${isLight ? 'text-amber-600/70' : 'text-amber-300/50'}`}>☀ дн. {totalDay}</span>}
-            {totalNight > 0 && <span className={`text-[10px] ${isLight ? 'text-blue-600/70' : 'text-blue-300/50'}`}>🌙 ноч. {totalNight}</span>}
+            {totalDay > 0 && <span className={`text-[10px] text-amber-300/50`}>☀ дн. {totalDay}</span>}
+            {totalNight > 0 && <span className={`text-[10px] text-blue-300/50`}>🌙 ноч. {totalNight}</span>}
             {onDuty.filter(e => !e.phase).length > 0 && (
               <span className={`text-[10px] ${dimTxt}`}>{onDuty.filter(e => !e.phase).length} без фазы</span>
             )}

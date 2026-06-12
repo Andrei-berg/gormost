@@ -1,7 +1,6 @@
 'use client'
 import { useMemo, useEffect, useState } from 'react'
 import { getShiftForDate, isWorkerOnDuty } from '@/lib/shifts'
-import { useTheme } from '@/lib/ThemeContext'
 import {
   fetchWorkPlans,
   fetchAllCurrentStatuses,
@@ -46,8 +45,6 @@ interface Props {
 }
 
 export default function ShiftRotationStrip({ referenceDate, compact = false }: Props) {
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
   const [stats, setStats] = useState<ShiftStats | null>(null)
 
   const today = useMemo(() => {
@@ -130,37 +127,36 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
   }, [today])
 
   return (
-    <div className="grid grid-cols-[1fr_1.55fr_1fr] gap-2.5">
+    <div className="srs grid grid-cols-[1fr_1.55fr_1fr] gap-2.5">
 
       {/* Yesterday — muted */}
       <div
-        className={`relative rounded-2xl ${p} flex flex-col gap-1 border min-h-[90px]`}
+        className={`srs-past relative rounded-2xl ${p} flex flex-col gap-1 border min-h-[90px]`}
         style={{
-          background: isLight ? '#F8F9FB' : 'rgba(255,255,255,0.025)',
-          borderColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.06)',
-          opacity: isLight ? 0.55 : 0.42,
+          background: 'var(--srs-past-bg)',
+          borderColor: 'var(--srs-past-border)',
         }}
       >
         <div className="flex items-baseline gap-2">
           <span className="font-mono font-bold uppercase tracking-wider"
-            style={{ fontSize: 15, color: isLight ? '#4A5568' : 'rgba(255,255,255,0.7)' }}>
+            style={{ fontSize: 15, color: 'var(--srs-past-text)' }}>
             {DOW_SHORT[yesterday.getDay()]}
           </span>
           <span className="font-mono"
-            style={{ fontSize: 15, color: isLight ? '#8B95A1' : 'rgba(255,255,255,0.5)', opacity: 0.7 }}>
+            style={{ fontSize: 15, color: 'var(--srs-past-muted)', opacity: 0.7 }}>
             {shortDate(yesterday)}
           </span>
         </div>
         <div className="font-mono leading-tight mt-0.5"
-          style={{ fontSize: 22, fontWeight: 500, color: isLight ? '#4A5568' : 'rgba(255,255,255,0.8)' }}>
+          style={{ fontSize: 22, fontWeight: 500, color: 'var(--srs-past-title)' }}>
           {past.shiftName}
         </div>
         <div className="leading-tight mt-1"
-          style={{ fontSize: 16, color: isLight ? '#4A5568' : 'rgba(255,255,255,0.7)' }}>
+          style={{ fontSize: 16, color: 'var(--srs-past-text)' }}>
           {past.chiefName}
         </div>
         <div className="font-mono mt-1"
-          style={{ fontSize: 13, color: isLight ? '#8B95A1' : 'rgba(255,255,255,0.5)' }}>
+          style={{ fontSize: 13, color: 'var(--srs-past-muted)' }}>
           07:30–07:30 · сдана
         </div>
       </div>
@@ -170,13 +166,9 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
         className="relative rounded-2xl flex flex-col border-2"
         style={{
           padding: 20,
-          background: isLight
-            ? 'linear-gradient(180deg, rgba(240,165,0,0.08), rgba(240,165,0,0.03))'
-            : 'radial-gradient(ellipse at top, rgba(240,165,0,.14), transparent 70%), linear-gradient(180deg, rgba(240,165,0,.10), rgba(240,165,0,.04))',
+          background: 'var(--srs-today-bg)',
           borderColor: 'rgba(240,165,0,0.55)',
-          boxShadow: isLight
-            ? '0 0 0 1px rgba(240,165,0,.40), 0 0 20px rgba(240,165,0,.15)'
-            : '0 0 0 1px rgba(240,165,0,.20), 0 0 32px rgba(240,165,0,.18), 0 4px 24px rgba(240,165,0,.15)',
+          boxShadow: 'var(--srs-today-shadow)',
         }}
       >
         {/* СЕЙЧАС badge */}
@@ -188,24 +180,24 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
         {/* Shift header */}
         <div className="flex items-baseline gap-2">
           <span className="font-mono font-black uppercase tracking-wider"
-            style={{ fontSize: 18, color: isLight ? '#8C5A00' : '#F0A500' }}>
+            style={{ fontSize: 18, color: 'var(--srs-accent)' }}>
             {DOW_SHORT[today.getDay()]}
           </span>
           <span className="font-mono font-bold"
-            style={{ fontSize: 18, color: isLight ? '#8C5A00' : 'rgba(240,165,0,0.85)' }}>
+            style={{ fontSize: 18, color: 'var(--srs-accent-soft)' }}>
             {shortDate(today)}
           </span>
         </div>
         <div className="font-mono leading-none mt-0.5"
-          style={{ fontSize: 32, fontWeight: 800, color: isLight ? '#8C5A00' : '#F0A500', letterSpacing: '-0.01em' }}>
+          style={{ fontSize: 32, fontWeight: 800, color: 'var(--srs-accent)', letterSpacing: '-0.01em' }}>
           {now.shiftName}
         </div>
         <div className="font-bold leading-snug mt-1"
-          style={{ fontSize: 20, color: isLight ? '#0D1117' : '#fff' }}>
+          style={{ fontSize: 20, color: 'var(--srs-strong)' }}>
           {now.chiefName}
         </div>
         <div className="font-mono font-medium mt-1"
-          style={{ fontSize: 15, color: isLight ? '#8C5A00' : 'rgba(255,255,255,0.85)' }}>
+          style={{ fontSize: 15, color: 'var(--srs-meta)' }}>
           {dowToday} · 07:30–07:30 · НДС
         </div>
 
@@ -215,18 +207,16 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
             <div className="mt-3 mb-3"
               style={{
                 height: 1,
-                background: isLight
-                  ? 'linear-gradient(90deg, transparent, rgba(240,165,0,0.4), transparent)'
-                  : 'linear-gradient(90deg, transparent, rgba(240,165,0,0.28), transparent)',
+                background: 'var(--srs-divider)',
               }}
             />
-            <StatsPanel stats={stats} isLight={isLight} />
+            <StatsPanel stats={stats} />
           </>
         ) : (
           <div className="mt-3 flex gap-2">
             {[80, 60, 70].map((w, i) => (
               <div key={i} className="rounded animate-pulse"
-                style={{ height: 8, width: w, background: isLight ? 'rgba(140,90,0,0.1)' : 'rgba(240,165,0,0.1)' }} />
+                style={{ height: 8, width: w, background: 'var(--srs-skeleton)' }} />
             ))}
           </div>
         )}
@@ -236,30 +226,30 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
       <div
         className={`relative rounded-2xl ${p} flex flex-col gap-1 border min-h-[90px]`}
         style={{
-          background: isLight ? '#FFFFFF' : 'rgba(56,139,253,0.06)',
-          borderColor: isLight ? 'rgba(56,139,253,0.40)' : 'rgba(56,139,253,0.40)',
+          background: 'var(--srs-next-bg)',
+          borderColor: 'rgba(56,139,253,0.40)',
         }}
       >
         <div className="flex items-baseline gap-2">
           <span className="font-mono font-bold uppercase tracking-wider"
-            style={{ fontSize: 15, color: isLight ? '#1F6FEB' : '#6FB5FF' }}>
+            style={{ fontSize: 15, color: 'var(--srs-next-accent)' }}>
             {DOW_SHORT[tomorrow.getDay()]}
           </span>
           <span className="font-mono"
-            style={{ fontSize: 15, color: isLight ? '#4A5568' : 'rgba(111,181,255,0.75)' }}>
+            style={{ fontSize: 15, color: 'var(--srs-next-date)' }}>
             {shortDate(tomorrow)}
           </span>
         </div>
         <div className="font-mono leading-tight mt-0.5"
-          style={{ fontSize: 22, fontWeight: 500, color: isLight ? '#0D1117' : '#fff' }}>
+          style={{ fontSize: 22, fontWeight: 500, color: 'var(--srs-strong)' }}>
           {next.shiftName}
         </div>
         <div className="leading-tight mt-1"
-          style={{ fontSize: 16, color: isLight ? '#4A5568' : 'rgba(255,255,255,0.9)' }}>
+          style={{ fontSize: 16, color: 'var(--srs-next-text)' }}>
           {next.chiefName}
         </div>
         <div className="font-mono mt-1"
-          style={{ fontSize: 13, color: isLight ? '#4A5568' : 'rgba(255,255,255,0.6)' }}>
+          style={{ fontSize: 13, color: 'var(--srs-next-muted)' }}>
           07:30–07:30 · приёмка
         </div>
       </div>
@@ -270,9 +260,9 @@ export default function ShiftRotationStrip({ referenceDate, compact = false }: P
 
 // ─── Stats panel (plans + staff) ─────────────────────────────────────────────
 
-function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean }) {
-  const labelColor = isLight ? 'rgba(140,90,0,0.55)' : 'rgba(255,255,255,0.32)'
-  const divColor   = isLight ? 'rgba(240,165,0,0.18)' : 'rgba(255,255,255,0.07)'
+function StatsPanel({ stats }: { stats: ShiftStats }) {
+  const labelColor = 'var(--srs-label)'
+  const divColor   = 'var(--srs-div)'
 
   const absences = ABSENCE_ORDER.filter(st => (stats.staff.absent[st] ?? 0) > 0)
 
@@ -287,7 +277,7 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: labelColor, textTransform: 'uppercase' }}>
             Планы
           </span>
-          <span className="font-mono font-bold" style={{ fontSize: 11, color: isLight ? '#8C5A00' : '#F0A500' }}>
+          <span className="font-mono font-bold" style={{ fontSize: 11, color: 'var(--srs-accent)' }}>
             {stats.plans.total} план{pluralPlan(stats.plans.total)}
           </span>
         </div>
@@ -314,13 +304,13 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
               <div key={svcId} className="flex items-center gap-1.5" style={{ opacity: isEmpty ? 0.28 : 1 }}>
                 <span style={{ fontSize: 13, width: 18, lineHeight: 1, flexShrink: 0 }}>{meta?.emoji}</span>
                 <span style={{
-                  fontSize: 11, color: isLight ? 'rgba(140,90,0,0.7)' : 'rgba(255,255,255,0.45)',
+                  fontSize: 11, color: 'var(--srs-svc)',
                   width: 34, flexShrink: 0, whiteSpace: 'nowrap',
                 }}>
                   {SVC_SHORT[svcId]}
                 </span>
                 <span className="font-mono font-bold" style={{
-                  fontSize: 13, color: isLight ? '#0D1117' : '#fff',
+                  fontSize: 13, color: 'var(--srs-strong)',
                   width: 14, flexShrink: 0, textAlign: 'right',
                 }}>
                   {isEmpty ? '—' : svc.total}
@@ -349,7 +339,7 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
                     </span>
                   )}
                   {!isEmpty && svc.active === 0 && svc.done === 0 && (
-                    <span style={{ fontSize: 9, color: isLight ? 'rgba(140,90,0,0.35)' : 'rgba(255,255,255,0.2)' }}>
+                    <span style={{ fontSize: 9, color: 'var(--srs-wait)' }}>
                       ожид.
                     </span>
                   )}
@@ -367,7 +357,7 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
               width: 6, height: 6, borderRadius: '50%',
               background: '#22c55e', boxShadow: '0 0 5px rgba(34,197,94,0.6)', flexShrink: 0,
             }} />
-            <span style={{ fontSize: 10, color: isLight ? 'rgba(140,90,0,0.65)' : 'rgba(255,255,255,0.45)' }}>
+            <span style={{ fontSize: 10, color: 'var(--srs-deployed-label)' }}>
               задействовано
             </span>
             <span className="font-mono font-bold ml-auto"
@@ -387,7 +377,7 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: labelColor, textTransform: 'uppercase' }}>
             Смена
           </span>
-          <span className="font-mono font-bold" style={{ fontSize: 11, color: isLight ? '#8C5A00' : '#F0A500' }}>
+          <span className="font-mono font-bold" style={{ fontSize: 11, color: 'var(--srs-accent)' }}>
             {stats.staff.total} чел.
           </span>
         </div>
@@ -395,9 +385,9 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
         {/* Primary metrics */}
         <div className="flex flex-col gap-1.5">
           <StaffRow label="На смене" count={stats.staff.scheduledToday}
-            color="#F0A500" isLight={isLight} glow />
+            color="#F0A500" glow />
           <StaffRow label="На работе" count={stats.staff.onDuty}
-            color="#22c55e" isLight={isLight} />
+            color="#22c55e" />
         </div>
 
         {/* Absences */}
@@ -411,7 +401,6 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
                   label={EMPLOYEE_STATUS_CONFIG[st].label}
                   count={stats.staff.absent[st]!}
                   color={EMPLOYEE_STATUS_CONFIG[st].color}
-                  isLight={isLight}
                 />
               ))}
             </div>
@@ -424,11 +413,11 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
           return (
             <div className="mt-2 pt-2 flex items-center"
               style={{ borderTop: `1px solid ${divColor}` }}>
-              <span style={{ fontSize: 10, color: isLight ? 'rgba(140,90,0,0.5)' : 'rgba(255,255,255,0.3)' }}>
+              <span style={{ fontSize: 10, color: 'var(--srs-absent-label)' }}>
                 отсутствует
               </span>
               <span className="font-mono font-bold ml-auto"
-                style={{ fontSize: 13, color: isLight ? '#8C5A00' : 'rgba(255,255,255,0.6)' }}>
+                style={{ fontSize: 13, color: 'var(--srs-absent-total)' }}>
                 {total}
               </span>
             </div>
@@ -440,8 +429,8 @@ function StatsPanel({ stats, isLight }: { stats: ShiftStats; isLight: boolean })
   )
 }
 
-function StaffRow({ label, count, color, isLight, glow = false }: {
-  label: string; count: number; color: string; isLight: boolean; glow?: boolean
+function StaffRow({ label, count, color, glow = false }: {
+  label: string; count: number; color: string; glow?: boolean
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -452,13 +441,13 @@ function StaffRow({ label, count, color, isLight, glow = false }: {
       }} />
       <span style={{
         fontSize: 11,
-        color: isLight ? 'rgba(140,90,0,0.75)' : 'rgba(255,255,255,0.55)',
+        color: 'var(--srs-staffrow-label)',
         flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {label}
       </span>
       <span className="font-mono font-bold flex-shrink-0"
-        style={{ fontSize: 13, color: isLight ? '#0D1117' : '#fff' }}>
+        style={{ fontSize: 13, color: 'var(--srs-strong)' }}>
         {count}
       </span>
     </div>

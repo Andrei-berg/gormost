@@ -75,7 +75,6 @@ const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
 export default function HomePage() {
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
-  const isLight = theme === 'light'
   const [session, setSession] = useState<AuthSession | null>(null)
   const [now, setNow] = useState(new Date())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -111,8 +110,8 @@ export default function HomePage() {
 
   const handleLogout = () => { logout(); router.replace('/login') }
 
-  const muted = isLight ? 'rgba(50,51,56,0.40)' : 'rgba(255,255,255,0.40)'
-  const subtle = isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.05)'
+  const muted = 'var(--text-muted)'
+  const subtle = 'var(--border)'
 
   return (
     <div className="min-h-screen p-4 sm:p-6">
@@ -198,7 +197,7 @@ export default function HomePage() {
               {shift.shiftName.toUpperCase()}
             </span>
             <div className="text-[11px] mt-1" style={{ color: muted }}>
-              НДС: <span className="font-semibold" style={{ color: isLight ? '#323338' : '#fff' }}>{shift.chiefName}</span>
+              НДС: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{shift.chiefName}</span>
             </div>
           </div>
 
@@ -223,11 +222,11 @@ export default function HomePage() {
         {/* ── USER BAR ── */}
         <div
           className="flex items-center gap-3 px-4 py-2 rounded-xl text-[12px]"
-          style={{ background: isLight ? 'rgba(15,23,42,0.025)' : 'rgba(255,255,255,0.03)', border: `1px solid ${subtle}`, color: muted }}
+          style={{ background: 'var(--bg-subtle)', border: `1px solid ${subtle}`, color: muted }}
         >
           <span>
             Вы вошли как{' '}
-            <span className="font-semibold" style={{ color: isLight ? '#323338' : '#fff' }}>
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
               {session.full_name}
             </span>
           </span>
@@ -243,7 +242,7 @@ export default function HomePage() {
 
         {/* ── SHIFT ROTATION STRIP ── */}
         <div>
-          <SectionEyebrow isLight={isLight}>Ротация смен</SectionEyebrow>
+          <SectionEyebrow>Ротация смен</SectionEyebrow>
           <ShiftRotationStrip />
         </div>
 
@@ -273,7 +272,7 @@ export default function HomePage() {
           if (panels.length === 0) return null
           return (
             <div key={group}>
-              <SectionEyebrow isLight={isLight}>{group}</SectionEyebrow>
+              <SectionEyebrow>{group}</SectionEyebrow>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {panels.map(p => {
                   const m = HOME_META[p.id]
@@ -285,7 +284,6 @@ export default function HomePage() {
                       status={live.status ?? m?.status}
                       pill={live.pill}
                       accentColor={m?.accentColor}
-                      isLight={isLight}
                       onClick={() => router.push(p.path)}
                     />
                   )
@@ -299,7 +297,7 @@ export default function HomePage() {
         <div
           className="flex items-center gap-4 px-4 py-2.5 rounded-xl font-mono text-[11px]"
           style={{
-            background: isLight ? 'rgba(15,23,42,0.04)' : 'rgba(0,0,0,0.20)',
+            background: 'var(--bg-inset)',
             border: `1px solid ${subtle}`,
             color: muted,
             letterSpacing: '0.02em',
@@ -323,12 +321,9 @@ export default function HomePage() {
   )
 }
 
-function SectionEyebrow({ isLight, children }: { isLight: boolean; children: React.ReactNode }) {
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="text-[11px] uppercase tracking-widest font-bold px-1 mb-2"
-      style={{ color: isLight ? 'rgba(50,51,56,0.40)' : 'rgba(255,255,255,0.40)' }}
-    >
+    <div className="text-[11px] uppercase tracking-widest font-bold px-1 mb-2 text-white/40">
       {children}
     </div>
   )

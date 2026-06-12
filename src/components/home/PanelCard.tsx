@@ -6,12 +6,11 @@ interface Props {
   status?: 'live' | 'warn' | 'crit'
   pill?: string
   accentColor?: string
-  isLight: boolean
   disabled?: boolean
   onClick: () => void
 }
 
-export default function PanelCard({ panel, status, pill, accentColor = '#F0A500', isLight, disabled, onClick }: Props) {
+export default function PanelCard({ panel, status, pill, accentColor = '#F0A500', disabled, onClick }: Props) {
   const color = accentColor
 
   const borderColor = status === 'warn'
@@ -20,10 +19,6 @@ export default function PanelCard({ panel, status, pill, accentColor = '#F0A500'
     ? 'rgba(248,81,73,0.25)'
     : status === 'live'
     ? 'rgba(63,185,80,0.30)'
-    : undefined
-
-  const cardBg = status === 'crit' && !isLight
-    ? 'linear-gradient(135deg, rgba(248,81,73,0.07), rgba(255,255,255,0.06))'
     : undefined
 
   const pillCls =
@@ -39,34 +34,31 @@ export default function PanelCard({ panel, status, pill, accentColor = '#F0A500'
         className="glass rounded-2xl p-[22px] flex flex-col gap-3.5 min-h-[180px] opacity-35 pointer-events-none"
         style={{ borderColor: borderColor ?? undefined }}
       >
-        <CardBody panel={panel} status={status} pill={pill} pillCls={pillCls} color={color} isLight={isLight} disabled />
+        <CardBody panel={panel} status={status} pill={pill} pillCls={pillCls} color={color} disabled />
       </div>
     )
   }
 
   return (
     <div
-      className="home-panel-card glass rounded-2xl p-[22px] flex flex-col gap-3.5 cursor-pointer min-h-[180px]"
+      className={`home-panel-card glass rounded-2xl p-[22px] flex flex-col gap-3.5 cursor-pointer min-h-[180px] ${status === 'crit' ? 'panel-card-crit' : ''}`}
       onClick={onClick}
       style={{
         borderColor: borderColor ?? undefined,
-        background: cardBg ?? undefined,
-        borderTopColor: isLight ? color : undefined,
-        borderTopWidth: isLight ? '2px' : undefined,
-      }}
+        '--card-accent': color,
+      } as React.CSSProperties}
     >
-      <CardBody panel={panel} status={status} pill={pill} pillCls={pillCls} color={color} isLight={isLight} />
+      <CardBody panel={panel} status={status} pill={pill} pillCls={pillCls} color={color} />
     </div>
   )
 }
 
-function CardBody({ panel, status, pill, pillCls, color, isLight, disabled }: {
+function CardBody({ panel, status, pill, pillCls, color, disabled }: {
   panel: PanelConfig
   status?: 'live' | 'warn' | 'crit'
   pill?: string
   pillCls: string
   color: string
-  isLight: boolean
   disabled?: boolean
 }) {
   return (
@@ -96,8 +88,7 @@ function CardBody({ panel, status, pill, pillCls, color, isLight, disabled }: {
         <div className="text-[18px] font-bold leading-tight tracking-tight" style={{ letterSpacing: '-0.01em' }}>
           {panel.title}
         </div>
-        <div className="text-[12.5px] mt-1 leading-[1.45]"
-          style={{ color: isLight ? 'rgba(50,51,56,0.55)' : 'rgba(255,255,255,0.55)' }}>
+        <div className="text-[12.5px] mt-1 leading-[1.45] text-white/55">
           {panel.subtitle}
         </div>
       </div>
@@ -105,7 +96,7 @@ function CardBody({ panel, status, pill, pillCls, color, isLight, disabled }: {
       {/* Footer: role + pill + arrow */}
       <div className="mt-auto flex items-end justify-between gap-2">
         <div>
-          <div className="text-[11px]" style={{ color: isLight ? 'rgba(50,51,56,0.40)' : 'rgba(255,255,255,0.40)' }}>
+          <div className="text-[11px] text-white/40">
             {panel.roleLabel}
           </div>
           {pill && (
