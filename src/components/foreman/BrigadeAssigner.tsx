@@ -387,25 +387,7 @@ function PlanAssignCard({
   onRefresh: () => Promise<void>
   compact?: boolean
 }) {
-  // Split-view for BOSS_CONFIRMED — full interactive layout
-  if (['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)) {
-    return (
-      <SplitViewPlanCard
-        plan={plan}
-        services={services}
-        serviceWorkers={serviceWorkers}
-        itemAssignmentsMap={itemAssignmentsMap}
-        workerBusyMap={workerBusyMap}
-        workerFilter={workerFilter}
-        session={session}
-        onRefresh={onRefresh}
-      />
-    )
-  }
-  const svc = services.find(s => s.service_id === plan.service_id)
-  const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
-  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
-  const canAssign = plan.status === 'ASSIGNED'
+  // Hooks must run unconditionally — keep them above the split-view early return
   const [acting, setActing] = useState(false)
 
   // Plan-level progress: sum of required vs assigned across all items
@@ -432,6 +414,26 @@ function PlanAssignCard({
 
     return { totalRequired, totalAssigned, deficit, pct, totalReqWorkers, totalReqForemen, assignedWorkers, assignedForemen }
   }, [plan.items, itemAssignmentsMap])
+
+  // Split-view for BOSS_CONFIRMED — full interactive layout
+  if (['SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)) {
+    return (
+      <SplitViewPlanCard
+        plan={plan}
+        services={services}
+        serviceWorkers={serviceWorkers}
+        itemAssignmentsMap={itemAssignmentsMap}
+        workerBusyMap={workerBusyMap}
+        workerFilter={workerFilter}
+        session={session}
+        onRefresh={onRefresh}
+      />
+    )
+  }
+  const svc = services.find(s => s.service_id === plan.service_id)
+  const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
+  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День' : '🌙 Ночь'
+  const canAssign = plan.status === 'ASSIGNED'
 
   const handleMarkAssigned = async () => {
     setActing(true)

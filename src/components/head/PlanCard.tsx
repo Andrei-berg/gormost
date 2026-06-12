@@ -443,7 +443,7 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
                   <span className="font-medium">{toMeta?.emoji ?? ''} {SERVICE_NAMES[r.to_service_id] ?? r.to_service_id}</span>
                   <span className="opacity-70">· {r.needed_count} чел.</span>
                   <span className="font-semibold">· {cfg.label}</span>
-                  {r.response_note && <span className="opacity-60 ml-1">"{r.response_note}"</span>}
+                  {r.response_note && <span className="opacity-60 ml-1">«{r.response_note}»</span>}
                 </div>
               )
             })}
