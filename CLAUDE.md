@@ -23,7 +23,7 @@ npm run dev          # local dev server (http://localhost:3000)
 npm run build        # production build — MUST pass before any commit
 npm run test         # run tests (Vitest) — MUST pass before any commit
 npm run test:watch   # run tests in watch mode during development
-npm run lint         # check for linting errors
+npm run lint         # ESLint (flat config) — 0 errors required; 47 warnings = baseline, do not grow it
 npx tsc --noEmit     # TypeScript check without compilation
 ```
 
@@ -39,6 +39,7 @@ npx tsc --noEmit     # TypeScript check without compilation
 - Use `npm run test:watch` during development for instant feedback
 - Test files live next to the source file: `src/lib/foo.ts` → `src/lib/foo.test.ts`
 - Tests cover core business logic only (shift calculations, scheduling rules, data transforms) — not UI components or API calls
+- Current suite: 63 tests — `shifts.test.ts` (30), `timesheet.test.ts` (22), `export1c.test.ts` (11)
 
 ### Component Architecture (follow this every time)
 Goal: add/remove features without rewriting code.
@@ -59,6 +60,9 @@ Rules for all pages:
 - Each UI section = separate file in `src/components/[panel]/`
 - Add feature = new component + 1 import in page.tsx
 - Remove feature = delete import + file
+- Loading/errors: wrap loadData with `useLoadData` (src/lib/useLoadData.ts) → `{ loading, error, reload }`;
+  refresh callbacks and mutations call `reload`, never raw loadData; render `PanelLoader` / `DataErrorBanner`
+- Confirmations/notices: `useConfirm()` from `src/components/ConfirmDialog.tsx` — never window.confirm/alert
 
 ### Database
 - Agent CAN create SQL migration files in `supabase/migrations/`
@@ -73,6 +77,21 @@ Rules for all pages:
 - `approved_by_head: string | null` — stores user_id (string)
 - `approved_by_zamporab: boolean | null` — boolean value
 - `approved_by_boss: boolean | null` — boolean value
+
+### API & Auth (since 2026-06-12)
+- `/api/db` is the single RPC endpoint: client calls go through `api-client.ts` → POST `{fn, args}`;
+  it requires the `gormost_token` httpOnly cookie (set by `/api/auth/login`), and sensitive
+  functions are gated by the `ROLE_RESTRICTED` map in `src/app/api/db/route.ts`
+- Loading lists of work plans: use `fetchWorkPlansWithItems(ids)` (batch); the single-plan
+  variant is for single-plan modals only — never call it in a loop
+
+### Theming
+- Dark theme is the default; dark utility classes are canonical in components
+- Light mode lives ONLY in CSS: the override layer + CSS tokens in `globals.css`
+  (`--bg-card`, `--text-primary`, …). Never write `isLight ? … : …` in JS
+- Non-multiple-of-5 alpha modifiers (`bg-white/3`) require BOTH the `opacity` scale entry in
+  `tailwind.config.ts` AND a light-mode override rule in globals.css; bracket form
+  (`bg-white/[0.03]`) is a different class name and needs its own override
 
 ### Git Workflow
 - `main` branch must always be deployable (colleagues see the demo)
@@ -160,10 +179,17 @@ After boss confirms plans, the site foreman:
 5. Starts work in the morning → IN_PROGRESS
 
 ## Key Files
-- `src/lib/api.ts` — all Supabase queries (fetch/create/update/approve/assign)
-- `src/lib/auth.ts` — loginWithPin, getSession, logout, hasRole
+- `src/lib/api/` — all Supabase queries, 11 domain modules (users, catalog, requests, stats, hr,
+  plans, vehicles, shift-data, safety, auth, alerts); `src/lib/api.ts` is a barrel re-export —
+  /api/db dispatches RPC by exported name, so new functions are picked up automatically
+- `src/lib/api-client.ts` — typed client wrappers (one per api function, kept in sync MANUALLY)
+- `src/lib/useLoadData.ts` — loading/error hook for all panel pages
+- `src/lib/session-token.ts` — HMAC session tokens for the httpOnly auth cookie
+- `src/lib/auth.ts` — loginWithPin, getSession, logout, hasRole (client side)
 - `src/lib/shifts.ts` — shift calculation + `isWorkerOnDuty()` for all schedule types
 - `src/types/index.ts` — all TypeScript types + STATUS_CONFIG, PANELS, SERVICE_META
+- `src/components/ConfirmDialog.tsx` — DialogProvider + useConfirm() (replaces window.confirm/alert)
+- `src/components/DataState.tsx` — PanelLoader skeleton + DataErrorBanner
 - `src/components/Header.tsx` — navigation header (hamburger menu)
 - `src/components/KanbanBoard.tsx` — kanban board (shared across panels)
 - `src/components/RequestModal.tsx` — request create/edit modal
@@ -213,7 +239,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Active development, not in production use
 - Used for internal demos to colleagues
 - Main branch = demo-ready at all times
-- **Pending:** run migration 012 in Supabase SQL Editor
-- **Pending:** fill employee shift assignments in Admin → Смены
-- **Pending:** add required workers/vehicles fields to plan item form (head panel)
-- **Pending:** print templates for work orders (waiting for documents)
+- **Pending in Supabase SQL Editor:** `038_status_metadata.sql`, `041_directive_worker_assignments.sql`
+- June 2026 overhaul complete: api split into domain modules, httpOnly auth on /api/db,
+  unified loading/error handling, CSS-token theming (dark default), batch plan loading,
+  ConfirmDialog, lint baseline 0 errors / 47 warnings, 63 tests
