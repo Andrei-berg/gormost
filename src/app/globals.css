@@ -349,6 +349,26 @@ html:not(.dark) .text-amber-300\/50 { color: rgba(217,119,6,0.75); }
 html:not(.dark) .text-blue-400\/50  { color: #0073ea; }
 html:not(.dark) .text-blue-400\/70  { color: #2563eb; }
 html:not(.dark) .text-blue-300\/50  { color: rgba(37,99,235,0.75); }
+html:not(.dark) .text-red-400\/60   { color: rgba(200,54,77,0.75); }
+html:not(.dark) .text-green-400\/60 { color: rgba(0,154,91,0.78); }
+html:not(.dark) .text-violet-400\/60 { color: rgba(124,58,237,0.78); }
+html:not(.dark) .text-amber-300\/70  { color: rgba(217,119,6,0.85); }
+html:not(.dark) .border-red-500\/15  { border-color: rgba(226,68,92,0.25); }
+html:not(.dark) .hover\:bg-red-500\/20:hover { background-color: rgba(226,68,92,0.16); }
+
+/* ── Dark-canonical surfaces used by planner & co ── */
+html:not(.dark) .bg-black\/25       { background-color: #f3f4f6; }
+html:not(.dark) .bg-black\/40       { background-color: #f9fafb; }
+html:not(.dark) .bg-\[\#0d1117\]    { background-color: #ffffff; }
+html:not(.dark) .bg-amber-500\/10   { background-color: rgba(253,171,61,0.12); }
+html:not(.dark) .bg-amber-500\/25   { background-color: rgba(253,171,61,0.22); }
+html:not(.dark) .bg-blue-500\/25    { background-color: rgba(0,115,234,0.16); }
+html:not(.dark) .bg-amber-400\/50   { background-color: rgba(245,158,11,0.45); }
+html:not(.dark) .border-amber-400\/50 { border-color: rgba(245,158,11,0.45); }
+html:not(.dark) .border-amber-500\/40 { border-color: rgba(253,171,61,0.50); }
+html:not(.dark) .border-blue-500\/40  { border-color: rgba(0,115,234,0.45); }
+html:not(.dark) .border-l-white\/40 { border-left-color: #9ca3af; }
+html:not(.dark) .border-l-white\/20 { border-left-color: #d1d5db; }
 
 /* ── Colored borders — clean on white ── */
 html:not(.dark) .border-red-500\/30   { border-color: rgba(226,68,92,0.32); }

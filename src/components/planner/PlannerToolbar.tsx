@@ -23,7 +23,6 @@ interface Props {
   showSettings: boolean
   onSettingsToggle: () => void
   onRefresh: () => void
-  isLight: boolean
 }
 
 export default function PlannerToolbar({
@@ -32,7 +31,6 @@ export default function PlannerToolbar({
   mode, canEdit, onModeToggle,
   showSettings, onSettingsToggle,
   onRefresh,
-  isLight,
 }: Props) {
   const scheduleCodes = [...new Set(schedules.map(s => s.code))].sort()
 
@@ -48,22 +46,20 @@ export default function PlannerToolbar({
   }
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
-  const pillBg   = isLight ? 'bg-white border-gray-200'   : 'bg-white/5 border-white/10'
-  const segBg    = isLight ? 'bg-gray-100'                : 'bg-white/[0.05]'
-  const segOn    = isLight ? 'bg-white text-gray-800 shadow-sm' : 'bg-white/10 text-white font-semibold'
-  const segOff   = isLight ? 'text-gray-400 hover:text-gray-600' : 'text-white/40 hover:text-white/70'
-  const navBtn   = isLight ? 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
-  const monthPill = isLight ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-white/5 border-white/10 text-white/80'
+  const pillBg   = 'bg-white/5 border-white/10'
+  const segBg    = 'bg-white/[0.05]'
+  const segOn    = 'bg-white/10 text-white font-semibold'
+  const segOff   = 'text-white/40 hover:text-white/70'
+  const navBtn   = 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+  const monthPill = 'bg-white/5 border-white/10 text-white/80'
   const todayBtn = 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-  const iconBtn  = isLight ? 'bg-gray-100 border-gray-200 text-gray-400 hover:text-gray-600' : 'bg-white/5 border-white/10 text-white/35 hover:text-white/70'
-  const inputCls = isLight
-    ? 'bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:border-amber-400 min-w-0'
-    : 'bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white/80 focus:outline-none focus:border-amber-500/50 placeholder-white/25 min-w-0'
+  const iconBtn  = 'bg-white/5 border-white/10 text-white/35 hover:text-white/70'
+  const inputCls = 'bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white/80 focus:outline-none focus:border-amber-500/50 placeholder-white/25 min-w-0'
   const selectCls = inputCls
-  const countPill = isLight ? 'bg-gray-50 border border-gray-200 text-gray-500' : 'bg-white/5 border border-white/10 text-white/40'
+  const countPill = 'bg-white/5 border border-white/10 text-white/40'
 
   return (
-    <div className={`rounded-2xl border ${isLight ? 'bg-white/85 border-gray-200' : 'bg-white/5 border-white/10'} p-3 space-y-2.5`}>
+    <div className={`rounded-2xl border bg-white/5 border-white/10 p-3 space-y-2.5`}>
 
       {/* ── Row 1: Controls ── */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -134,7 +130,7 @@ export default function PlannerToolbar({
             onClick={onSettingsToggle}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors ${
               showSettings
-                ? isLight ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-white/15 border-white/20 text-white'
+                ? 'bg-white/15 border-white/20 text-white'
                 : iconBtn
             }`}
             title="Настройки"
@@ -174,7 +170,7 @@ export default function PlannerToolbar({
       <div className="flex items-center gap-2 flex-wrap">
         {/* Search */}
         <div className="relative flex-1 min-w-[160px] max-w-[280px]">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: isLight ? '#9ca3af' : 'rgba(255,255,255,0.25)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           <input
             type="text"
             placeholder="Поиск по имени…"
@@ -206,7 +202,7 @@ export default function PlannerToolbar({
       </div>
 
       {/* ── Row 3: Legend ── */}
-      <div className={`flex items-center gap-3 flex-wrap text-[11px] ${isLight ? 'text-gray-400' : 'text-white/30'}`}>
+      <div className={`flex items-center gap-3 flex-wrap text-[11px] text-white/30`}>
         <span className="flex items-center gap-1.5">
           <span className="w-3.5 h-3.5 rounded-sm inline-block flex-shrink-0" style={{ background: 'rgba(249,115,22,0.85)' }} />
           день (авто)
@@ -223,7 +219,7 @@ export default function PlannerToolbar({
           <span className="w-3.5 h-3.5 rounded-sm inline-block flex-shrink-0" style={{ background: 'rgba(111,168,255,0.92)', outline: '1px dashed rgba(255,255,255,0.5)', outlineOffset: -2 }} />
           ночь (вручную)
         </span>
-        <span className={`w-px h-3.5 ${isLight ? 'bg-gray-200' : 'bg-white/10'} mx-1`} />
+        <span className={`w-px h-3.5 bg-white/10 mx-1`} />
         <span className="flex items-center gap-1.5">
           <span className="w-7 h-2 rounded-sm inline-block flex-shrink-0 bg-amber-500/35" />
           фаза день
@@ -233,7 +229,7 @@ export default function PlannerToolbar({
           фаза ночь
         </span>
         {mode === 'edit' && (
-          <span className={`ml-auto ${isLight ? 'text-green-700/70' : 'text-green-400/60'}`}>
+          <span className={`ml-auto text-green-400/60`}>
             Клик по ячейке — ручная правка · Клик по полоске — редактор фаз · ✎ — назначить график
           </span>
         )}

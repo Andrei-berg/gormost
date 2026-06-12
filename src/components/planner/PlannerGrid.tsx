@@ -49,7 +49,6 @@ interface Props {
   phaseEditorState: PhaseEditorState | null
   scheduleEditorState: ScheduleEditorState | null
   savingKey: string | null
-  isLight: boolean
   selectedUserId: string | null
   onCellApply: (user: UserWithAssignment, date: Date, value: 'I' | 'II' | 'OFF' | null) => void
   onUserClick: (user: UserWithAssignment) => void
@@ -65,7 +64,7 @@ interface Props {
 
 export default function PlannerGrid({
   users, services, schedules, phases, manualShifts, days, settings, mode, canEdit, session,
-  phaseEditorState, scheduleEditorState, savingKey, isLight, selectedUserId,
+  phaseEditorState, scheduleEditorState, savingKey, selectedUserId,
   onCellApply, onUserClick, onPhaseStripClick, onScheduleEditClick,
   onPhaseEditorClose, onPhaseEditorSaved,
   onScheduleEditorClose, onScheduleEditorSaved,
@@ -168,31 +167,31 @@ export default function PlannerGrid({
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
   const t = {
-    border:    isLight ? 'border-gray-200'      : 'border-white/10',
-    hdrBg:     isLight ? 'bg-gray-50'           : 'bg-black/40',
-    hdrTxt:    isLight ? 'text-gray-400'        : 'text-white/35',
-    rowHover:  isLight ? 'hover:bg-gray-50'     : 'hover:bg-white/[0.02]',
-    nameCol:   isLight ? 'bg-white border-gray-100'       : 'bg-transparent border-white/[0.04]',
-    stickyBg:  isLight ? 'bg-white'             : 'bg-[#0d1117]',
-    svcBar:    isLight ? 'bg-gray-100'           : 'bg-black/25',
-    svcTxt:    isLight ? 'text-gray-500'         : 'text-white/50',
-    rowBdr:    isLight ? 'border-gray-100'       : 'border-white/[0.04]',
-    nameTxt:   isLight ? 'text-gray-800'         : 'text-white/85',
-    mutedTxt:  isLight ? 'text-gray-400'         : 'text-white/35',
-    dimTxt:    isLight ? 'text-gray-300'         : 'text-white/20',
-    totalBdr:  isLight ? 'border-gray-200'       : 'border-white/10',
-    weBg:      isLight ? 'bg-gray-50'            : 'bg-white/[0.01]',
-    todayBg:   isLight ? 'bg-amber-50'           : 'bg-amber-500/10',
-    todayBdr:  isLight ? 'border-amber-300/60'   : 'border-amber-400/50',
-    gridLine:  isLight ? 'border-gray-100'       : 'border-white/5',
-    editBtn:   isLight ? 'text-gray-200 hover:text-gray-500' : 'text-white/10 hover:text-white/60',
-    phaseLbl:  isLight ? 'text-gray-300 italic'  : 'text-white/15 italic',
-    phaseStart: isLight ? 'border-l-gray-400'    : 'border-l-white/40',
-    mbBorder:  isLight ? 'border-l-gray-300'     : 'border-l-white/20',
-    cycTxt:    isLight ? 'text-violet-600/80'    : 'text-violet-400/60',
-    normSched: isLight ? 'text-gray-400'         : 'text-white/30',
-    sumTxt:    isLight ? 'text-gray-600'         : 'text-white/50',
-    warningTxt: isLight ? 'text-amber-500'       : 'text-amber-400',
+    border:    'border-white/10',
+    hdrBg:     'bg-black/40',
+    hdrTxt:    'text-white/35',
+    rowHover:  'hover:bg-white/[0.02]',
+    nameCol:   'bg-transparent border-white/[0.04]',
+    stickyBg:  'bg-[#0d1117]',
+    svcBar:    'bg-black/25',
+    svcTxt:    'text-white/50',
+    rowBdr:    'border-white/[0.04]',
+    nameTxt:   'text-white/85',
+    mutedTxt:  'text-white/35',
+    dimTxt:    'text-white/20',
+    totalBdr:  'border-white/10',
+    weBg:      'bg-white/[0.01]',
+    todayBg:   'bg-amber-500/10',
+    todayBdr:  'border-amber-400/50',
+    gridLine:  'border-white/5',
+    editBtn:   'text-white/10 hover:text-white/60',
+    phaseLbl:  'text-white/15 italic',
+    phaseStart: 'border-l-white/40',
+    mbBorder:  'border-l-white/20',
+    cycTxt:    'text-violet-400/60',
+    normSched: 'text-white/30',
+    sumTxt:    'text-white/50',
+    warningTxt: 'text-amber-400',
   }
 
   const totalGridW = NAME_W + days.length * DAY_W + TOTAL_W
@@ -276,7 +275,7 @@ export default function PlannerGrid({
               {settings.groupByService && group.label && (
                 <div className={`flex items-center gap-2 px-4 py-2 border-b ${t.border} border-t ${t.border} ${t.svcBar}`}>
                   <span className={`text-[11px] font-bold uppercase tracking-widest ${t.svcTxt}`}>{group.label}</span>
-                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${t.border} ${t.mutedTxt} font-medium normal-case tracking-normal ${isLight ? 'bg-white' : 'bg-white/5'}`}>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${t.border} ${t.mutedTxt} font-medium normal-case tracking-normal bg-white/5`}>
                     {group.users.length} чел.
                   </span>
                   <span className={`ml-auto ${t.dimTxt} text-[11px]`}>▾</span>
@@ -308,7 +307,7 @@ export default function PlannerGrid({
                       {/* Name cell */}
                       <div
                         style={{ width: NAME_W, minWidth: NAME_W }}
-                        className={`sticky left-0 z-[5] px-3 flex flex-col justify-center gap-0.5 border-r ${t.rowBdr} cursor-pointer ${isSelected ? (isLight ? 'bg-amber-50' : 'bg-amber-500/10') : t.stickyBg}`}
+                        className={`sticky left-0 z-[5] px-3 flex flex-col justify-center gap-0.5 border-r ${t.rowBdr} cursor-pointer ${isSelected ? 'bg-amber-500/10' : t.stickyBg}`}
                         onClick={() => onUserClick(user)}
                       >
                         <div className="flex items-center gap-1.5">
@@ -369,7 +368,7 @@ export default function PlannerGrid({
                               ${mb ? `border-l-2 ${t.mbBorder}` : ''}
                               ${canEdit ? 'cursor-pointer' : ''}
                               ${isSavingCell ? 'opacity-30' : ''}
-                              ${isActive ? (isLight ? 'bg-amber-50' : 'bg-amber-500/10') : ''}
+                              ${isActive ? 'bg-amber-500/10' : ''}
                             `}
                             onMouseEnter={(e) => {
                               if (isActive) return
@@ -388,8 +387,8 @@ export default function PlannerGrid({
                             }}
                           >
                             {/* Today column borders */}
-                            {isTd && <span className={`absolute inset-y-0 left-0 w-px ${isLight ? 'bg-amber-300/60' : 'bg-amber-400/50'}`} />}
-                            {isTd && <span className={`absolute inset-y-0 right-0 w-px ${isLight ? 'bg-amber-300/60' : 'bg-amber-400/50'}`} />}
+                            {isTd && <span className={`absolute inset-y-0 left-0 w-px bg-amber-400/50`} />}
+                            {isTd && <span className={`absolute inset-y-0 right-0 w-px bg-amber-400/50`} />}
 
                             {/* Work block */}
                             {blockShown && (
@@ -416,7 +415,7 @@ export default function PlannerGrid({
                                 className="absolute inset-x-0.5 text-center"
                                 style={{ top: settings.compactRows ? 3 : 6, bottom: settings.compactRows ? 3 : 6 }}
                               >
-                                <span className={`text-[9px] font-mono ${isLight ? 'text-red-300' : 'text-red-400/60'}`}>—</span>
+                                <span className={`text-[9px] font-mono text-red-400/60`}>—</span>
                               </div>
                             )}
                           </div>

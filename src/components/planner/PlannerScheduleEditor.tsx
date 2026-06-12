@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { UserWithAssignment, Schedule, AuthSession } from '@/types'
 import { upsertEmployeeAssignment } from '@/lib/api-client'
-import { useTheme } from '@/lib/ThemeContext'
 
 interface Props {
   user: UserWithAssignment
@@ -29,9 +28,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
   const [customRest,      setCustomRest]       = useState<string>(String(a?.custom_rest_days ?? ''))
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
-  const lbl = isLight ? 'text-gray-500 text-[10px] block mb-1 uppercase tracking-wide' : 'text-white/35 text-[10px] block mb-1 uppercase tracking-wide'
+  const lbl = 'text-white/35 text-[10px] block mb-1 uppercase tracking-wide'
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -79,10 +76,10 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className={`font-medium text-xs truncate max-w-[200px] ${isLight ? 'text-gray-800' : 'text-white/80'}`}>{user.full_name}</div>
-          <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>Назначение графика</div>
+          <div className={`font-medium text-xs truncate max-w-[200px] text-white/80`}>{user.full_name}</div>
+          <div className={`text-[10px] mt-0.5 text-white/30`}>Назначение графика</div>
         </div>
-        <button onClick={onClose} className={`text-xl leading-none ml-2 ${isLight ? 'text-gray-400 hover:text-gray-600' : 'text-white/25 hover:text-white/60'}`}>×</button>
+        <button onClick={onClose} className={`text-xl leading-none ml-2 text-white/25 hover:text-white/60`}>×</button>
       </div>
 
       {/* Schedule selector */}
@@ -115,7 +112,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       {needsRefDate && (
         <div>
           <label className={lbl}>
-            Опорная дата <span className={`normal-case ${isLight ? 'text-gray-300' : 'text-white/20'}`}>(первый рабочий день)</span>
+            Опорная дата <span className={`normal-case text-white/20`}>(первый рабочий день)</span>
           </label>
           <input
             type="date"
@@ -154,7 +151,7 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       )}
 
       {/* Driver toggle */}
-      <label className={`flex items-center gap-2 text-xs cursor-pointer select-none py-1 ${isLight ? 'text-gray-500' : 'text-white/50'}`}>
+      <label className={`flex items-center gap-2 text-xs cursor-pointer select-none py-1 text-white/50`}>
         <input
           type="checkbox"
           checked={isDriver}
@@ -165,10 +162,10 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
       </label>
 
       {/* Actions */}
-      <div className={`flex items-center gap-2 pt-1 border-t ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
+      <div className={`flex items-center gap-2 pt-1 border-t border-white/5`}>
         <button
           onClick={onClose}
-          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${isLight ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-white/5 text-white/35 hover:bg-white/10'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs transition-colors bg-white/5 text-white/35 hover:bg-white/10`}
         >Отмена</button>
         <div className="flex-1" />
         <button

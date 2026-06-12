@@ -15,7 +15,6 @@ import {
 } from './types'
 import { addMonths, daysInRange, toDateStr, CYCLIC_CODES } from './utils'
 import { resolveShiftStatus } from '@/lib/shifts'
-import { useTheme } from '@/lib/ThemeContext'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 import PlannerToolbar from './PlannerToolbar'
 import PlannerSettingsPanel from './PlannerSettings'
@@ -58,10 +57,6 @@ export default function PlannerShell({ session }: Props) {
   // ── Role-based edit permission ───────────────────────────────────────────
   const canEdit = ['ADMIN', 'HR'].includes(session.role_level) ||
     (session.role_level === 'HEAD')
-
-  // ── Theme ────────────────────────────────────────────────────────────────
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
 
   // ── Load data ────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -271,7 +266,6 @@ export default function PlannerShell({ session }: Props) {
 
       {/* Toolbar */}
       <PlannerToolbar
-        isLight={isLight}
         startYear={startYear}
         startMonth={startMonth}
         span={span}
@@ -297,7 +291,6 @@ export default function PlannerShell({ session }: Props) {
       {showSettings && (
         <div className="flex justify-end">
           <PlannerSettingsPanel
-            isLight={isLight}
             settings={settings}
             onChange={setSettings}
             onClose={() => setShowSettings(false)}
@@ -307,7 +300,7 @@ export default function PlannerShell({ session }: Props) {
 
       {/* Loading */}
       {loading ? (
-        <div className={`text-center py-20 text-sm ${isLight ? 'text-gray-400' : 'text-white/25'}`}>
+        <div className={`text-center py-20 text-sm text-white/25`}>
           <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
           Загрузка…
         </div>
@@ -317,7 +310,6 @@ export default function PlannerShell({ session }: Props) {
           <div className="flex gap-3 items-start">
             <div className="flex-1 min-w-0">
               <PlannerGrid
-                isLight={isLight}
                 users={editableUsers}
                 services={typedServices}
                 schedules={typedSchedules}
@@ -345,35 +337,35 @@ export default function PlannerShell({ session }: Props) {
 
             {/* Right detail panel */}
             {selectedUser && (
-              <div className={`w-72 shrink-0 rounded-2xl border p-4 flex flex-col gap-3 ${isLight ? 'bg-white border-gray-200' : 'bg-white/[0.06] border-white/12'}`}>
+              <div className={`w-72 shrink-0 rounded-2xl border p-4 flex flex-col gap-3 bg-white/[0.06] border-white/12`}>
                 {/* Header */}
                 <div className="flex items-start gap-2.5">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-gray-900 font-bold text-sm shrink-0">
                     {selectedUser.full_name.split(' ').map(w => w[0]).slice(0, 2).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[14px] font-semibold leading-tight ${isLight ? 'text-gray-800' : 'text-white/90'}`}>
+                    <div className={`text-[14px] font-semibold leading-tight text-white/90`}>
                       {selectedUser.full_name}
                     </div>
-                    <div className={`text-[11px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                    <div className={`text-[11px] mt-0.5 text-white/40`}>
                       {selectedUser.position ?? 'Сотрудник'}
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedUser(null)}
-                    className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${isLight ? 'border-gray-200 text-gray-400 hover:text-gray-600' : 'border-white/10 text-white/30 hover:text-white/70'}`}
+                    className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors border-white/10 text-white/30 hover:text-white/70`}
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
                   </button>
                 </div>
 
                 {/* Schedule info */}
-                <div className={`rounded-xl border p-3 ${isLight ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                  <div className={`text-[9px] uppercase tracking-widest font-semibold mb-2 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>Текущий график</div>
-                  <div className={`text-[14px] font-semibold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>
+                <div className={`rounded-xl border p-3 bg-white/5 border-white/10`}>
+                  <div className={`text-[9px] uppercase tracking-widest font-semibold mb-2 text-white/30`}>Текущий график</div>
+                  <div className={`text-[14px] font-semibold text-white/85`}>
                     {selectedUser.assignment?.schedule_code ?? '—'}
                     {selectedUser.assignment?.shift_num && (
-                      <span className={`text-[11px] font-normal ml-2 ${isLight ? 'text-gray-400' : 'text-white/40'}`}>
+                      <span className={`text-[11px] font-normal ml-2 text-white/40`}>
                         · коллектив {selectedUser.assignment.shift_num}
                       </span>
                     )}
@@ -381,12 +373,12 @@ export default function PlannerShell({ session }: Props) {
                   {selectedUserStats && (
                     <div className="flex gap-4 mt-2">
                       <div>
-                        <div className={`text-[17px] font-bold font-mono leading-none ${isLight ? 'text-green-600' : 'text-green-400'}`}>{selectedUserStats.working}</div>
-                        <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>рабочих</div>
+                        <div className={`text-[17px] font-bold font-mono leading-none text-green-400`}>{selectedUserStats.working}</div>
+                        <div className={`text-[10px] mt-0.5 text-white/30`}>рабочих</div>
                       </div>
                       <div>
-                        <div className={`text-[17px] font-bold font-mono leading-none ${isLight ? 'text-gray-600' : 'text-white/60'}`}>{selectedUserStats.off}</div>
-                        <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>выходных</div>
+                        <div className={`text-[17px] font-bold font-mono leading-none text-white/60`}>{selectedUserStats.off}</div>
+                        <div className={`text-[10px] mt-0.5 text-white/30`}>выходных</div>
                       </div>
                     </div>
                   )}
@@ -399,7 +391,7 @@ export default function PlannerShell({ session }: Props) {
                     className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                       mode === 'edit'
                         ? 'bg-amber-500 text-gray-900 hover:bg-amber-400'
-                        : isLight ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white/5 text-white/25 cursor-not-allowed'
+                        : 'bg-white/5 text-white/25 cursor-not-allowed'
                     }`}
                     disabled={mode !== 'edit'}
                     title={mode !== 'edit' ? 'Включите режим правки' : undefined}
@@ -408,7 +400,7 @@ export default function PlannerShell({ session }: Props) {
                   </button>
                 )}
 
-                <div className={`text-[10px] ${isLight ? 'text-gray-300' : 'text-white/20'}`}>
+                <div className={`text-[10px] text-white/20`}>
                   Нажмите на имя сотрудника в таблице для выбора · Клик ещё раз — отменить выбор
                 </div>
               </div>
@@ -416,22 +408,22 @@ export default function PlannerShell({ session }: Props) {
           </div>
 
           {/* Bottom summary bar */}
-          <div className={`flex items-center gap-4 px-4 py-2.5 rounded-xl border text-[12px] ${isLight ? 'bg-white border-gray-200 text-gray-500' : 'bg-white/[0.04] border-white/10 text-white/50'}`}>
+          <div className={`flex items-center gap-4 px-4 py-2.5 rounded-xl border text-[12px] bg-white/[0.04] border-white/10 text-white/50`}>
             <span>
-              <span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.total}</span>
+              <span className={`font-mono font-bold text-white/85`}>{todayStats.total}</span>
               {' '}сотрудников
             </span>
-            <span className={isLight ? 'text-gray-200' : 'text-white/10'}>·</span>
+            <span className="text-white/10">·</span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
               Сегодня:
-              {' '}<span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.onDuty}</span>
+              {' '}<span className={`font-mono font-bold text-white/85`}>{todayStats.onDuty}</span>
               {' '}на дежурстве
             </span>
-            <span className={isLight ? 'text-gray-200' : 'text-white/10'}>·</span>
+            <span className="text-white/10">·</span>
             <span className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full inline-block ${isLight ? 'bg-gray-300' : 'bg-white/20'}`} />
-              <span className={`font-mono font-bold ${isLight ? 'text-gray-800' : 'text-white/85'}`}>{todayStats.off}</span>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block bg-white/20`} />
+              <span className={`font-mono font-bold text-white/85`}>{todayStats.off}</span>
               {' '}выходной
             </span>
             <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] font-semibold text-green-400">

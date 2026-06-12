@@ -4,7 +4,6 @@ import type { WorkPlanWithItems, AuthSession, UserWithAssignment, EmployeeStatus
 import { EMPLOYEE_STATUS_CONFIG } from '@/types'
 import { fetchUsersWithAssignments, fetchActiveStatusesOnDate } from '@/lib/api-client'
 import { isWorkerOnDuty, getShiftNumberForDate } from '@/lib/shifts'
-import { useTheme } from '@/lib/ThemeContext'
 
 // ─── Permanent tasks defaults per service ────────────────────────────────────
 
@@ -270,9 +269,6 @@ interface Props {
 }
 
 export default function PlanTaskSheetModal({ plans, session, defaultDate, onClose }: Props) {
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
-
   const serviceId = session.service_id ?? ''
   const serviceName = SERVICE_NAMES[serviceId] ?? serviceId
 
@@ -392,12 +388,8 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
     setTimeout(() => { win.print(); setTimeout(() => URL.revokeObjectURL(url), 60000) }, 800)
   }
 
-  const inp = isLight
-    ? 'bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 w-full'
-    : 'bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white/80 focus:outline-none focus:border-blue-500/50 w-full'
-  const lbl = isLight
-    ? 'block text-[10px] text-gray-500 uppercase tracking-wider mb-1'
-    : 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
+  const inp = 'bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white/80 focus:outline-none focus:border-blue-500/50 w-full'
+  const lbl = 'block text-[10px] text-white/40 uppercase tracking-wider mb-1'
   const ta  = `${inp} resize-none`
 
   const presentCount = workers.filter(w => !w.absent).length
@@ -408,21 +400,20 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div
-        className={`relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border ${isLight ? 'bg-white border-gray-200' : 'border-white/15'}`}
-        style={isLight ? {} : { background: 'rgba(15, 20, 40, 0.97)' }}
+        className="relative z-10 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border glass-popup border-white/15"
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isLight ? 'border-gray-200' : 'border-white/10'}`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-white/10`}>
           <div>
-            <div className={`text-sm font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>🖨 План-задание на смену</div>
-            <div className={`text-[11px] mt-0.5 ${isLight ? 'text-gray-500' : 'text-white/40'}`}>
+            <div className={`text-sm font-bold text-white`}>🖨 План-задание на смену</div>
+            <div className={`text-[11px] mt-0.5 text-white/40`}>
               {serviceName} · {planDate} · Смена №{shiftNum}
               {loadingWorkers
                 ? ' · загрузка состава...'
                 : ` · ${presentCount} чел. на смене${absentCount > 0 ? `, ${absentCount} отсутств.` : ''}`}
             </div>
           </div>
-          <button onClick={onClose} className={`text-lg ${isLight ? 'text-gray-400 hover:text-gray-700' : 'text-white/40 hover:text-white'}`}>✕</button>
+          <button onClick={onClose} className={`text-lg text-white/40 hover:text-white`}>✕</button>
         </div>
 
         {/* Body */}
@@ -441,7 +432,7 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
             <div className="space-y-2">
               {[[task1, setTask1], [task2, setTask2], [task3, setTask3]].map(([val, set], i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <span className={`text-sm mt-2 shrink-0 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>{i + 1}.</span>
+                  <span className={`text-sm mt-2 shrink-0 text-white/30`}>{i + 1}.</span>
                   <textarea
                     value={val as string}
                     onChange={e => (set as (v: string) => void)(e.target.value)}
@@ -457,16 +448,16 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
           <div>
             <div className={lbl}>Задания из плана работ ({allItems.length} пунктов)</div>
             {allItems.length === 0
-              ? <div className={`text-[11px] italic ${isLight ? 'text-gray-400' : 'text-white/25'}`}>Нет пунктов — план пуст</div>
+              ? <div className={`text-[11px] italic text-white/25`}>Нет пунктов — план пуст</div>
               : (
                 <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                   {allItems.map(item => (
-                    <div key={item.num} className={`flex gap-2 text-xs ${isLight ? 'text-gray-600' : 'text-white/60'}`}>
-                      <span className={`shrink-0 ${isLight ? 'text-gray-400' : 'text-white/30'}`}>{item.num}.</span>
+                    <div key={item.num} className={`flex gap-2 text-xs text-white/60`}>
+                      <span className={`shrink-0 text-white/30`}>{item.num}.</span>
                       <span>
-                        {item.location && <span className={isLight ? 'text-gray-800' : 'text-white/80'}>{item.location}: </span>}
+                        {item.location && <span className="text-white/80">{item.location}: </span>}
                         {item.description}
-                        {item.timeRange && <span className={`ml-1 ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>{item.timeRange}</span>}
+                        {item.timeRange && <span className={`ml-1 text-cyan-400`}>{item.timeRange}</span>}
                       </span>
                     </div>
                   ))}
@@ -479,16 +470,16 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
           <div>
             <div className={lbl}>Состав смены</div>
             {loadingWorkers
-              ? <div className={`text-[11px] italic ${isLight ? 'text-gray-400' : 'text-white/30'}`}>Загрузка...</div>
+              ? <div className={`text-[11px] italic text-white/30`}>Загрузка...</div>
               : workers.length === 0
-                ? <div className={`text-[11px] italic ${isLight ? 'text-gray-400' : 'text-white/25'}`}>Нет сотрудников в этой смене</div>
+                ? <div className={`text-[11px] italic text-white/25`}>Нет сотрудников в этой смене</div>
                 : (
                   <div className="flex flex-wrap gap-1.5">
                     {workers.map((w, i) => (
                       <span key={i} className={`text-[11px] px-2 py-0.5 rounded-full border ${
                         w.absent
-                          ? isLight ? 'bg-gray-100 border-gray-200 text-gray-400 line-through' : 'bg-white/3 border-white/10 text-white/25 line-through'
-                          : isLight ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/15 border-emerald-500/20 text-emerald-300'
+                          ? 'bg-white/3 border-white/10 text-white/25 line-through'
+                          : 'bg-emerald-500/15 border-emerald-500/20 text-emerald-300'
                       }`}>
                         {w.name}{w.absent ? ` (${w.absent})` : ''}
                       </span>
@@ -517,13 +508,13 @@ export default function PlanTaskSheetModal({ plans, session, defaultDate, onClos
         </div>
 
         {/* Footer */}
-        <div className={`px-5 py-4 border-t flex items-center justify-between gap-3 ${isLight ? 'border-gray-200' : 'border-white/10'}`}>
-          <div className={`text-[11px] ${isLight ? 'text-gray-400' : 'text-white/30'}`}>
+        <div className={`px-5 py-4 border-t flex items-center justify-between gap-3 border-white/10`}>
+          <div className={`text-[11px] text-white/30`}>
             Смена №{shiftNum} · {planDate} · {allItems.length} заданий · {presentCount} чел.
           </div>
           <div className="flex gap-2">
             <button onClick={onClose}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' : 'bg-white/5 hover:bg-white/10 text-white/50'}`}>
+              className={`px-4 py-2 rounded-lg text-sm transition-colors bg-white/5 hover:bg-white/10 text-white/50`}>
               Отмена
             </button>
             <button
