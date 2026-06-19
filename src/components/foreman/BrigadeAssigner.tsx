@@ -17,6 +17,7 @@ import WithTooltip from '@/components/help/WithTooltip'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 import DirectiveAlert from '@/components/foreman/DirectiveAlert'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 
 const ROLE_LABELS: Record<WorkAssignmentRole, string> = {
   WORKER: 'Рабочий',
@@ -34,12 +35,14 @@ const ROLE_COLORS: Record<WorkAssignmentRole, string> = {
   DRIVER: 'bg-green-500/20 text-green-300 border-green-500/30',
 }
 
-const ROLE_ICONS: Record<WorkAssignmentRole, string> = {
-  WORKER: '👷',
-  BRIGADIER: '⭐',
-  MASTER: '🦺',
-  ITR: '📋',
-  DRIVER: '🚗',
+function roleGlyph(role: WorkAssignmentRole) {
+  switch (role) {
+    case 'WORKER':    return <WorkerIcon className="w-3.5 h-3.5" />
+    case 'BRIGADIER': return <BrigadierIcon className="w-3.5 h-3.5" />
+    case 'MASTER':    return <MasterIcon className="w-3.5 h-3.5" />
+    case 'ITR':       return <ItrIcon className="w-3.5 h-3.5" />
+    case 'DRIVER':    return <span>🚗</span>
+  }
 }
 
 interface Props {
@@ -499,7 +502,7 @@ function PlanAssignCard({
             <div className="flex items-center gap-3 text-xs text-white/50">
               {planStats.totalReqWorkers > 0 && (
                 <span className={planStats.assignedWorkers >= planStats.totalReqWorkers ? 'text-green-400' : 'text-amber-400'}>
-                  👷 {planStats.assignedWorkers}/{planStats.totalReqWorkers}
+                  <WorkerIcon className="w-3.5 h-3.5" /> {planStats.assignedWorkers}/{planStats.totalReqWorkers}
                 </span>
               )}
               {planStats.totalReqForemen > 0 && (
@@ -769,7 +772,7 @@ function SplitViewPlanCard({
                   <div className="flex gap-2 text-[10px] mb-1.5">
                     {rw > 0 && (
                       <span className={wCount >= rw ? 'text-green-400' : 'text-amber-400'}>
-                        👷 {wCount}/{rw}
+                        <WorkerIcon className="w-3 h-3" /> {wCount}/{rw}
                       </span>
                     )}
                     {rf > 0 && (
@@ -788,7 +791,7 @@ function SplitViewPlanCard({
                         key={a.id}
                         className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
                       >
-                        <span>{ROLE_ICONS[a.role]}</span>
+                        {roleGlyph(a.role)}
                         <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
                         <button
                           onClick={e => { e.stopPropagation(); handleRemove(a.id) }}
@@ -806,7 +809,7 @@ function SplitViewPlanCard({
                   <div className="flex flex-wrap gap-1 mt-1">
                     {item.workers.map((w, idx) => (
                       <span key={idx} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border bg-green-500/10 text-green-300 border-green-500/20">
-                        👷 {w}
+                        <WorkerIcon className="w-3 h-3" /> {w}
                       </span>
                     ))}
                   </div>
@@ -850,7 +853,7 @@ function SplitViewPlanCard({
                         pickerRole === role ? ROLE_COLORS[role] : 'border-white/10 text-white/30 hover:border-white/20'
                       }`}
                     >
-                      {ROLE_ICONS[role]} {ROLE_LABELS[role]}
+                      <span className="inline-flex items-center gap-1">{roleGlyph(role)} {ROLE_LABELS[role]}</span>
                     </button>
                   </WithTooltip>
                 )
@@ -1067,7 +1070,7 @@ function PlanItemAssigner({
           <div className="flex items-center gap-1.5 text-[10px] shrink-0">
             {reqWorkers > 0 && (
               <span className={workerCount >= reqWorkers ? 'text-green-400' : 'text-amber-400'}>
-                👷 {workerCount}/{reqWorkers}
+                <WorkerIcon className="w-3.5 h-3.5" /> {workerCount}/{reqWorkers}
               </span>
             )}
             {reqForemen > 0 && (
@@ -1087,7 +1090,7 @@ function PlanItemAssigner({
             key={a.id}
             className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${ROLE_COLORS[a.role]}`}
           >
-            <span>{ROLE_ICONS[a.role]}</span>
+            {roleGlyph(a.role)}
             <span>{a.user?.full_name?.split(' ')[0] ?? '—'}</span>
             {canAssign && (
               <button

@@ -957,3 +957,41 @@ export const CERT_CATEGORY_CONFIG: Record<CertCategory, { emoji: string; color: 
   'Допуск':        { emoji: '🔑', color: 'text-amber-400' },
   'Удостоверение': { emoji: '🪪', color: 'text-teal-400' },
 }
+
+// ============ JOURNAL — ежедневное планирование (миграция 042) ============
+// Отдельные лёгкие таблицы; воронка work_plans не задействована.
+
+export type JournalPeriod = 'DAY' | 'NIGHT'
+
+export interface JournalObjectCategory {
+  id: string
+  name: string
+  emoji: string
+  sort_order: number
+}
+
+export interface JournalObject {
+  id: string
+  name: string
+  category_id: string
+  address: string
+  created_by?: string | null
+  created_at?: string
+}
+
+export interface DailyPlanItem {
+  id: string
+  plan_date: string // ISO yyyy-mm-dd
+  shift_type: JournalPeriod
+  object_id: string
+  service_id: string
+  work_text: string
+  required_workers: number  // рабочие
+  required_foremen: number  // мастера
+  required_itr: number      // ИТР
+  required_vehicles: number
+  note?: string | null
+  created_by?: string | null
+  created_at?: string
+  updated_at?: string
+}

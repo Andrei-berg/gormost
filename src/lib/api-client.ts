@@ -20,6 +20,7 @@ import type {
   CertType, EmployeeCert, CertRequirement,
   DriverManualShift,
   AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
+  JournalObjectCategory, JournalObject, DailyPlanItem,
 } from '@/types'
 
 export interface StatusWithUser extends EmployeeStatus {
@@ -938,3 +939,41 @@ export function fetchUserRequestIds(userId: string): Promise<string[]> {
 }
 
 export type { AlertLevel, SystemAlert }
+
+// ============ JOURNAL — daily plans (миграция 042) ============
+
+export function fetchJournalObjectCategories(): Promise<JournalObjectCategory[]> {
+  return call('fetchJournalObjectCategories', [])
+}
+
+export function fetchJournalObjects(): Promise<JournalObject[]> {
+  return call('fetchJournalObjects', [])
+}
+
+export function createJournalObject(obj: Partial<JournalObject>): Promise<JournalObject | null> {
+  return call('createJournalObject', [obj])
+}
+
+export function updateJournalObject(id: string, updates: Partial<JournalObject>): Promise<JournalObject | null> {
+  return call('updateJournalObject', [id, updates])
+}
+
+export function deleteJournalObject(id: string): Promise<boolean> {
+  return call('deleteJournalObject', [id])
+}
+
+export function fetchDailyPlanItems(planDate: string): Promise<DailyPlanItem[]> {
+  return call('fetchDailyPlanItems', [planDate])
+}
+
+export function createDailyPlanItem(item: Partial<DailyPlanItem>): Promise<DailyPlanItem | null> {
+  return call('createDailyPlanItem', [item])
+}
+
+export function updateDailyPlanItem(id: string, updates: Partial<DailyPlanItem>): Promise<DailyPlanItem | null> {
+  return call('updateDailyPlanItem', [id, updates])
+}
+
+export function deleteDailyPlanItem(id: string): Promise<boolean> {
+  return call('deleteDailyPlanItem', [id])
+}

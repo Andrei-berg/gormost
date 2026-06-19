@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkAssignmentWithUser, Service, AuthSession } from '@/types'
 import { fetchWorkPlans, fetchWorkPlansWithItems, fetchWorkAssignmentsForItems } from '@/lib/api-client'
 import { WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 
 const SERVICE_EMOJI: Record<string, string> = {
   'SRV-ENG':  '⚡',
@@ -24,8 +25,15 @@ function formatDay(dateStr: string): string {
   return `${d.getDate()} ${MONTH_NAMES_RU[d.getMonth()].toLowerCase()}, ${DAY_NAMES_RU[d.getDay()]}`
 }
 
-const ROLE_ICONS: Record<string, string> = {
-  WORKER: '👷', BRIGADIER: '⭐', MASTER: '🦺', ITR: '📋', DRIVER: '🚗',
+function roleGlyph(role: string) {
+  switch (role) {
+    case 'WORKER':    return <WorkerIcon className="w-3.5 h-3.5" />
+    case 'BRIGADIER': return <BrigadierIcon className="w-3.5 h-3.5" />
+    case 'MASTER':    return <MasterIcon className="w-3.5 h-3.5" />
+    case 'ITR':       return <ItrIcon className="w-3.5 h-3.5" />
+    case 'DRIVER':    return <span>🚗</span>
+    default:          return <span>👤</span>
+  }
 }
 const ROLE_LABELS: Record<string, string> = {
   WORKER: 'Рабочий', BRIGADIER: 'Бригадир', MASTER: 'Мастер', ITR: 'ИТР', DRIVER: 'Водитель',
@@ -227,7 +235,7 @@ export default function PlanArchive({ services }: Props) {
                           </div>
                           <div className="flex items-center gap-3 mt-0.5 text-[10px] text-white/25">
                             <span>{plan.items.length} работ{plan.items.length === 1 ? 'а' : ''}</span>
-                            {totalAssigned > 0 && <span>👷 {totalAssigned} назначено</span>}
+                            {totalAssigned > 0 && <span><WorkerIcon className="w-3.5 h-3.5" /> {totalAssigned} назначено</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -266,8 +274,8 @@ export default function PlanArchive({ services }: Props) {
                                     </div>
                                     {/* Requirements summary */}
                                     <div className="flex gap-2 shrink-0 text-[10px] text-white/30">
-                                      {item.required_workers > 0 && <span>👷×{item.required_workers}</span>}
-                                      {item.required_foremen > 0 && <span>🦺×{item.required_foremen}</span>}
+                                      {item.required_workers > 0 && <span className="inline-flex items-center gap-0.5"><WorkerIcon className="w-3 h-3" />×{item.required_workers}</span>}
+                                      {item.required_foremen > 0 && <span className="inline-flex items-center gap-0.5"><MasterIcon className="w-3 h-3" />×{item.required_foremen}</span>}
                                       {item.required_vehicles > 0 && <span>🚛×{item.required_vehicles}</span>}
                                     </div>
                                   </div>
@@ -281,7 +289,7 @@ export default function PlanArchive({ services }: Props) {
                                           className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60"
                                           title={ROLE_LABELS[a.role] ?? a.role}
                                         >
-                                          <span>{ROLE_ICONS[a.role] ?? '👤'}</span>
+                                          {roleGlyph(a.role)}
                                           <span>{a.user?.full_name ?? '—'}</span>
                                         </span>
                                       ))}

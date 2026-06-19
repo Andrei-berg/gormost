@@ -239,7 +239,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Active development, not in production use
 - Used for internal demos to colleagues
 - Main branch = demo-ready at all times
-- **Pending in Supabase SQL Editor:** `038_status_metadata.sql`, `041_directive_worker_assignments.sql`
+- **Pending in Supabase SQL Editor:** `038_status_metadata.sql`, `041_directive_worker_assignments.sql`, `042_journal_daily_plans.sql`
 - June 2026 overhaul complete: api split into domain modules, httpOnly auth on /api/db,
   unified loading/error handling, CSS-token theming (dark default), batch plan loading,
   ConfirmDialog, lint baseline 0 errors / 47 warnings, 63 tests
