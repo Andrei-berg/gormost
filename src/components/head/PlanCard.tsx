@@ -5,6 +5,7 @@ import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossSer
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
+import { requiresWorkPermit, matchedHighRiskCategories } from '@/lib/highRiskWorks'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan, recallWorkPlan,
@@ -383,6 +384,14 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
             </span>
           )}
           <span className="text-sm font-medium text-white/90">{item.location}</span>
+          {requiresWorkPermit(item.work_description ?? '') && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 shrink-0"
+              title={`Работы повышенной опасности (п.15) — требуется наряд-допуск:\n${matchedHighRiskCategories(item.work_description ?? '').map(c => '• ' + c.label).join('\n')}`}
+            >
+              🔺 наряд
+            </span>
+          )}
         </div>
         <div className="text-xs text-white/55 mt-0.5 leading-relaxed">{item.work_description}</div>
 

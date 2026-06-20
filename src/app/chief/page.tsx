@@ -13,6 +13,7 @@ import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { CHIEF_TOUR, CHIEF_HELP } from '@/components/help/tours'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
+import WorkPermitLauncher from '@/components/head/WorkPermitLauncher'
 
 export default function ChiefPage() {
   return (
@@ -119,6 +120,7 @@ function Content({ session }: { session: AuthSession }) {
         </TabBtn>
 
         <div className="ml-auto flex items-center gap-1">
+          <WorkPermitLauncher session={session} services={services} />
           <HelpPanel panelTitle="Главный инженер" panelEmoji="🔧" sections={CHIEF_HELP} showWorkflow currentStatus={plans.find(p => p.status === 'SUBMITTED')?.status} />
           <GuidedTour steps={CHIEF_TOUR} storageKey="tour_chief_v1" trigger="Обучение" />
           <button
