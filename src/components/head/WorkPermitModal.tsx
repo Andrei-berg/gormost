@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { WorkPlanWithItems, AuthSession, UserWithAssignment } from '@/types'
-import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api-client'
+import type { WorkPlanWithItems, AuthSession, UserWithAssignment, ResolvedWorkPermitType } from '@/types'
+import { fetchUsersWithAssignments, markWorkPlanPermit, fetchServiceWorkPermitTypes } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import { useConfirm } from '@/components/ConfirmDialog'
 
@@ -139,6 +139,11 @@ const WORK_TYPES_BY_SERVICE: Record<string, Record<string, WorkTypeConfig>> = {
   'SRV-FIRE': {},
   'SRV-VENT': {},
   'SRV-CCTV': {},
+}
+
+// Fallback used until the DB catalog (migration 043) is populated.
+function fallbackWorkTypes(serviceId: string): ResolvedWorkPermitType[] {
+  return Object.entries(WORK_TYPES_BY_SERVICE[serviceId] ?? {}).map(([id, c]) => ({ id, ...c }))
 }
 
 // ─── Measure builders ──────────────────────────────────────────────────────
@@ -522,15 +527,27 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     fetchUsersWithAssignments().then(setAllUsers)
   }, [])
 
-  // Work type selection
+  // Work type selection — loaded from the DB catalog per service.
+  // Hardcode (WORK_TYPES_BY_SERVICE) is kept as fallback until migration 043
+  // is applied / if the catalog returns nothing, so prod never regresses.
   const [workServiceId, setWorkServiceId] = useState<string>(() => plan.service_id)
-  const [workTypeKey, setWorkTypeKey] = useState<string>(() => {
-    const types = WORK_TYPES_BY_SERVICE[plan.service_id] ?? {}
-    return Object.keys(types)[0] ?? ''
-  })
+  const [workTypeKey, setWorkTypeKey] = useState<string>('')
   const [customWorkLabel, setCustomWorkLabel] = useState('')
-  const currentTypes = WORK_TYPES_BY_SERVICE[workServiceId] ?? {}
-  const workTypeCfg = currentTypes[workTypeKey] ?? EMPTY_WORK_TYPE
+  const [typesList, setTypesList] = useState<ResolvedWorkPermitType[]>([])
+
+  useEffect(() => {
+    let alive = true
+    fetchServiceWorkPermitTypes(workServiceId).then(list => {
+      if (!alive) return
+      const resolved = list.length > 0 ? list : fallbackWorkTypes(workServiceId)
+      setTypesList(resolved)
+      setWorkTypeKey(resolved[0]?.id ?? '')
+    })
+    return () => { alive = false }
+  }, [workServiceId])
+
+  const typesById = new Map(typesList.map(t => [t.id, t]))
+  const workTypeCfg = typesById.get(workTypeKey) ?? EMPTY_WORK_TYPE
 
   const nextDay = addDay(plan.plan_date)
 
@@ -581,11 +598,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     }
   }
 
-  const handleWorkServiceChange = (svcId: string) => {
-    setWorkServiceId(svcId)
-    const types = WORK_TYPES_BY_SERVICE[svcId] ?? {}
-    setWorkTypeKey(Object.keys(types)[0] ?? '')
-  }
+  // Switching service reloads its types via the effect (which resets workTypeKey).
+  const handleWorkServiceChange = (svcId: string) => setWorkServiceId(svcId)
 
   // Supervisor chip select
   const handleSupervisorSelect = (u: UserWithAssignment) => {
@@ -727,8 +741,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
 
             {/* Service switcher */}
             <div className="flex flex-wrap gap-1 mb-3">
-              {Object.entries(WORK_TYPES_BY_SERVICE).map(([svcId, types]) => {
-                const hasTypes = Object.keys(types).length > 0
+              {Object.keys(SERVICE_NAMES).map(svcId => {
                 const isPlanService = svcId === plan.service_id
                 const isActive = svcId === workServiceId
                 return (
@@ -748,22 +761,21 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                   >
                     {SERVICE_NAMES[svcId] ?? svcId}
                     {isPlanService && <span className="ml-1 opacity-60">↩</span>}
-                    {!hasTypes && <span className="ml-1 opacity-40">···</span>}
                   </button>
                 )
               })}
             </div>
 
             {/* Type chips for selected service */}
-            {Object.keys(currentTypes).length > 0 ? (
+            {typesList.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(currentTypes).map(([key, cfg]) => (
+                {typesList.map(cfg => (
                   <button
-                    key={key}
+                    key={cfg.id}
                     type="button"
-                    onClick={() => setWorkTypeKey(key)}
+                    onClick={() => setWorkTypeKey(cfg.id)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                      workTypeKey === key
+                      workTypeKey === cfg.id
                         ? lightMode
                           ? 'bg-blue-600 border-blue-600 text-white'
                           : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
@@ -782,7 +794,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
               </div>
             )}
 
-            {workTypeKey && currentTypes[workTypeKey] && (
+            {workTypeKey && typesById.has(workTypeKey) && (
               <>
                 <div className={`mt-2 text-[10px] leading-relaxed ${subtitleText}`}>
                   <span className="font-medium">Факторы:</span> {workTypeCfg.factors}
