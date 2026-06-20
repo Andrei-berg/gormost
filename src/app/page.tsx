@@ -20,6 +20,7 @@ const HOME_META: Record<string, HomeMeta> = {
   zamporab:   { group: 'Оперативные', accentColor: '#F0A500' },
   foreman:    { group: 'Оперативные', accentColor: '#8B5CF6' },
   head:       { group: 'Оперативные', accentColor: '#8B5CF6' },
+  journal:    { group: 'Оперативные', accentColor: '#F0A500' },
   driver:     { group: 'Оперативные', accentColor: '#388BFD' },
   boss:       { group: 'Аналитика',   accentColor: '#388BFD' },
   transport:  { group: 'Аналитика',   accentColor: '#F85149' },

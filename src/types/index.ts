@@ -278,6 +278,13 @@ export const PANELS: PanelConfig[] = [
     color: 'from-indigo-600/40 to-indigo-800/40 border-indigo-500/30',
     roleLabel: 'Планировщик смен',
   },
+  {
+    id: 'journal', path: '/journal', title: 'Журнал планов',
+    subtitle: 'Ежедневное планирование · объект × служба', emoji: '📒',
+    roles: ['BOSS', 'ADMIN'],
+    color: 'from-amber-600/40 to-amber-800/40 border-amber-500/30',
+    roleLabel: 'Журнал ежедневного планирования',
+  },
 ]
 
 // ============================================

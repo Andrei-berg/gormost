@@ -522,16 +522,19 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     setExecutorPosition(u.position ?? 'бригадир')
   }
 
-  // Derived: on-duty users grouped for permit picker
-  const supervisorOwn   = allUsers.filter(u => u.service_id === plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)) && isUserOnDutyDate(u, plan.plan_date))
-  const supervisorOther = allUsers.filter(u => u.service_id !== plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)) && isUserOnDutyDate(u, plan.plan_date))
-  // Brigadiers = FOREMAN role (master + brigadier positions) on duty; fallback to all if none on duty
+  // Responsible persons — STRICTLY the plan's service (приказ №2 п.18.1: наряд
+  // выдаётся на работы, относящиеся к деятельности службы, и её составом).
+  // On-duty first; if nobody from the service is on duty that day, fall back to
+  // all of the SERVICE (never other services).
+  const sup_ownOnDuty = allUsers.filter(u => u.service_id === plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)) && isUserOnDutyDate(u, plan.plan_date))
+  const sup_ownAll    = allUsers.filter(u => u.service_id === plan.service_id && ['itr','master'].includes(getPermitRoleGroup(u)))
+  const supervisorOwn = sup_ownOnDuty.length > 0 ? sup_ownOnDuty : sup_ownAll
+
+  // Brigadiers (ответственный исполнитель) — same rule, strictly own service.
   const isBrigadierUser = (u: UserWithAssignment) => u.role_level.toLowerCase() === 'foreman'
   const brig_ownOnDuty    = allUsers.filter(u => u.service_id === plan.service_id && isBrigadierUser(u) && isUserOnDutyDate(u, plan.plan_date))
-  const brig_otherOnDuty  = allUsers.filter(u => u.service_id !== plan.service_id && isBrigadierUser(u) && isUserOnDutyDate(u, plan.plan_date))
   const brig_ownAll       = allUsers.filter(u => u.service_id === plan.service_id && isBrigadierUser(u))
   const brigadierOwn   = brig_ownOnDuty.length  > 0 ? brig_ownOnDuty  : brig_ownAll
-  const brigadierOther = brig_otherOnDuty.length > 0 ? brig_otherOnDuty : []
 
   const allWorkers  = [...new Set(plan.items.flatMap(i => i.workers))]
   const allVehicles: string[] = plan.items.flatMap(i =>
@@ -764,23 +767,16 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                   className={inp}
                 >
                   <option value="">— выбрать из списка —</option>
-                  {supervisorOwn.length > 0 && (
-                    <optgroup label={`Своя служба — на смене (${supervisorOwn.length})`}>
+                  {supervisorOwn.length > 0 ? (
+                    <optgroup label={sup_ownOnDuty.length > 0 ? `${serviceName} — на смене (${supervisorOwn.length})` : `${serviceName} — все (${supervisorOwn.length})`}>
                       {supervisorOwn.map(u => (
                         <option key={u.user_id} value={u.user_id}>
                           {u.full_name}{u.position ? ` (${u.position})` : ''}
                         </option>
                       ))}
                     </optgroup>
-                  )}
-                  {supervisorOther.length > 0 && (
-                    <optgroup label={`Другие службы — на смене (${supervisorOther.length})`}>
-                      {supervisorOther.map(u => (
-                        <option key={u.user_id} value={u.user_id}>
-                          {u.full_name}{u.position ? ` (${u.position})` : ''} — {SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
-                        </option>
-                      ))}
-                    </optgroup>
+                  ) : (
+                    <option value="" disabled>В службе «{serviceName}» нет ИТР/мастеров — впишите ФИО вручную</option>
                   )}
                 </select>
               </div>
@@ -816,23 +812,16 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                   className={inp}
                 >
                   <option value="">— выбрать из списка —</option>
-                  {brigadierOwn.length > 0 && (
-                    <optgroup label={brig_ownOnDuty.length > 0 ? `Своя служба — на смене (${brigadierOwn.length})` : `Своя служба — все (${brigadierOwn.length})`}>
+                  {brigadierOwn.length > 0 ? (
+                    <optgroup label={brig_ownOnDuty.length > 0 ? `${serviceName} — на смене (${brigadierOwn.length})` : `${serviceName} — все (${brigadierOwn.length})`}>
                       {brigadierOwn.map(u => (
                         <option key={u.user_id} value={u.user_id}>
                           {u.full_name}{u.position ? ` (${u.position})` : ''}
                         </option>
                       ))}
                     </optgroup>
-                  )}
-                  {brigadierOther.length > 0 && (
-                    <optgroup label={`Другие службы — на смене (${brigadierOther.length})`}>
-                      {brigadierOther.map(u => (
-                        <option key={u.user_id} value={u.user_id}>
-                          {u.full_name}{u.position ? ` (${u.position})` : ''} — {SERVICE_NAMES[u.service_id ?? ''] ?? u.service_id}
-                        </option>
-                      ))}
-                    </optgroup>
+                  ) : (
+                    <option value="" disabled>В службе «{serviceName}» нет бригадиров — впишите ФИО вручную</option>
                   )}
                 </select>
               </div>
