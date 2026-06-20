@@ -55,96 +55,6 @@ const EMPTY_WORK_TYPE: WorkTypeConfig = {
   duringMeasure2: 'Соблюдать технологию выполнения работ.',
 }
 
-const WORK_TYPES_BY_SERVICE: Record<string, Record<string, WorkTypeConfig>> = {
-  'SRV-STR': {
-  repair: {
-    label: 'Ремонт (мост, конструкции)',
-    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа на проезжей части, работа с АГП.',
-    instructionNums: '10, 14, 17, 20, 21, 23, 30, 35, 41, 53, 60, 65, 66, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы проводить в перчатках и защитных очках.',
-  },
-  wash: {
-    label: 'Помывка / промывка',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенная влажность, повышенный шум, высокое давление в шлангах и струя воды под большим давлением.',
-    instructionNums: '10, 14, 15, 21, 41, 43, 55, 65, 185, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Промывочные работы проводить в костюмах ПВХ, резиновых перчатках и защитных очках.',
-  },
-  paint: {
-    label: 'Покраска',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум.',
-    instructionNums: '3, 10, 14, 15, 17, 53, 65, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Покрасочные работы проводить в покрасочных костюмах, резиновых перчатках и защитных очках, респираторах.',
-  },
-  agp: {
-    label: 'Люлька / АГП (высотные работы)',
-    factors: 'Движение автотранспорта, возможная повышенная загазованность, падение предметов с высоты, поражение электрическим током, работа на высоте, электрооборудование.',
-    instructionNums: '10, 14, 15, 21, 65, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы проводить с использованием монтажных поясов с информацией о дате проверки.',
-  },
-  snow: {
-    label: 'Уборка снега / антигололёд',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум, низкие температуры, скользкая поверхность.',
-    instructionNums: '10, 14, 15, 16, 41, 58, 65, 105, 109, 133, 185, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работать в утеплённой одежде, пользоваться нескользящей обувью.',
-  },
-  cover: {
-    label: 'Прикрытие места работ',
-    factors: 'Движущийся автотранспорт, отлетающие предметы, повышенный шум.',
-    instructionNums: '14, 41, 65, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать требования по безопасному размещению транспортных средств прикрытия. Работать в сигнальном жилете.',
-  },
-  load: {
-    label: 'Погрузка / выгрузка материалов',
-    factors: 'Отлетающие предметы, повышенный шум, низкие температуры.',
-    instructionNums: '6, 10, 14, 17, 41, 65, 66, 69, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения погрузочно-разгрузочных работ. Работать в перчатках и защитной обуви.',
-  },
-  scaffold: {
-    label: 'Ремонт подмостей / лесов',
-    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током.',
-    instructionNums: '10, 14, 17, 20, 23, 41, 53, 60, 65, 66, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы на подмостях проводить в перчатках и защитных очках.',
-  },
-  insul: {
-    label: 'Ремонт изоляции',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа с пневмоинструментом, работа с газовой горелкой.',
-    instructionNums: '10, 14, 15, 17, 23, 41, 42, 47, 65, 66, 82, 135, 136, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работу с газовой горелкой и пневмоинструментом проводить в перчатках, защитных очках и огнестойкой спецодежде.',
-  },
-  teplar: {
-    label: 'Работа в тепляке',
-    factors: 'Работа в тепляке, работа с дизельной тепловой пушкой.',
-    instructionNums: '10, 14, 41, 65, 162, 164, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Контролировать работу тепловой пушки, не оставлять без присмотра. Обеспечить вентиляцию рабочей зоны.',
-  },
-  roof: {
-    label: 'Очистка крыш / кровли',
-    factors: 'Повышенная загазованность, отлетающие предметы, работа на высоте, работа с АГП, низкие температуры.',
-    instructionNums: '10, 14, 15, 21, 41, 65, 66, 109, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы на высоте выполнять с использованием монтажных поясов с информацией о дате проверки.',
-  },
-  },
-  'SRV-ENG':  {},
-  'SRV-FIRE': {},
-  'SRV-VENT': {},
-  'SRV-CCTV': {},
-}
-
-// Fallback used until the DB catalog (migration 043) is populated.
-function fallbackWorkTypes(serviceId: string): ResolvedWorkPermitType[] {
-  return Object.entries(WORK_TYPES_BY_SERVICE[serviceId] ?? {}).map(([id, c]) => ({ id, ...c }))
-}
 
 // ─── Measure builders ──────────────────────────────────────────────────────
 
@@ -527,9 +437,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     fetchUsersWithAssignments().then(setAllUsers)
   }, [])
 
-  // Work type selection — loaded from the DB catalog per service.
-  // Hardcode (WORK_TYPES_BY_SERVICE) is kept as fallback until migration 043
-  // is applied / if the catalog returns nothing, so prod never regresses.
+  // Work type selection — loaded from the DB catalog per service (migration 043).
   const [workServiceId, setWorkServiceId] = useState<string>(() => plan.service_id)
   const [workTypeKey, setWorkTypeKey] = useState<string>('')
   const [customWorkLabel, setCustomWorkLabel] = useState('')
@@ -539,9 +447,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     let alive = true
     fetchServiceWorkPermitTypes(workServiceId).then(list => {
       if (!alive) return
-      const resolved = list.length > 0 ? list : fallbackWorkTypes(workServiceId)
-      setTypesList(resolved)
-      setWorkTypeKey(resolved[0]?.id ?? '')
+      setTypesList(list)
+      setWorkTypeKey(list[0]?.id ?? '')
     })
     return () => { alive = false }
   }, [workServiceId])
