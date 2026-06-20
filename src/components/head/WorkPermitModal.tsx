@@ -633,37 +633,41 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     ) ?? []
   )
 
+  // Single source for both the live preview and the printout.
+  const permitFields: PermitFields = {
+    permitNumber,
+    issueDate,
+    validUntil,
+    supervisor,
+    supervisorPosition,
+    executor,
+    executorPosition,
+    workItems: plan.items.map(i => ({
+      location:    i.location,
+      description: i.work_description,
+      timeStart:   i.time_start ?? undefined,
+      timeEnd:     i.time_end   ?? undefined,
+    })),
+    startTime,
+    startDate,
+    endTime,
+    endDate,
+    issuedBy,
+    issuedByPosition,
+    workers:      allWorkers,
+    vehicles:     allVehicles,
+    vehicleNotes,
+    factors:       workTypeCfg.factors,
+    instructionNums: workTypeCfg.instructionNums,
+    isRoadWork:    workTypeCfg.isRoadWork,
+    duringMeasure2: workTypeCfg.duringMeasure2,
+    customWorkLabel,
+  }
+  // Identical string across renders when inputs are unchanged → iframe won't reload.
+  const previewHtml = generateHTML(permitFields)
+
   const handlePrint = async () => {
-    const html = generateHTML({
-      permitNumber,
-      issueDate,
-      validUntil,
-      supervisor,
-      supervisorPosition,
-      executor,
-      executorPosition,
-      workItems: plan.items.map(i => ({
-        location:    i.location,
-        description: i.work_description,
-        timeStart:   i.time_start ?? undefined,
-        timeEnd:     i.time_end   ?? undefined,
-      })),
-      startTime,
-      startDate,
-      endTime,
-      endDate,
-      issuedBy,
-      issuedByPosition,
-      workers:      allWorkers,
-      vehicles:     allVehicles,
-      vehicleNotes,
-      factors:       workTypeCfg.factors,
-      instructionNums: workTypeCfg.instructionNums,
-      isRoadWork:    workTypeCfg.isRoadWork,
-      duringMeasure2: workTypeCfg.duringMeasure2,
-      customWorkLabel,
-    })
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const win = window.open(url, '_blank')
     if (!win) { URL.revokeObjectURL(url); void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
@@ -697,8 +701,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
 
       {/* Panel — large centered modal */}
       <div
-        className={`relative z-10 w-full max-w-4xl rounded-2xl shadow-2xl border flex flex-col ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
-        style={{ height: 'min(90vh, 900px)' }}
+        className={`relative z-10 w-full max-w-6xl rounded-2xl shadow-2xl border flex flex-col ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
+        style={{ height: 'min(92vh, 960px)' }}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 ${headerBg}`}>
@@ -732,8 +736,9 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
           </div>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+        {/* Body — two panes: конструктор (слева) + живой бланк A4 (справа) */}
+        <div className="flex flex-1 min-h-0">
+        <div className={`w-full lg:w-1/2 p-5 space-y-4 overflow-y-auto ${lightMode ? 'lg:border-r lg:border-gray-200' : 'lg:border-r lg:border-white/10'}`}>
 
           {/* Work type selector */}
           <div className={sectionBg}>
@@ -1086,6 +1091,11 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
               {' '}В процессе: контроль дороги, СИЗ ({workTypeCfg.label.toLowerCase()}), маячки, зона, жилет+каска, ТГС-3.
             </div>
           </div>
+        </div>
+        {/* Right pane — живой бланк A4 (тот же HTML, что и печать) */}
+        <div className="hidden lg:block lg:w-1/2 bg-gray-200 p-3 overflow-hidden">
+          <iframe srcDoc={previewHtml} title="Живой бланк наряда-допуска" className="w-full h-full border-0 rounded bg-white" />
+        </div>
         </div>
 
         {/* Footer */}
