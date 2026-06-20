@@ -995,3 +995,40 @@ export interface DailyPlanItem {
   created_at?: string
   updated_at?: string
 }
+
+// ============ WORK PERMIT CATALOG — наряд-допуск (миграция 043) ============
+// Универсальный редактируемый каталог видов работ + курирование по службе.
+
+export interface WorkPermitType {
+  id: string
+  label: string
+  factors: string
+  instruction_nums: string
+  is_road_work: boolean
+  during_measure_2: string
+  sort_order: number
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface WorkPermitServiceType {
+  service_id: string
+  type_id: string
+  enabled: boolean
+  factors_override: string | null
+  instruction_nums_override: string | null
+  during_measure_2_override: string | null
+  sort_order: number
+}
+
+// Resolved view for a service: catalog defaults with service overrides applied.
+// Shape matches WorkPermitModal's WorkTypeConfig (camelCase) + id.
+export interface ResolvedWorkPermitType {
+  id: string
+  label: string
+  factors: string
+  instructionNums: string
+  isRoadWork: boolean
+  duringMeasure2: string
+}

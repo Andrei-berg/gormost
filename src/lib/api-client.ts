@@ -21,6 +21,7 @@ import type {
   DriverManualShift,
   AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
   JournalObjectCategory, JournalObject, DailyPlanItem,
+  WorkPermitType, WorkPermitServiceType, ResolvedWorkPermitType,
 } from '@/types'
 
 export interface StatusWithUser extends EmployeeStatus {
@@ -976,4 +977,38 @@ export function updateDailyPlanItem(id: string, updates: Partial<DailyPlanItem>)
 
 export function deleteDailyPlanItem(id: string): Promise<boolean> {
   return call('deleteDailyPlanItem', [id])
+}
+
+// ============ WORK PERMIT CATALOG — наряд-допуск (миграция 043) ============
+
+export function fetchWorkPermitTypes(): Promise<WorkPermitType[]> {
+  return call('fetchWorkPermitTypes', [])
+}
+
+export function createWorkPermitType(t: Partial<WorkPermitType>): Promise<WorkPermitType | null> {
+  return call('createWorkPermitType', [t])
+}
+
+export function updateWorkPermitType(id: string, updates: Partial<WorkPermitType>): Promise<WorkPermitType | null> {
+  return call('updateWorkPermitType', [id, updates])
+}
+
+export function deleteWorkPermitType(id: string): Promise<boolean> {
+  return call('deleteWorkPermitType', [id])
+}
+
+export function fetchWorkPermitServiceTypes(serviceId: string): Promise<WorkPermitServiceType[]> {
+  return call('fetchWorkPermitServiceTypes', [serviceId])
+}
+
+export function setServiceWorkPermitType(row: WorkPermitServiceType): Promise<boolean> {
+  return call('setServiceWorkPermitType', [row])
+}
+
+export function removeServiceWorkPermitType(serviceId: string, typeId: string): Promise<boolean> {
+  return call('removeServiceWorkPermitType', [serviceId, typeId])
+}
+
+export function fetchServiceWorkPermitTypes(serviceId: string): Promise<ResolvedWorkPermitType[]> {
+  return call('fetchServiceWorkPermitTypes', [serviceId])
 }

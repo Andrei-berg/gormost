@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { WorkPlanWithItems, AuthSession, UserWithAssignment } from '@/types'
-import { fetchUsersWithAssignments, markWorkPlanPermit } from '@/lib/api-client'
+import type { WorkPlanWithItems, AuthSession, UserWithAssignment, ResolvedWorkPermitType } from '@/types'
+import { fetchUsersWithAssignments, markWorkPlanPermit, fetchServiceWorkPermitTypes } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import { useConfirm } from '@/components/ConfirmDialog'
 
@@ -55,91 +55,6 @@ const EMPTY_WORK_TYPE: WorkTypeConfig = {
   duringMeasure2: 'Соблюдать технологию выполнения работ.',
 }
 
-const WORK_TYPES_BY_SERVICE: Record<string, Record<string, WorkTypeConfig>> = {
-  'SRV-STR': {
-  repair: {
-    label: 'Ремонт (мост, конструкции)',
-    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа на проезжей части, работа с АГП.',
-    instructionNums: '10, 14, 17, 20, 21, 23, 30, 35, 41, 53, 60, 65, 66, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы проводить в перчатках и защитных очках.',
-  },
-  wash: {
-    label: 'Помывка / промывка',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенная влажность, повышенный шум, высокое давление в шлангах и струя воды под большим давлением.',
-    instructionNums: '10, 14, 15, 21, 41, 43, 55, 65, 185, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Промывочные работы проводить в костюмах ПВХ, резиновых перчатках и защитных очках.',
-  },
-  paint: {
-    label: 'Покраска',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум.',
-    instructionNums: '3, 10, 14, 15, 17, 53, 65, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Покрасочные работы проводить в покрасочных костюмах, резиновых перчатках и защитных очках, респираторах.',
-  },
-  agp: {
-    label: 'Люлька / АГП (высотные работы)',
-    factors: 'Движение автотранспорта, возможная повышенная загазованность, падение предметов с высоты, поражение электрическим током, работа на высоте, электрооборудование.',
-    instructionNums: '10, 14, 15, 21, 65, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы проводить с использованием монтажных поясов с информацией о дате проверки.',
-  },
-  snow: {
-    label: 'Уборка снега / антигололёд',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, отлетающие предметы, повышенный шум, низкие температуры, скользкая поверхность.',
-    instructionNums: '10, 14, 15, 16, 41, 58, 65, 105, 109, 133, 185, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работать в утеплённой одежде, пользоваться нескользящей обувью.',
-  },
-  cover: {
-    label: 'Прикрытие места работ',
-    factors: 'Движущийся автотранспорт, отлетающие предметы, повышенный шум.',
-    instructionNums: '14, 41, 65, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать требования по безопасному размещению транспортных средств прикрытия. Работать в сигнальном жилете.',
-  },
-  load: {
-    label: 'Погрузка / выгрузка материалов',
-    factors: 'Отлетающие предметы, повышенный шум, низкие температуры.',
-    instructionNums: '6, 10, 14, 17, 41, 65, 66, 69, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения погрузочно-разгрузочных работ. Работать в перчатках и защитной обуви.',
-  },
-  scaffold: {
-    label: 'Ремонт подмостей / лесов',
-    factors: 'Запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током.',
-    instructionNums: '10, 14, 17, 20, 23, 41, 53, 60, 65, 66, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Ремонтные работы на подмостях проводить в перчатках и защитных очках.',
-  },
-  insul: {
-    label: 'Ремонт изоляции',
-    factors: 'Движущийся автотранспорт, повышенная загазованность, запылённость, отлетающие предметы, повышенный шум, возможность поражения электрическим током, работа с пневмоинструментом, работа с газовой горелкой.',
-    instructionNums: '10, 14, 15, 17, 23, 41, 42, 47, 65, 66, 82, 135, 136, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работу с газовой горелкой и пневмоинструментом проводить в перчатках, защитных очках и огнестойкой спецодежде.',
-  },
-  teplar: {
-    label: 'Работа в тепляке',
-    factors: 'Работа в тепляке, работа с дизельной тепловой пушкой.',
-    instructionNums: '10, 14, 41, 65, 162, 164, 190',
-    isRoadWork: false,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Контролировать работу тепловой пушки, не оставлять без присмотра. Обеспечить вентиляцию рабочей зоны.',
-  },
-  roof: {
-    label: 'Очистка крыш / кровли',
-    factors: 'Повышенная загазованность, отлетающие предметы, работа на высоте, работа с АГП, низкие температуры.',
-    instructionNums: '10, 14, 15, 21, 41, 65, 66, 109, 147, 190',
-    isRoadWork: true,
-    duringMeasure2: 'Соблюдать технологию выполнения работ. Работы на высоте выполнять с использованием монтажных поясов с информацией о дате проверки.',
-  },
-  },
-  'SRV-ENG':  {},
-  'SRV-FIRE': {},
-  'SRV-VENT': {},
-  'SRV-CCTV': {},
-}
 
 // ─── Measure builders ──────────────────────────────────────────────────────
 
@@ -522,15 +437,24 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     fetchUsersWithAssignments().then(setAllUsers)
   }, [])
 
-  // Work type selection
+  // Work type selection — loaded from the DB catalog per service (migration 043).
   const [workServiceId, setWorkServiceId] = useState<string>(() => plan.service_id)
-  const [workTypeKey, setWorkTypeKey] = useState<string>(() => {
-    const types = WORK_TYPES_BY_SERVICE[plan.service_id] ?? {}
-    return Object.keys(types)[0] ?? ''
-  })
+  const [workTypeKey, setWorkTypeKey] = useState<string>('')
   const [customWorkLabel, setCustomWorkLabel] = useState('')
-  const currentTypes = WORK_TYPES_BY_SERVICE[workServiceId] ?? {}
-  const workTypeCfg = currentTypes[workTypeKey] ?? EMPTY_WORK_TYPE
+  const [typesList, setTypesList] = useState<ResolvedWorkPermitType[]>([])
+
+  useEffect(() => {
+    let alive = true
+    fetchServiceWorkPermitTypes(workServiceId).then(list => {
+      if (!alive) return
+      setTypesList(list)
+      setWorkTypeKey(list[0]?.id ?? '')
+    })
+    return () => { alive = false }
+  }, [workServiceId])
+
+  const typesById = new Map(typesList.map(t => [t.id, t]))
+  const workTypeCfg = typesById.get(workTypeKey) ?? EMPTY_WORK_TYPE
 
   const nextDay = addDay(plan.plan_date)
 
@@ -581,11 +505,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     }
   }
 
-  const handleWorkServiceChange = (svcId: string) => {
-    setWorkServiceId(svcId)
-    const types = WORK_TYPES_BY_SERVICE[svcId] ?? {}
-    setWorkTypeKey(Object.keys(types)[0] ?? '')
-  }
+  // Switching service reloads its types via the effect (which resets workTypeKey).
+  const handleWorkServiceChange = (svcId: string) => setWorkServiceId(svcId)
 
   // Supervisor chip select
   const handleSupervisorSelect = (u: UserWithAssignment) => {
@@ -619,37 +540,41 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     ) ?? []
   )
 
+  // Single source for both the live preview and the printout.
+  const permitFields: PermitFields = {
+    permitNumber,
+    issueDate,
+    validUntil,
+    supervisor,
+    supervisorPosition,
+    executor,
+    executorPosition,
+    workItems: plan.items.map(i => ({
+      location:    i.location,
+      description: i.work_description,
+      timeStart:   i.time_start ?? undefined,
+      timeEnd:     i.time_end   ?? undefined,
+    })),
+    startTime,
+    startDate,
+    endTime,
+    endDate,
+    issuedBy,
+    issuedByPosition,
+    workers:      allWorkers,
+    vehicles:     allVehicles,
+    vehicleNotes,
+    factors:       workTypeCfg.factors,
+    instructionNums: workTypeCfg.instructionNums,
+    isRoadWork:    workTypeCfg.isRoadWork,
+    duringMeasure2: workTypeCfg.duringMeasure2,
+    customWorkLabel,
+  }
+  // Identical string across renders when inputs are unchanged → iframe won't reload.
+  const previewHtml = generateHTML(permitFields)
+
   const handlePrint = async () => {
-    const html = generateHTML({
-      permitNumber,
-      issueDate,
-      validUntil,
-      supervisor,
-      supervisorPosition,
-      executor,
-      executorPosition,
-      workItems: plan.items.map(i => ({
-        location:    i.location,
-        description: i.work_description,
-        timeStart:   i.time_start ?? undefined,
-        timeEnd:     i.time_end   ?? undefined,
-      })),
-      startTime,
-      startDate,
-      endTime,
-      endDate,
-      issuedBy,
-      issuedByPosition,
-      workers:      allWorkers,
-      vehicles:     allVehicles,
-      vehicleNotes,
-      factors:       workTypeCfg.factors,
-      instructionNums: workTypeCfg.instructionNums,
-      isRoadWork:    workTypeCfg.isRoadWork,
-      duringMeasure2: workTypeCfg.duringMeasure2,
-      customWorkLabel,
-    })
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const win = window.open(url, '_blank')
     if (!win) { URL.revokeObjectURL(url); void confirmDialog('Разрешите всплывающие окна в браузере', { alert: true }); return }
@@ -683,8 +608,8 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
 
       {/* Panel — large centered modal */}
       <div
-        className={`relative z-10 w-full max-w-4xl rounded-2xl shadow-2xl border flex flex-col ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
-        style={{ height: 'min(90vh, 900px)' }}
+        className={`relative z-10 w-full max-w-6xl rounded-2xl shadow-2xl border flex flex-col ${panelBg} ${lightMode ? 'border-gray-200' : 'border-white/15'}`}
+        style={{ height: 'min(92vh, 960px)' }}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 ${headerBg}`}>
@@ -718,8 +643,9 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
           </div>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+        {/* Body — two panes: конструктор (слева) + живой бланк A4 (справа) */}
+        <div className="flex flex-1 min-h-0">
+        <div className={`w-full lg:w-1/2 p-5 space-y-4 overflow-y-auto ${lightMode ? 'lg:border-r lg:border-gray-200' : 'lg:border-r lg:border-white/10'}`}>
 
           {/* Work type selector */}
           <div className={sectionBg}>
@@ -727,8 +653,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
 
             {/* Service switcher */}
             <div className="flex flex-wrap gap-1 mb-3">
-              {Object.entries(WORK_TYPES_BY_SERVICE).map(([svcId, types]) => {
-                const hasTypes = Object.keys(types).length > 0
+              {Object.keys(SERVICE_NAMES).map(svcId => {
                 const isPlanService = svcId === plan.service_id
                 const isActive = svcId === workServiceId
                 return (
@@ -748,22 +673,21 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
                   >
                     {SERVICE_NAMES[svcId] ?? svcId}
                     {isPlanService && <span className="ml-1 opacity-60">↩</span>}
-                    {!hasTypes && <span className="ml-1 opacity-40">···</span>}
                   </button>
                 )
               })}
             </div>
 
             {/* Type chips for selected service */}
-            {Object.keys(currentTypes).length > 0 ? (
+            {typesList.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(currentTypes).map(([key, cfg]) => (
+                {typesList.map(cfg => (
                   <button
-                    key={key}
+                    key={cfg.id}
                     type="button"
-                    onClick={() => setWorkTypeKey(key)}
+                    onClick={() => setWorkTypeKey(cfg.id)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                      workTypeKey === key
+                      workTypeKey === cfg.id
                         ? lightMode
                           ? 'bg-blue-600 border-blue-600 text-white'
                           : 'bg-blue-500/30 border-blue-500/60 text-blue-200'
@@ -782,7 +706,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
               </div>
             )}
 
-            {workTypeKey && currentTypes[workTypeKey] && (
+            {workTypeKey && typesById.has(workTypeKey) && (
               <>
                 <div className={`mt-2 text-[10px] leading-relaxed ${subtitleText}`}>
                   <span className="font-medium">Факторы:</span> {workTypeCfg.factors}
@@ -1074,6 +998,11 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
               {' '}В процессе: контроль дороги, СИЗ ({workTypeCfg.label.toLowerCase()}), маячки, зона, жилет+каска, ТГС-3.
             </div>
           </div>
+        </div>
+        {/* Right pane — живой бланк A4 (тот же HTML, что и печать) */}
+        <div className="hidden lg:block lg:w-1/2 bg-gray-200 p-3 overflow-hidden">
+          <iframe srcDoc={previewHtml} title="Живой бланк наряда-допуска" className="w-full h-full border-0 rounded bg-white" />
+        </div>
         </div>
 
         {/* Footer */}

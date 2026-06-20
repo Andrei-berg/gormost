@@ -13,6 +13,7 @@ import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { BOSS_TOUR, BOSS_HELP } from '@/components/help/tours'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
+import WorkPermitLauncher from '@/components/head/WorkPermitLauncher'
 
 export default function BossPage() {
   return (
@@ -293,6 +294,7 @@ function Content({ session }: { session: AuthSession }) {
           </button>
         ))}
         <div className="flex-1" />
+        <WorkPermitLauncher session={session} services={services} />
         <HelpPanel panelTitle="Начальник участка" panelEmoji="🏠" sections={BOSS_HELP} />
         <GuidedTour steps={BOSS_TOUR} storageKey="tour_boss_v1" trigger="Обучение" />
         <button onClick={reload}

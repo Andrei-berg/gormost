@@ -16,6 +16,7 @@ import { HEAD_TOUR, HEAD_HELP } from '@/components/help/tours'
 import PlanTaskSheetModal from '@/components/head/PlanTaskSheetModal'
 import HeadTransportTab from '@/components/head/HeadTransportTab'
 import DraftPlansSection from '@/components/head/DraftPlansSection'
+import WorkPermitCatalogEditor from '@/components/head/WorkPermitCatalogEditor'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
@@ -125,6 +126,7 @@ function Content({ session }: { session: AuthSession }) {
           <HelpPanel panelTitle="Начальник службы" panelEmoji="🏢" sections={HEAD_HELP} showWorkflow />
           <GuidedTour steps={HEAD_TOUR} storageKey="tour_head_v1" trigger="Обучение" />
           <div className="w-px h-4 bg-white/10 mx-1" />
+          <WorkPermitCatalogEditor session={session} services={services} />
           <button
             onClick={() => setShowTaskSheet(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white/60 hover:bg-white/[0.08] hover:text-white/90 transition-all"
