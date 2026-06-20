@@ -17,6 +17,8 @@ import FeedView from './FeedView'
 import BoardView from './BoardView'
 import TableView from './TableView'
 import AddItemModal, { type AddCtx } from './AddItemModal'
+import WorkPermitModal from '@/components/head/WorkPermitModal'
+import { journalItemToWorkPlan } from './journalPermit'
 
 type View = 'feed' | 'board' | 'table'
 type Pivot = 'service' | 'object'
@@ -41,6 +43,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   const [view, setView]       = useState<View>('feed')
   const [pivot, setPivot]     = useState<Pivot>('service')
   const [addCtx, setAddCtx]   = useState<AddCtx | null>(null)
+  const [permitItem, setPermitItem] = useState<PlanItem | null>(null)
 
   // ── active slice (date × period) ──────────────────────────────────────────
   const [date, setDate]             = useState<string>(TODAY_ISO)
@@ -195,19 +198,19 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <FeedView
             items={visible} objects={objects} services={SERVICES} ui={S}
             onAdd={addItem} onDelete={deleteItem} onReassign={reassign}
-            onOpenAdd={setAddCtx}
+            onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
           />
         )}
         {view === 'board' && (
           <BoardView
             items={visible} objects={objects} services={SERVICES} ui={S} pivot={pivot}
-            onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx}
+            onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
           />
         )}
         {view === 'table' && (
           <TableView
             items={visible} objects={objects} services={SERVICES} ui={S}
-            onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx}
+            onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
           />
         )}
 
@@ -220,6 +223,18 @@ export default function JournalApp({ session }: { session: AuthSession }) {
         <AddItemModal
           ctx={addCtx} objects={objects} services={SERVICES} ui={S}
           onClose={() => setAddCtx(null)} onAdd={addItem}
+        />
+      )}
+
+      {permitItem && (
+        <WorkPermitModal
+          plan={journalItemToWorkPlan(
+            permitItem,
+            objects.find(o => o.id === permitItem.objectId)?.name ?? '',
+            session,
+          )}
+          session={session}
+          onClose={() => setPermitItem(null)}
         />
       )}
     </div>

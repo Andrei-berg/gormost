@@ -5,6 +5,7 @@ import { CATEGORIES } from './data'
 import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
 import { Counts } from './icons'
+import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
 interface Props {
   items: PlanItem[]
@@ -15,9 +16,10 @@ interface Props {
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
+  onOpenPermit: (item: PlanItem) => void
 }
 
-export default function BoardView({ items, objects, services, ui, pivot, onDelete, onReassign, onOpenAdd }: Props) {
+export default function BoardView({ items, objects, services, ui, pivot, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -43,6 +45,10 @@ export default function BoardView({ items, objects, services, ui, pivot, onDelet
         </div>
         <div className={`text-[13px] ${ui.text} mt-1 leading-snug`}>
           {it.period === 'NIGHT' && <span title="Ночная смена">🌙 </span>}{it.work}
+          {requiresWorkPermit(it.work) && (
+            <button onClick={() => onOpenPermit(it)} title="Требуется наряд-допуск (п.15) — оформить"
+              className="ml-1.5 align-middle text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 hover:bg-amber-500/25 transition-colors">🔺 наряд</button>
+          )}
         </div>
         <div className="flex items-center justify-between mt-2">
           <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles}

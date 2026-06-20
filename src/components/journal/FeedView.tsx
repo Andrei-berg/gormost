@@ -5,6 +5,7 @@ import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
 import ObjectCombobox from './ObjectCombobox'
 import { Counts, WorkerIcon, MasterIcon, ItrIcon, TruckIcon } from './icons'
+import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
 function Stepper({ icon, label, v, set, ui }: { icon: React.ReactNode; label: string; v: number; set: (n: number) => void; ui: UI }) {
   return (
@@ -28,9 +29,10 @@ interface Props {
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
+  onOpenPermit: (item: PlanItem) => void
 }
 
-export default function FeedView({ items, objects, services, ui, onAdd, onDelete, onReassign, onOpenAdd }: Props) {
+export default function FeedView({ items, objects, services, ui, onAdd, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
 
@@ -135,9 +137,21 @@ export default function FeedView({ items, objects, services, ui, onAdd, onDelete
                     >
                       {s.em} {s.name}
                     </span>
-                    <span className={`flex-1 text-sm ${ui.text} truncate`}>{it.work}</span>
+                    <span className={`flex-1 text-sm ${ui.text} truncate`}>
+                      {it.work}
+                      {requiresWorkPermit(it.work) && (
+                        <span title="Требуется наряд-допуск (п.15)" className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30">🔺 наряд</span>
+                      )}
+                    </span>
                     <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles}
                       className={`text-[11px] ${ui.textSub} shrink-0`} />
+                    <button
+                      onClick={() => onOpenPermit(it)}
+                      title="Оформить наряд-допуск"
+                      className={`text-[11px] ${ui.textMuted} ${ui.hoverText} shrink-0 transition-colors`}
+                    >
+                      📄
+                    </button>
                     <select
                       value={it.serviceId}
                       onChange={e => onReassign(it.id, e.target.value)}

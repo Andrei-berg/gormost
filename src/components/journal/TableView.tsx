@@ -5,6 +5,7 @@ import { CATEGORIES, PERIOD_META } from './data'
 import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
 import { Counts } from './icons'
+import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
 interface Props {
   items: PlanItem[]
@@ -14,9 +15,10 @@ interface Props {
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
+  onOpenPermit: (item: PlanItem) => void
 }
 
-export default function TableView({ items, objects, services, ui, onDelete, onReassign, onOpenAdd }: Props) {
+export default function TableView({ items, objects, services, ui, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -68,12 +70,17 @@ export default function TableView({ items, objects, services, ui, onDelete, onRe
                 <td className={`${td} whitespace-nowrap`}>
                   <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles} className={ui.textSub} />
                 </td>
-                <td className={`${td} text-center`}>
+                <td className={`${td} text-center whitespace-nowrap`}>
+                  {requiresWorkPermit(it.work) && (
+                    <span title="Работы повышенной опасности (п.15) — требуется наряд-допуск"
+                      className="text-[10px] mr-1 px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30">🔺</span>
+                  )}
                   <button
-                    title="Этап 2 — печать наряда-допуска из этой строки"
-                    className={`text-xs px-2 py-1 ${ui.radiusSm} border ${ui.border} ${ui.textMuted} ${ui.hoverText} transition-colors`}
+                    onClick={() => onOpenPermit(it)}
+                    title="Оформить наряд-допуск из этой строки"
+                    className={`text-xs px-2 py-1 ${ui.radiusSm} border ${ui.border} ${ui.textSub} ${ui.hoverText} hover:border-blue-400/40 transition-colors`}
                   >
-                    📄→
+                    📄 наряд
                   </button>
                 </td>
                 <td className={`${td} text-center`}>
