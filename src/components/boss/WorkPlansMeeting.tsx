@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
+import { WorkerIcon, MasterIcon } from '@/components/RoleIcons'
 import {
   fetchWorkPlans, fetchWorkPlansWithItems, confirmWorkPlanBoss,
 } from '@/lib/api-client'
@@ -156,8 +157,8 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
         <div className="flex items-center gap-3">
           {/* Headcount summary */}
           <div className="flex items-center gap-2 text-xs text-white/40">
-            {totalWorkers > 0 && <span>👷 {totalWorkers}</span>}
-            {totalForemen > 0 && <span>🦺 {totalForemen}</span>}
+            {totalWorkers > 0 && <span><WorkerIcon className="w-3.5 h-3.5" /> {totalWorkers}</span>}
+            {totalForemen > 0 && <span><MasterIcon className="w-3.5 h-3.5" /> {totalForemen}</span>}
             {totalVehicles > 0 && <span>🚛 {totalVehicles}</span>}
           </div>
           <StatusPlanBadge status={plan.status} size="xs" />
@@ -189,8 +190,8 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
                 {item.work_description && <span className="text-white/50 ml-1">— {item.work_description}</span>}
               </div>
               <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-white/25">
-                {item.required_workers > 0 && <span>👷{item.required_workers}</span>}
-                {item.required_foremen > 0 && <span>🦺{item.required_foremen}</span>}
+                {item.required_workers > 0 && <span className="inline-flex items-center gap-0.5"><WorkerIcon className="w-3 h-3" />{item.required_workers}</span>}
+                {item.required_foremen > 0 && <span className="inline-flex items-center gap-0.5"><MasterIcon className="w-3 h-3" />{item.required_foremen}</span>}
                 {(item.required_vehicles ?? 0) > 0 && (
                   <span className={(item.vehicles?.length ?? 0) >= (item.required_vehicles ?? 0) ? 'text-emerald-400/60' : 'text-amber-400/60'}>
                     🚛{item.vehicles?.length ?? 0}/{item.required_vehicles}

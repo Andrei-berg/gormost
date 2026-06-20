@@ -7,6 +7,7 @@ import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
 } from '@/lib/api-client'
 import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
+import { WorkerIcon, BrigadierIcon } from '@/components/RoleIcons'
 
 const SVC_COLORS: Record<string, { color: string; bg: string; border: string }> = {
   'SRV-ENG':  { color: '#F0A500', bg: 'rgba(240,165,0,0.15)',  border: 'rgba(240,165,0,0.40)' },
@@ -330,11 +331,11 @@ function ItemRow({ item, idx, canEdit, onEdit, onDelete }: {
           </div>
           {hasResources && (
             <div className="flex flex-wrap gap-2.5 mt-1 text-[11px] text-white/55">
-              {(item.required_workers ?? 0) > 0 && <span>👷 {item.required_workers} чел.</span>}
-              {(item.required_foremen ?? 0) > 0 && <span>🦺 {item.required_foremen} бригадир</span>}
+              {(item.required_workers ?? 0) > 0 && <span><WorkerIcon className="w-3.5 h-3.5" /> {item.required_workers} чел.</span>}
+              {(item.required_foremen ?? 0) > 0 && <span><BrigadierIcon className="w-3.5 h-3.5" /> {item.required_foremen} бригадир</span>}
               {(item.required_vehicles ?? 0) > 0 && <span>🚛 {item.required_vehicles} ТС</span>}
               {item.workers.length > 0 && (item.required_workers ?? 0) === 0 && (
-                <span>👷 {item.workers.length} чел.</span>
+                <span><WorkerIcon className="w-3.5 h-3.5" /> {item.workers.length} чел.</span>
               )}
               {item.time_start && (
                 <span className="text-cyan-400 font-mono">

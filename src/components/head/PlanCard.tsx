@@ -5,14 +5,22 @@ import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossSer
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
+import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   submitWorkPlan, deleteWorkPlan, recallWorkPlan,
   fetchWorkAssignmentsForItems,
 } from '@/lib/api-client'
 
-const BRIGADE_ROLE_ICONS: Record<string, string> = {
-  WORKER: '👷', BRIGADIER: '⭐', MASTER: '🦺', ITR: '📋', DRIVER: '🚗',
+function roleGlyph(role: string) {
+  switch (role) {
+    case 'WORKER':    return <WorkerIcon className="w-3.5 h-3.5" />
+    case 'BRIGADIER': return <BrigadierIcon className="w-3.5 h-3.5" />
+    case 'MASTER':    return <MasterIcon className="w-3.5 h-3.5" />
+    case 'ITR':       return <ItrIcon className="w-3.5 h-3.5" />
+    case 'DRIVER':    return <span>🚗</span>
+    default:          return <span>👤</span>
+  }
 }
 const BRIGADE_ROLE_LABELS: Record<string, string> = {
   WORKER: 'Рабочий', BRIGADIER: 'Бригадир', MASTER: 'Мастер', ITR: 'ИТР', DRIVER: 'Водитель',
@@ -337,10 +345,10 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
           {(totalWorkers > 0 || totalBrigadiers > 0 || totalMasters > 0 || totalForemen > 0 || totalVehicles > 0) && (
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/[0.05] text-[12px] text-white/50">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Итого:</span>
-              {totalWorkers    > 0 && <span>👷 <b className="font-mono text-white/70">{totalWorkers}</b> рабочих</span>}
-              {totalBrigadiers > 0 && <span>⭐ <b className="font-mono text-white/70">{totalBrigadiers}</b> бригадир</span>}
-              {totalMasters    > 0 && <span>🎓 <b className="font-mono text-white/70">{totalMasters}</b> мастер</span>}
-              {totalForemen    > 0 && <span>📋 <b className="font-mono text-white/70">{totalForemen}</b> ИТР</span>}
+              {totalWorkers    > 0 && <span><WorkerIcon className="w-3.5 h-3.5" /> <b className="font-mono text-white/70">{totalWorkers}</b> рабочих</span>}
+              {totalBrigadiers > 0 && <span><BrigadierIcon className="w-3.5 h-3.5" /> <b className="font-mono text-white/70">{totalBrigadiers}</b> бригадир</span>}
+              {totalMasters    > 0 && <span><MasterIcon className="w-3.5 h-3.5" /> <b className="font-mono text-white/70">{totalMasters}</b> мастер</span>}
+              {totalForemen    > 0 && <span><ItrIcon className="w-3.5 h-3.5" /> <b className="font-mono text-white/70">{totalForemen}</b> ИТР</span>}
               {totalVehicles   > 0 && <span>🚛 <b className="font-mono text-white/70">{totalVehicles}</b> техника</span>}
             </div>
           )}
@@ -389,10 +397,10 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
         {/* Headcount + vehicle type badges */}
         {(item.required_workers > 0 || item.required_brigadiers > 0 || item.required_masters > 0 || item.required_foremen > 0 || vehicleTypes.length > 0 || item.required_vehicles > 0) && (
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {item.required_workers    > 0 && <span className="text-[10px] bg-blue-500/15    text-blue-300    px-1.5 py-0.5 rounded">👷 {item.required_workers}</span>}
-            {item.required_brigadiers > 0 && <span className="text-[10px] bg-yellow-500/15  text-yellow-300  px-1.5 py-0.5 rounded">⭐ {item.required_brigadiers}</span>}
-            {item.required_masters    > 0 && <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded">🎓 {item.required_masters}</span>}
-            {item.required_foremen    > 0 && <span className="text-[10px] bg-purple-500/15  text-purple-300  px-1.5 py-0.5 rounded">📋 {item.required_foremen}</span>}
+            {item.required_workers    > 0 && <span className="text-[10px] bg-blue-500/15    text-blue-300    px-1.5 py-0.5 rounded inline-flex items-center gap-1"><WorkerIcon className="w-3 h-3" /> {item.required_workers}</span>}
+            {item.required_brigadiers > 0 && <span className="text-[10px] bg-yellow-500/15  text-yellow-300  px-1.5 py-0.5 rounded inline-flex items-center gap-1"><BrigadierIcon className="w-3 h-3" /> {item.required_brigadiers}</span>}
+            {item.required_masters    > 0 && <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded inline-flex items-center gap-1"><MasterIcon className="w-3 h-3" /> {item.required_masters}</span>}
+            {item.required_foremen    > 0 && <span className="text-[10px] bg-purple-500/15  text-purple-300  px-1.5 py-0.5 rounded inline-flex items-center gap-1"><ItrIcon className="w-3 h-3" /> {item.required_foremen}</span>}
             {/* Vehicle types (new) */}
             {vehicleTypes.map((vr, i) => {
               const cfg = VEHICLE_TYPE_CONFIG[vr.type]
@@ -464,7 +472,7 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
                   key={a.id}
                   className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/8 border border-white/12"
                 >
-                  <span>{BRIGADE_ROLE_ICONS[a.role] ?? '👤'}</span>
+                  {roleGlyph(a.role)}
                   <span className="text-white/75 font-medium">{a.user?.full_name?.split(' ').slice(0, 2).join(' ') ?? '—'}</span>
                   <span className="text-white/35">·{BRIGADE_ROLE_LABELS[a.role] ?? a.role}</span>
                 </span>

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { fetchWorkPlans, fetchWorkPlansWithItems, fetchServices, fetchUsers } from '@/lib/api-client'
 import type { WorkPlanWithItems, Service, User } from '@/types'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
+import { WorkerIcon } from '@/components/RoleIcons'
 
 interface Props {
   onRefresh?: () => void
@@ -115,7 +116,7 @@ export default function LiveBoard({ onRefresh }: Props) {
                         </div>
                         <div className="flex items-center gap-2">
                           {totalPlanWorkers > 0 && (
-                            <span className="text-xs text-white/40">👷 {totalPlanWorkers}</span>
+                            <span className="text-xs text-white/40"><WorkerIcon className="w-3.5 h-3.5" /> {totalPlanWorkers}</span>
                           )}
                           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusCfg.bg}`} style={{ color: statusCfg.color }}>
                             {statusCfg.label}

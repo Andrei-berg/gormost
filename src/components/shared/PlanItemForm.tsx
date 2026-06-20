@@ -8,6 +8,7 @@ import type {
 import { VEHICLE_TYPE_CONFIG, SERVICE_META, EMPLOYEE_STATUS_CONFIG } from '@/types'
 import { fetchUsersWithAssignments, fetchAllCurrentStatuses } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 
 // ── Exported type used by all callers ──────────────────────────────────────
 export type PlanItemFormData = Omit<WorkPlanItemWithVehicles,
@@ -215,10 +216,10 @@ export default function PlanItemForm({
           <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="form-input text-sm px-2 py-1.5" />
         </div>
         <div className="flex items-end gap-2 ml-2 flex-wrap">
-          <MiniStepper emoji="👷" label="Рабочие"   value={reqWorkers}    onChange={setReqWorkers} />
-          <MiniStepper emoji="⭐" label="Бригадир"  value={reqBrigadiers} onChange={setReqBrigadiers} />
-          <MiniStepper emoji="🎓" label="Мастер"    value={reqMasters}    onChange={setReqMasters} />
-          <MiniStepper emoji="📋" label="ИТР"       value={reqForemen}    onChange={setReqForemen} />
+          <MiniStepper icon={<WorkerIcon className="w-4 h-4" />}    label="Рабочие"   value={reqWorkers}    onChange={setReqWorkers} />
+          <MiniStepper icon={<BrigadierIcon className="w-4 h-4" />} label="Бригадир"  value={reqBrigadiers} onChange={setReqBrigadiers} />
+          <MiniStepper icon={<MasterIcon className="w-4 h-4" />}    label="Мастер"    value={reqMasters}    onChange={setReqMasters} />
+          <MiniStepper icon={<ItrIcon className="w-4 h-4" />}       label="ИТР"       value={reqForemen}    onChange={setReqForemen} />
         </div>
         <div className="flex-1 min-w-32">
           <label className={lbl}>Примечание</label>
@@ -269,7 +270,7 @@ export default function PlanItemForm({
       {/* Smart worker picker */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className={lbl + ' mb-0'}>👷 Работники поимённо</label>
+          <label className={lbl + ' mb-0 inline-flex items-center gap-1'}><WorkerIcon className="w-3.5 h-3.5" /> Работники поимённо</label>
           <button type="button" onClick={toggleWorkerPicker}
             className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${
               showWorkerPicker ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300' : 'border-white/15 text-white/40 hover:text-white/60'
@@ -397,15 +398,15 @@ export default function PlanItemForm({
               const selItr     = selectedWorkers.filter(n => ITR_ROLES.includes(pickerWorkers.find(w => w.full_name === n)?.role_level ?? '')).length
               const needForemen = reqBrigadiers + reqMasters
               const items = [
-                reqWorkers > 0  ? { label: '👷 Рабочие',         got: selWorkers,  need: reqWorkers }  : null,
-                needForemen > 0 ? { label: '🦺 Мастера/Бригад.', got: selForemen,  need: needForemen } : null,
-                reqForemen > 0  ? { label: '📋 ИТР',             got: selItr,      need: reqForemen }  : null,
-              ].filter(Boolean) as { label: string; got: number; need: number }[]
+                reqWorkers > 0  ? { key: 'w', icon: <WorkerIcon className="w-3.5 h-3.5" />, text: 'Рабочие',        got: selWorkers,  need: reqWorkers }  : null,
+                needForemen > 0 ? { key: 'm', icon: <MasterIcon className="w-3.5 h-3.5" />, text: 'Мастера/Бригад.', got: selForemen,  need: needForemen } : null,
+                reqForemen > 0  ? { key: 'i', icon: <ItrIcon className="w-3.5 h-3.5" />,    text: 'ИТР',            got: selItr,      need: reqForemen }  : null,
+              ].filter(Boolean) as { key: string; icon: React.ReactNode; text: string; got: number; need: number }[]
               return (
                 <div className="space-y-0.5">
                   {items.map(it => (
-                    <div key={it.label} className="flex items-center gap-2">
-                      <span className="text-white/35 w-36 truncate">{it.label}</span>
+                    <div key={it.key} className="flex items-center gap-2">
+                      <span className="text-white/35 w-36 truncate inline-flex items-center gap-1">{it.icon} {it.text}</span>
                       <span className={it.got >= it.need ? 'text-emerald-400 font-medium' : 'text-amber-400 font-medium'}>
                         {it.got}/{it.need}
                       </span>
@@ -549,7 +550,7 @@ function WorkerGroup({
   )
 }
 
-function MiniStepper({ emoji, label, value, onChange }: { emoji: string; label: string; value: number; onChange: (v: number) => void }) {
+function MiniStepper({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-[10px] text-white/40 leading-none">{label}</span>
@@ -558,7 +559,7 @@ function MiniStepper({ emoji, label, value, onChange }: { emoji: string; label: 
         <span className="w-6 text-center text-sm text-white font-semibold">{value}</span>
         <button onClick={() => onChange(Math.min(50, value + 1))} className="w-5 h-5 rounded bg-white/8 border border-white/10 text-white/50 hover:text-white hover:bg-white/15 text-xs font-bold flex items-center justify-center">+</button>
       </div>
-      <span className="text-[11px] leading-none">{emoji}</span>
+      <span className="leading-none">{icon}</span>
     </div>
   )
 }

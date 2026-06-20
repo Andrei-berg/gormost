@@ -14,6 +14,7 @@ import {
 } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
+import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -299,10 +300,10 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
         {plan.items.length > 0 && (
           <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl bg-white/4 border border-white/8 flex items-center gap-4 flex-wrap">
             <span className="text-[10px] text-white/35 uppercase tracking-widest">Итого</span>
-            <TotalBadge icon="👷" count={totalWorkers}    label="рабочих" />
-            <TotalBadge icon="⭐" count={totalBrigadiers} label="бригадир" />
-            <TotalBadge icon="🎓" count={totalMasters}    label="мастер" />
-            {totalForemen > 0 && <TotalBadge icon="📋" count={totalForemen} label="ИТР" />}
+            <TotalBadge icon={<WorkerIcon className="w-4 h-4" />}    count={totalWorkers}    label="рабочих" />
+            <TotalBadge icon={<BrigadierIcon className="w-4 h-4" />} count={totalBrigadiers} label="бригадир" />
+            <TotalBadge icon={<MasterIcon className="w-4 h-4" />}    count={totalMasters}    label="мастер" />
+            {totalForemen > 0 && <TotalBadge icon={<ItrIcon className="w-4 h-4" />} count={totalForemen} label="ИТР" />}
             <TotalBadge icon="🚗" count={totalVehicles}   label="техника" />
           </div>
         )}
@@ -442,7 +443,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
 
 // ── TotalBadge ─────────────────────────────────────────────────────────────
 
-function TotalBadge({ icon, count, label }: { icon: string; count: number; label: string }) {
+function TotalBadge({ icon, count, label }: { icon: React.ReactNode; count: number; label: string }) {
   if (count === 0) return null
   return (
     <div className="flex items-center gap-1.5">
@@ -489,10 +490,10 @@ function ReviewItemCard({ item, activeVehicles, onEdit, onDelete, onAssignVehicl
         {(item.required_workers > 0 || item.required_brigadiers > 0 ||
           item.required_masters > 0 || item.required_foremen > 0 || item.required_vehicles > 0) && (
           <div className="flex flex-wrap gap-2">
-            <HeadcountBadge icon="👷" count={item.required_workers}    label="рабочих" color="blue" />
-            <HeadcountBadge icon="⭐" count={item.required_brigadiers} label="бригадир" color="amber" />
-            <HeadcountBadge icon="🎓" count={item.required_masters}    label="мастер"   color="violet" />
-            <HeadcountBadge icon="📋" count={item.required_foremen}    label="ИТР"      color="cyan" />
+            <HeadcountBadge icon={<WorkerIcon className="w-3.5 h-3.5" />}    count={item.required_workers}    label="рабочих" color="blue" />
+            <HeadcountBadge icon={<BrigadierIcon className="w-3.5 h-3.5" />} count={item.required_brigadiers} label="бригадир" color="amber" />
+            <HeadcountBadge icon={<MasterIcon className="w-3.5 h-3.5" />}    count={item.required_masters}    label="мастер"   color="violet" />
+            <HeadcountBadge icon={<ItrIcon className="w-3.5 h-3.5" />}       count={item.required_foremen}    label="ИТР"      color="cyan" />
             <HeadcountBadge icon="🚗" count={item.required_vehicles}   label="техника"  color="emerald" />
           </div>
         )}
@@ -618,7 +619,7 @@ const BADGE_COLORS: Record<string, string> = {
   emerald: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
 }
 
-function HeadcountBadge({ icon, count, label, color }: { icon: string; count: number; label: string; color: string }) {
+function HeadcountBadge({ icon, count, label, color }: { icon: React.ReactNode; count: number; label: string; color: string }) {
   if (count === 0) return null
   return (
     <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${BADGE_COLORS[color]}`}>
@@ -789,10 +790,10 @@ function PlanItemForm({ initial, planServiceId, existingCrossRequest, onSave, on
           </div>
         </div>
         <div className="grid grid-cols-5 gap-2">
-          <div><label className={labelCls}>👷 Рабочих</label><input type="number" min="0" value={reqWorkers}    onChange={e => setReqWorkers(e.target.value)}   className={numCls} /></div>
-          <div><label className={labelCls}>⭐ Бригадир</label><input type="number" min="0" value={reqBrigadiers} onChange={e => setReqBrig(e.target.value)}      className={numCls} /></div>
-          <div><label className={labelCls}>🎓 Мастер</label>  <input type="number" min="0" value={reqMasters}   onChange={e => setReqMasters(e.target.value)}   className={numCls} /></div>
-          <div><label className={labelCls}>📋 ИТР</label>     <input type="number" min="0" value={reqForemen}   onChange={e => setReqForemen(e.target.value)}   className={numCls} /></div>
+          <div><label className={labelCls + ' inline-flex items-center gap-1'}><WorkerIcon className="w-3.5 h-3.5" /> Рабочих</label><input type="number" min="0" value={reqWorkers}    onChange={e => setReqWorkers(e.target.value)}   className={numCls} /></div>
+          <div><label className={labelCls + ' inline-flex items-center gap-1'}><BrigadierIcon className="w-3.5 h-3.5" /> Бригадир</label><input type="number" min="0" value={reqBrigadiers} onChange={e => setReqBrig(e.target.value)}      className={numCls} /></div>
+          <div><label className={labelCls + ' inline-flex items-center gap-1'}><MasterIcon className="w-3.5 h-3.5" /> Мастер</label>  <input type="number" min="0" value={reqMasters}   onChange={e => setReqMasters(e.target.value)}   className={numCls} /></div>
+          <div><label className={labelCls + ' inline-flex items-center gap-1'}><ItrIcon className="w-3.5 h-3.5" /> ИТР</label>     <input type="number" min="0" value={reqForemen}   onChange={e => setReqForemen(e.target.value)}   className={numCls} /></div>
           <div><label className={labelCls}>🚗 Техника</label> <input type="number" min="0" value={reqVehicles}  onChange={e => setReqVehicles(e.target.value)}  className={numCls} /></div>
         </div>
         <div>

@@ -4,6 +4,7 @@ import type { WorkPlanWithItems, WorkPlanItemWithVehicles, CrossServiceDraft, Se
 import { SERVICE_META, CROSS_SERVICE_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
+import { WorkerIcon, MasterIcon } from '@/components/RoleIcons'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
   confirmWorkPlanZamporab, returnWorkPlanZamporab, approveWorkPlanDirect,
@@ -135,7 +136,7 @@ export default function ZamporabPlanCard({ plan, services, session, onRefresh }:
             <div className="flex gap-2 ml-2">
               {totalWorkers > 0 && (
                 <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
-                  👷 {totalWorkers} раб.
+                  <WorkerIcon className="w-3 h-3" /> {totalWorkers} раб.
                 </span>
               )}
               {totalForemen > 0 && (
@@ -283,12 +284,12 @@ function ItemRow({ item, onEdit, onDelete }: {
           <div className="flex flex-wrap gap-1 mt-1.5">
             {item.required_workers > 0 && (
               <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
-                👷 {item.required_workers} рабочих
+                <WorkerIcon className="w-3 h-3" /> {item.required_workers} рабочих
               </span>
             )}
             {item.required_foremen > 0 && (
               <span className="text-[10px] bg-violet-500/15 text-violet-300 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
-                🦺 {item.required_foremen} мастеров
+                <MasterIcon className="w-3 h-3" /> {item.required_foremen} мастеров
               </span>
             )}
             {item.required_vehicles > 0 && (
