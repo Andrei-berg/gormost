@@ -10,6 +10,8 @@ describe('requiresWorkPermit (п.15 классификатор)', () => {
   it('flags work on roadway', () => {
     expect(requiresWorkPermit('Замена камеры на проезжей части')).toBe(true)
     expect(requiresWorkPermit('Обслуживание эл. сетей на проезжей части с АГП')).toBe(true)
+    // the common phrase "на проезжей части" must hit the roadway category itself
+    expect(matchedHighRiskCategories('Покраска ограждения на проезжей части').map(c => c.id)).toContain('roadway')
   })
 
   it('flags confined spaces (wells, collectors, tunnels)', () => {
