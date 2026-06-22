@@ -5,6 +5,7 @@ import { shiftEmojiHours as fmtShiftEmojiHours } from '@/lib/workSchedule'
 import { SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import { assignVehicle, unassignVehicle, fetchVehicleAssignmentsForItems, updateVehicleAssignmentDriver } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 const SERVICE_NAMES: Record<string, string> = {
   'SRV-ENG':  'Инженерные системы',
@@ -148,9 +149,9 @@ export default function PlanTransport({ plans, activeVehicles, userId, planDate,
                               <div className={`text-sm font-medium ${v.status === 'BROKEN' ? 'text-red-300' : 'text-white/80'}`}>
                                 {v.name}
                               </div>
-                              {v.plate && (
-                                <span className="font-mono text-xs bg-white/10 text-white/50 px-1.5 py-0.5 rounded tracking-wide">{v.plate}</span>
-                              )}
+                              <div className="mt-0.5">
+                                <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
+                              </div>
                             </div>
                             {v.status === 'BROKEN' && (
                               <span className="text-red-400 text-xs shrink-0">нужна замена</span>
@@ -260,7 +261,7 @@ export default function PlanTransport({ plans, activeVehicles, userId, planDate,
                       {vehicles.map(v => (
                         <div key={v.id} className="flex items-center justify-between gap-1.5 px-1.5 py-1 rounded-md bg-emerald-500/8 border border-emerald-500/15">
                           <span className="text-xs text-emerald-200 font-medium truncate">{v.name}</span>
-                          {v.plate && <span className="font-mono text-[10px] text-emerald-400/50 shrink-0">{v.plate}</span>}
+                          <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" className="shrink-0" />
                         </div>
                       ))}
                     </div>

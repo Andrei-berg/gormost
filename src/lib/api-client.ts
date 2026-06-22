@@ -20,7 +20,7 @@ import type {
   CertType, EmployeeCert, CertRequirement,
   DriverManualShift,
   AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
-  JournalObjectCategory, JournalObject, DailyPlanItem,
+  JournalObjectCategory, JournalObject, DailyPlanItem, JournalShiftHeader,
   WorkPermitType, WorkPermitServiceType, ResolvedWorkPermitType,
 } from '@/types'
 
@@ -977,6 +977,14 @@ export function updateDailyPlanItem(id: string, updates: Partial<DailyPlanItem>)
 
 export function deleteDailyPlanItem(id: string): Promise<boolean> {
   return call('deleteDailyPlanItem', [id])
+}
+
+export function fetchShiftHeader(planDate: string, shiftType: string): Promise<JournalShiftHeader | null> {
+  return call('fetchShiftHeader', [planDate, shiftType])
+}
+
+export function upsertShiftHeader(header: Partial<JournalShiftHeader>): Promise<JournalShiftHeader | null> {
+  return call('upsertShiftHeader', [header])
 }
 
 // ============ WORK PERMIT CATALOG — наряд-допуск (миграция 043) ============

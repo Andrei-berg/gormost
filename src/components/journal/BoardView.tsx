@@ -1,9 +1,13 @@
 'use client'
 import { useMemo } from 'react'
 import type { ObjectRef, ServiceRef, PlanItem } from './data'
-import { CATEGORIES } from './data'
+import { CATEGORIES, PERIOD_META, FLAG_META } from './data'
 import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
+import type { JournalShiftHeader } from '@/types'
+import PermitReadiness from './PermitReadiness'
+import CrewDetail from './CrewDetail'
+import TransportDetail from './TransportDetail'
 import { Counts } from './icons'
 import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
@@ -12,6 +16,7 @@ interface Props {
   objects: ObjectRef[]
   services: ServiceRef[]
   ui: UI
+  header: JournalShiftHeader | null
   pivot: 'service' | 'object'
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
@@ -19,7 +24,7 @@ interface Props {
   onOpenPermit: (item: PlanItem) => void
 }
 
-export default function BoardView({ items, objects, services, ui, pivot, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
+export default function BoardView({ items, objects, services, ui, header, pivot, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -43,13 +48,21 @@ export default function BoardView({ items, objects, services, ui, pivot, onDelet
             : <span className="text-[11px] px-1.5 py-0.5 rounded-full border" style={{ color: s.color, borderColor: s.color + '55', background: s.color + '18' }}>{s.em} {s.name}</span>}
           <button onClick={() => onDelete(it.id)} className={`text-xs ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity`}>✕</button>
         </div>
-        <div className={`text-[13px] ${ui.text} mt-1 leading-snug`}>
-          {it.period === 'NIGHT' && <span title="Ночная смена">🌙 </span>}{it.work}
-          {requiresWorkPermit(it.work) && (
-            <button onClick={() => onOpenPermit(it)} title="Требуется наряд-допуск (п.15) — оформить"
-              className="ml-1.5 align-middle text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 hover:bg-amber-500/25 transition-colors">🔺 наряд</button>
-          )}
+        <div className={`text-[13px] mt-1 leading-snug ${it.flag ? 'font-semibold' : ui.text}`} style={it.flag ? { color: FLAG_META[it.flag].color } : undefined}>
+          {it.period !== 'DAY' && <span title={PERIOD_META[it.period].label}>{PERIOD_META[it.period].em} </span>}
+          {it.flag && <span title={FLAG_META[it.flag].label}>{FLAG_META[it.flag].em} </span>}{it.work}
         </div>
+        {requiresWorkPermit(it.work) && (
+          <div className="mt-1.5">
+            <PermitReadiness item={it} header={header} ui={ui} onOpen={() => onOpenPermit(it)} size="xs" />
+          </div>
+        )}
+        {it.specialties.length > 0 && (
+          <div className="mt-1.5"><CrewDetail item={it} ui={ui} /></div>
+        )}
+        {it.vehicleNumbers.length > 0 && (
+          <div className="mt-1.5"><TransportDetail item={it} ui={ui} /></div>
+        )}
         <div className="flex items-center justify-between mt-2">
           <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles}
             className={`text-[10px] ${ui.textSub}`} />

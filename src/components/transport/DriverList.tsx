@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import type { UserWithAssignment, VehicleWithAssignments } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 type DriverFilter = 'all' | 'onshift' | 'offshift' | 'vac'
 
@@ -48,9 +49,9 @@ export default function DriverList({ drivers, vehicles, date, initialFilter = 'a
   const target = useMemo(() => new Date(date + 'T12:00:00'), [date])
 
   const permanentMap = useMemo(() => {
-    const map = new Map<string, { name: string; plate: string }>()
+    const map = new Map<string, { name: string; plate: string; fleet_number: string | null }>()
     vehicles.forEach(v => {
-      if (v.assigned_driver_id) map.set(v.assigned_driver_id, { name: v.name, plate: v.plate })
+      if (v.assigned_driver_id) map.set(v.assigned_driver_id, { name: v.name, plate: v.plate, fleet_number: v.fleet_number })
     })
     return map
   }, [vehicles])
@@ -178,8 +179,7 @@ export default function DriverList({ drivers, vehicles, date, initialFilter = 'a
                 <div className="flex items-center gap-2 text-xs text-white/50">
                   <span className="text-sm">🚗</span>
                   <span>{veh.name}</span>
-                  <span className="text-white/25">·</span>
-                  <span className="font-mono font-semibold text-white/70">{veh.plate}</span>
+                  <VehicleNumberBadge number={veh.fleet_number} plate={veh.plate} size="sm" />
                 </div>
               ) : (
                 <div className="text-xs text-white/25 italic">⊘ ТС не закреплено</div>

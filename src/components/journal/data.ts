@@ -3,9 +3,10 @@
 // module maps DB rows (snake_case) to the journal's UI types (camelCase) and
 // holds reference data (categories/services) that mirrors the seeded DB rows.
 
-import type { JournalObject, DailyPlanItem } from '@/types'
+import type { JournalObject, DailyPlanItem, SpecialtyCount, DailyPlanItemFlag } from '@/types'
 
-export type Period = 'DAY' | 'NIGHT'
+export type Period = 'DAY' | 'NIGHT' | 'AROUND' // AROUND = сутки (24h duty shift)
+export type { SpecialtyCount, DailyPlanItemFlag }
 
 export interface Category {
   id: string
@@ -38,6 +39,9 @@ export interface PlanItem {
   foremen: number  // мастера (белая каска)
   itr: number      // ИТР (белая каска + знак)
   vehicles: number
+  specialties: SpecialtyCount[]  // optional detailed breakdown ([] when none)
+  vehicleNumbers: string[]       // optional garage numbers ([] when none)
+  flag: DailyPlanItemFlag | null // standing/conditional row type (null = ordinary)
   note?: string
 }
 
@@ -51,7 +55,27 @@ export interface AddInput {
   foremen: number
   itr: number
   vehicles: number
+  specialties: SpecialtyCount[]
+  vehicleNumbers: string[]
+  flag: DailyPlanItemFlag | null
 }
+
+// Specialty catalog — codes from real участок plans; extendable with custom codes.
+export const SPECIALTIES: { code: string; label: string }[] = [
+  { code: 'д',    label: 'дорожный' },
+  { code: 'эл',   label: 'электрик' },
+  { code: 'с.т',  label: 'сантехник' },
+  { code: 'слаб', label: 'слаботочник' },
+  { code: 'св',   label: 'сварщик' },
+  { code: 'итр',  label: 'ИТР' },
+]
+
+// "11д · 3эл · 3итр" — compact summary; empty string when no breakdown.
+export const formatSpecialties = (list: SpecialtyCount[] | null | undefined): string =>
+  (list ?? []).filter(s => s.count > 0).map(s => `${s.count}${s.code}`).join(' · ')
+
+export const specialtiesTotal = (list: SpecialtyCount[] | null | undefined): number =>
+  (list ?? []).reduce((n, s) => n + (s.count > 0 ? s.count : 0), 0)
 
 export const CATEGORIES: Category[] = [
   { id: 'TUN',   name: 'Туннели',                 em: '🚇' },
@@ -94,6 +118,9 @@ export const toPlanItem = (r: DailyPlanItem): PlanItem => ({
   foremen: r.required_foremen,
   itr: r.required_itr,
   vehicles: r.required_vehicles,
+  specialties: r.specialties ?? [],
+  vehicleNumbers: r.vehicle_numbers ?? [],
+  flag: r.item_flag ?? null,
   note: r.note ?? undefined,
 })
 
@@ -116,6 +143,16 @@ export const fmtDateRu = (iso: string) =>
   })
 
 export const PERIOD_META: Record<Period, { label: string; em: string; color: string; bg: string }> = {
-  DAY:   { label: 'День',  em: '☀️', color: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
-  NIGHT: { label: 'Ночь',  em: '🌙', color: '#818cf8', bg: 'rgba(99,102,241,0.20)' },
+  DAY:    { label: 'День',  em: '☀️', color: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
+  NIGHT:  { label: 'Ночь',  em: '🌙', color: '#818cf8', bg: 'rgba(99,102,241,0.20)' },
+  AROUND: { label: 'Сутки', em: '🌗', color: '#10b981', bg: 'rgba(16,185,129,0.18)' },
 }
+
+// Тип строки (стоячие/условные пункты плана). null = обычная работа.
+export const FLAG_META: Record<DailyPlanItemFlag, { label: string; short: string; em: string; color: string; bg: string }> = {
+  BY_ORDER: { label: 'по распоряжению',   short: 'по распор.', em: '⏳', color: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
+  STANDBY:  { label: 'дежурство / резерв', short: 'дежурство',  em: '🛡', color: '#06b6d4', bg: 'rgba(6,182,212,0.16)' },
+  NOTICE:   { label: 'важное',            short: 'важное',     em: '❗', color: '#ef4444', bg: 'rgba(239,68,68,0.16)' },
+}
+
+export const FLAG_OPTIONS: DailyPlanItemFlag[] = ['BY_ORDER', 'STANDBY', 'NOTICE']

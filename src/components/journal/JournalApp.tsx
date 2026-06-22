@@ -1,9 +1,10 @@
 'use client'
-import { useCallback, useMemo, useState } from 'react'
-import type { AuthSession } from '@/types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { AuthSession, JournalShiftHeader, SpecialtyCount, DailyPlanItemFlag } from '@/types'
 import {
   fetchJournalObjects, fetchDailyPlanItems, createJournalObject,
   createDailyPlanItem, updateDailyPlanItem, deleteDailyPlanItem,
+  fetchShiftHeader, upsertShiftHeader,
 } from '@/lib/api-client'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
@@ -17,8 +18,9 @@ import FeedView from './FeedView'
 import BoardView from './BoardView'
 import TableView from './TableView'
 import AddItemModal, { type AddCtx } from './AddItemModal'
+import ShiftHeaderBar, { type ShiftHeaderPatch } from './ShiftHeaderBar'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
-import { journalItemToWorkPlan } from './journalPermit'
+import { journalItemToWorkPlan, buildPermitDefaults } from './journalPermit'
 
 type View = 'feed' | 'board' | 'table'
 type Pivot = 'service' | 'object'
@@ -31,10 +33,12 @@ const VIEWS: { id: View; label: string }[] = [
 
 // Quick slice presets — each sets (date, period).
 const PRESETS: { date: string; period: Period; label: string }[] = [
-  { date: TODAY_ISO,    period: 'DAY',   label: 'Сегодня день' },
-  { date: TODAY_ISO,    period: 'NIGHT', label: '🌙 Сегодня ночь' },
-  { date: TOMORROW_ISO, period: 'DAY',   label: 'Завтра день' },
-  { date: TOMORROW_ISO, period: 'NIGHT', label: '🌙 Завтра ночь' },
+  { date: TODAY_ISO,    period: 'DAY',    label: 'Сегодня день' },
+  { date: TODAY_ISO,    period: 'NIGHT',  label: '🌙 Сегодня ночь' },
+  { date: TODAY_ISO,    period: 'AROUND', label: '🌗 Сегодня сутки' },
+  { date: TOMORROW_ISO, period: 'DAY',    label: 'Завтра день' },
+  { date: TOMORROW_ISO, period: 'NIGHT',  label: '🌙 Завтра ночь' },
+  { date: TOMORROW_ISO, period: 'AROUND', label: '🌗 Завтра сутки' },
 ]
 
 export default function JournalApp({ session }: { session: AuthSession }) {
@@ -63,6 +67,24 @@ export default function JournalApp({ session }: { session: AuthSession }) {
     [items, period, bothShifts],
   )
 
+  // ── шапка дня (per date × period) ───────────────────────────────────────────
+  // Fetched independently of the items reload since period is a client-side
+  // filter; hidden when both shifts are shown (the slice is ambiguous).
+  const [header, setHeader] = useState<JournalShiftHeader | null>(null)
+  useEffect(() => {
+    if (bothShifts) return
+    let alive = true
+    fetchShiftHeader(date, period).then(h => { if (alive) setHeader(h) })
+    return () => { alive = false }
+  }, [date, period, bothShifts])
+
+  const saveHeader = async (patch: ShiftHeaderPatch) => {
+    const saved = await upsertShiftHeader({
+      plan_date: date, shift_type: period, created_by: session.user_id, ...patch,
+    })
+    setHeader(saved)
+  }
+
   // ── mutations ───────────────────────────────────────────────────────────
   const addItem = async (inp: AddInput) => {
     let objectId: string
@@ -79,13 +101,23 @@ export default function JournalApp({ session }: { session: AuthSession }) {
     await createDailyPlanItem({
       plan_date: date, shift_type: period, object_id: objectId, service_id: inp.serviceId,
       work_text: inp.work, required_workers: inp.workers, required_foremen: inp.foremen,
-      required_itr: inp.itr, required_vehicles: inp.vehicles, created_by: session.user_id,
+      required_itr: inp.itr, required_vehicles: inp.vehicles, specialties: inp.specialties,
+      vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag, created_by: session.user_id,
     })
     await reload()
   }
   const deleteItem = async (id: string) => { await deleteDailyPlanItem(id); await reload() }
   const reassign = async (id: string, serviceId: string) => {
     await updateDailyPlanItem(id, { service_id: serviceId }); await reload()
+  }
+  const updateSpecialties = async (id: string, specialties: SpecialtyCount[]) => {
+    await updateDailyPlanItem(id, { specialties }); await reload()
+  }
+  const updateVehicleNumbers = async (id: string, vehicle_numbers: string[]) => {
+    await updateDailyPlanItem(id, { vehicle_numbers }); await reload()
+  }
+  const updateFlag = async (id: string, item_flag: DailyPlanItemFlag | null) => {
+    await updateDailyPlanItem(id, { item_flag }); await reload()
   }
 
   // KPIs (over the visible slice)
@@ -119,7 +151,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
                 ? { color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }
                 : { color: tone.color, borderColor: tone.color + '66', background: tone.bg }}
             >
-              {bothShifts ? '◫' : tone.em} ПЛАН НА: {fmtDateRu(date)} · {bothShifts ? 'обе смены' : tone.label}
+              {bothShifts ? '◫' : tone.em} ПЛАН НА: {fmtDateRu(date)} · {bothShifts ? 'все смены' : tone.label}
             </span>
           </div>
         </div>
@@ -154,11 +186,19 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <button
             onClick={() => setBothShifts(b => !b)}
             className={seg(bothShifts)}
-            title="Показать день и ночь вместе"
+            title="Показать день, ночь и сутки вместе"
           >
-            ◫ обе смены
+            ◫ все смены
           </button>
         </div>
+
+        {/* Шапка дня — деж. мастер / водитель / Отв. (1 раз на смену → в наряд) */}
+        {!bothShifts && (
+          <ShiftHeaderBar
+            key={`${date}|${period}|${header?.id ?? 'new'}`}
+            header={header} ui={S} onSave={saveHeader}
+          />
+        )}
 
         {/* KPI strip */}
         <div className="grid grid-cols-3 gap-3 mb-5">
@@ -196,21 +236,25 @@ export default function JournalApp({ session }: { session: AuthSession }) {
         {/* Active view */}
         {view === 'feed' && (
           <FeedView
-            items={visible} objects={objects} services={SERVICES} ui={S}
+            items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onAdd={addItem} onDelete={deleteItem} onReassign={reassign}
             onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
+            onUpdateFlag={updateFlag}
           />
         )}
         {view === 'board' && (
           <BoardView
-            items={visible} objects={objects} services={SERVICES} ui={S} pivot={pivot}
+            items={visible} objects={objects} services={SERVICES} ui={S} header={header} pivot={pivot}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
           />
         )}
         {view === 'table' && (
           <TableView
-            items={visible} objects={objects} services={SERVICES} ui={S}
+            items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
+            onUpdateFlag={updateFlag}
           />
         )}
 
@@ -234,6 +278,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
             session,
           )}
           session={session}
+          permitDefaults={buildPermitDefaults(bothShifts ? null : header, permitItem)}
           onClose={() => setPermitItem(null)}
         />
       )}

@@ -7,6 +7,7 @@ import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEH
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
 import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 import { requiresWorkPermit, matchedHighRiskCategories } from '@/lib/highRiskWorks'
 import {
   createWorkPlanItem, updateWorkPlanItem, deleteWorkPlanItem,
@@ -431,12 +432,9 @@ function ItemRow({ item, canEdit, brigadeAssignments, onEdit, onDelete }: {
         {hasVehicles && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {item.vehicles.map(v => (
-              <div key={v.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25">
-                <span className="text-sm">🚗</span>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[11px] font-semibold text-amber-200">{v.name}</span>
-                  <span className="text-[10px] text-amber-400 font-mono">{v.plate}{v.fleet_number ? ` · гар.${v.fleet_number}` : ''}</span>
-                </div>
+              <div key={v.id} className="flex items-center gap-1.5">
+                <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
+                <span className="text-[11px] text-white/55">{v.name}</span>
               </div>
             ))}
           </div>

@@ -424,9 +424,11 @@ interface Props {
   session: AuthSession
   onClose: () => void
   onPermitPrinted?: (planId: string, permitNumber: string) => void
+  // Defaults from the журнал шапка дня (Отв.→выдал, водитель смены→техника).
+  permitDefaults?: { issuedBy?: string; vehicleNote?: string }
 }
 
-export default function WorkPermitModal({ plan, session, onClose, onPermitPrinted }: Props) {
+export default function WorkPermitModal({ plan, session, onClose, onPermitPrinted, permitDefaults }: Props) {
   const confirmDialog = useConfirm()
   // Theme toggle — default light (print document form)
   const [lightMode, setLightMode] = useState(true)
@@ -478,13 +480,14 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const [startDate,          setStartDate]          = useState(plan.plan_date)
   const [endTime,            setEndTime]            = useState('06:30')
   const [endDate,            setEndDate]            = useState(nextDay)
-  const [vehicleNotes,       setVehicleNotes]       = useState('')
+  const [vehicleNotes,       setVehicleNotes]       = useState(permitDefaults?.vehicleNote ?? '')
 
-  // Issuer (point 7) — auto-fill from session when HEAD or CHIEF_ENGINEER
+  // Issuer (point 7) — журнал шапка дня (Отв.) wins; else auto-fill from session.
   const [issuedBy,           setIssuedBy]           = useState(
-    (session.role_level === 'HEAD' || session.role_level === 'CHIEF_ENGINEER')
-      ? (session.full_name ?? '')
-      : ''
+    permitDefaults?.issuedBy
+      ?? ((session.role_level === 'HEAD' || session.role_level === 'CHIEF_ENGINEER')
+        ? (session.full_name ?? '')
+        : '')
   )
   const [issuedByPosition,   setIssuedByPosition]   = useState(
     session.role_level === 'CHIEF_ENGINEER'

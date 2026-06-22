@@ -1,9 +1,15 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { CATEGORIES, QUICK_CATEGORY, type ObjectRef, type ServiceRef, type PlanItem, type AddInput } from './data'
+import { CATEGORIES, QUICK_CATEGORY, PERIOD_META, FLAG_META, type ObjectRef, type ServiceRef, type PlanItem, type AddInput } from './data'
 import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
+import type { JournalShiftHeader } from '@/types'
+import type { SpecialtyCount, DailyPlanItemFlag } from '@/types'
 import ObjectCombobox from './ObjectCombobox'
+import PermitReadiness from './PermitReadiness'
+import CrewDetail from './CrewDetail'
+import TransportDetail from './TransportDetail'
+import FlagSelect from './FlagSelect'
 import { Counts, WorkerIcon, MasterIcon, ItrIcon, TruckIcon } from './icons'
 import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
@@ -25,14 +31,18 @@ interface Props {
   objects: ObjectRef[]
   services: ServiceRef[]
   ui: UI
+  header: JournalShiftHeader | null
   onAdd: (item: AddInput) => Promise<void>
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
   onOpenPermit: (item: PlanItem) => void
+  onUpdateSpecialties: (id: string, specialties: SpecialtyCount[]) => void
+  onUpdateVehicleNumbers: (id: string, numbers: string[]) => void
+  onUpdateFlag: (id: string, flag: DailyPlanItemFlag | null) => void
 }
 
-export default function FeedView({ items, objects, services, ui, onAdd, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
+export default function FeedView({ items, objects, services, ui, header, onAdd, onDelete, onReassign, onOpenAdd, onOpenPermit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
 
@@ -44,6 +54,7 @@ export default function FeedView({ items, objects, services, ui, onAdd, onDelete
   const [foremen, setForemen]   = useState(1)
   const [itr, setItr]           = useState(0)
   const [vehicles, setVehicles] = useState(0)
+  const [flag, setFlag]         = useState<DailyPlanItemFlag | null>(null)
   const [busy, setBusy]         = useState(false)
 
   const canAdd = !!work.trim() && !!(objId || objQuery.trim()) && !busy
@@ -55,8 +66,8 @@ export default function FeedView({ items, objects, services, ui, onAdd, onDelete
       const object = objId
         ? { id: objId }
         : { newName: objQuery.trim(), categoryId: QUICK_CATEGORY, address: objQuery.trim() }
-      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles })
-      setWork(''); setObjQuery(''); setObjId(null)
+      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: [], vehicleNumbers: [], flag })
+      setWork(''); setObjQuery(''); setObjId(null); setFlag(null)
     } finally {
       setBusy(false)
     }
@@ -94,6 +105,9 @@ export default function FeedView({ items, objects, services, ui, onAdd, onDelete
             <Stepper icon={<MasterIcon />} label="Мастера"   v={foremen} set={setForemen} ui={ui} />
             <Stepper icon={<ItrIcon />}    label="ИТР"       v={itr}     set={setItr}     ui={ui} />
             <Stepper icon={<TruckIcon />}  label="Техника"   v={vehicles} set={setVehicles} ui={ui} />
+            <span className="inline-flex items-center gap-1" title="Тип строки">
+              <FlagSelect flag={flag} ui={ui} onChange={setFlag} />
+            </span>
             <button
               onClick={quickAdd} disabled={!canAdd}
               className="ml-auto px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 shrink-0"
@@ -129,43 +143,54 @@ export default function FeedView({ items, objects, services, ui, onAdd, onDelete
               {list.map(it => {
                 const s = svc.get(it.serviceId)!
                 return (
-                  <div key={it.id} className="flex items-center gap-3 px-4 py-2.5 group">
-                    {it.period === 'NIGHT' && <span title="Ночная смена" className="shrink-0">🌙</span>}
-                    <span
-                      className="text-[11px] px-2 py-0.5 rounded-full border shrink-0"
-                      style={{ color: s.color, borderColor: s.color + '55', background: s.color + '18' }}
-                    >
-                      {s.em} {s.name}
-                    </span>
-                    <span className={`flex-1 text-sm ${ui.text} truncate`}>
-                      {it.work}
+                  <div key={it.id} className="px-4 py-2.5 group">
+                    <div className="flex items-center gap-3">
+                      {it.period !== 'DAY' && <span title={PERIOD_META[it.period].label} className="shrink-0">{PERIOD_META[it.period].em}</span>}
+                      <span
+                        className="text-[11px] px-2 py-0.5 rounded-full border shrink-0"
+                        style={{ color: s.color, borderColor: s.color + '55', background: s.color + '18' }}
+                      >
+                        {s.em} {s.name}
+                      </span>
+                      <span className={`flex-1 text-sm truncate ${it.flag ? 'font-semibold' : ui.text}`} style={it.flag ? { color: FLAG_META[it.flag].color } : undefined}>
+                        {it.flag && <span className="mr-1">{FLAG_META[it.flag].em}</span>}{it.work}
+                      </span>
                       {requiresWorkPermit(it.work) && (
-                        <span title="Требуется наряд-допуск (п.15)" className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30">🔺 наряд</span>
+                        <span className="shrink-0">
+                          <PermitReadiness item={it} header={header} ui={ui} onOpen={() => onOpenPermit(it)} />
+                        </span>
                       )}
-                    </span>
-                    <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles}
-                      className={`text-[11px] ${ui.textSub} shrink-0`} />
-                    <button
-                      onClick={() => onOpenPermit(it)}
-                      title="Оформить наряд-допуск"
-                      className={`text-[11px] ${ui.textMuted} ${ui.hoverText} shrink-0 transition-colors`}
-                    >
-                      📄
-                    </button>
-                    <select
-                      value={it.serviceId}
-                      onChange={e => onReassign(it.id, e.target.value)}
-                      className={`text-[11px] bg-transparent ${ui.textMuted} outline-none cursor-pointer shrink-0`}
-                      title="Сменить службу"
-                    >
-                      {services.map(s2 => <option key={s2.id} value={s2.id} className="text-black">{s2.em}</option>)}
-                    </select>
-                    <button
-                      onClick={() => onDelete(it.id)}
-                      className={`text-sm ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0`}
-                    >
-                      ✕
-                    </button>
+                      <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles}
+                        className={`text-[11px] ${ui.textSub} shrink-0`} />
+                      {!requiresWorkPermit(it.work) && (
+                        <button
+                          onClick={() => onOpenPermit(it)}
+                          title="Оформить наряд-допуск"
+                          className={`text-[11px] ${ui.textMuted} ${ui.hoverText} shrink-0 transition-colors`}
+                        >
+                          📄
+                        </button>
+                      )}
+                      <span className="shrink-0"><FlagSelect flag={it.flag} ui={ui} onChange={f => onUpdateFlag(it.id, f)} /></span>
+                      <select
+                        value={it.serviceId}
+                        onChange={e => onReassign(it.id, e.target.value)}
+                        className={`text-[11px] bg-transparent ${ui.textMuted} outline-none cursor-pointer shrink-0`}
+                        title="Сменить службу"
+                      >
+                        {services.map(s2 => <option key={s2.id} value={s2.id} className="text-black">{s2.em}</option>)}
+                      </select>
+                      <button
+                        onClick={() => onDelete(it.id)}
+                        className={`text-sm ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="pl-1 mt-1 flex flex-wrap items-start gap-x-4 gap-y-1">
+                      <CrewDetail item={it} ui={ui} onUpdate={onUpdateSpecialties} />
+                      <TransportDetail item={it} ui={ui} onUpdate={onUpdateVehicleNumbers} />
+                    </div>
                   </div>
                 )
               })}

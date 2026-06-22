@@ -4,6 +4,7 @@ import AuthGuard from '@/components/AuthGuard'
 import Header from '@/components/Header'
 import OverviewCharts from '@/components/boss/OverviewCharts'
 import WorkPlansMeeting from '@/components/boss/WorkPlansMeeting'
+import JournalDashboard from '@/components/boss/JournalDashboard'
 import ShiftRoster from '@/components/ShiftRoster'
 import { fetchRequests, fetchServices, fetchRequestStats, approveRequest, fetchChangelog, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api-client'
 import type { Request, Service, ChangelogEntry, AuthSession, UserWithAssignment } from '@/types'
@@ -149,7 +150,7 @@ function Content({ session }: { session: AuthSession }) {
   const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number>; byService: Record<string, number>; byPriority: Record<string, number> }>({ total: 0, byStatus: {}, byService: {}, byPriority: {} })
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([])
   const [totalDeployed, setTotalDeployed] = useState(0)
-  const [tab, setTab] = useState<'overview' | 'plans' | 'roster' | 'approve' | 'log'>('overview')
+  const [tab, setTab] = useState<'overview' | 'journal' | 'plans' | 'roster' | 'approve' | 'log'>('overview')
 
   const loadData = useCallback(async () => {
     const [reqs, svcs, st, log, ps, users] = await Promise.all([
@@ -178,6 +179,7 @@ function Content({ session }: { session: AuthSession }) {
 
   const TABS: { id: typeof tab; label: string; badge?: number }[] = [
     { id: 'overview', label: 'Обзор' },
+    { id: 'journal', label: 'План дня' },
     { id: 'plans',   label: 'Совещание', badge: pendingApproval.length },
     { id: 'roster',  label: 'Смена' },
     { id: 'approve', label: 'Заявки',    badge: pendingApproval.length },
@@ -304,6 +306,7 @@ function Content({ session }: { session: AuthSession }) {
       </div>
 
       {tab === 'overview' && <OverviewCharts stats={stats} services={services} requests={requests} />}
+      {tab === 'journal' && <JournalDashboard />}
       {tab === 'plans' && <WorkPlansMeeting session={session} services={services} />}
       {tab === 'roster' && <ShiftRoster users={allUsers} services={services} />}
 

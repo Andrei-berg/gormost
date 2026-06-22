@@ -2,6 +2,7 @@
 import type { WorkPlanWithItems } from '@/types'
 import { SERVICE_META, VEHICLE_STATUS_CONFIG } from '@/types'
 import type { Service } from '@/types'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 interface Props {
   plans: WorkPlanWithItems[]
@@ -120,10 +121,8 @@ export default function HeadTransportTab({ plans }: Props) {
                                   </div>
                                   {/* Plate + status on second line */}
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    {v.plate ? (
-                                      <span className="font-mono font-bold text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded tracking-wide">
-                                        {v.plate}
-                                      </span>
+                                    {(v.fleet_number || v.plate) ? (
+                                      <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
                                     ) : (
                                       <span className="text-xs text-white/25">б/н</span>
                                     )}

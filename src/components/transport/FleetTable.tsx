@@ -1,6 +1,7 @@
 'use client'
 import type { Vehicle, VehicleWithAssignments } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 interface Props {
   vehicles: VehicleWithAssignments[]
@@ -58,9 +59,8 @@ export default function FleetTable({ vehicles, canEdit, onEditStatus, onEditVehi
                 {/* Name / plate */}
                 <td className="px-3 py-2.5">
                   <div className="text-white font-medium text-xs leading-tight">{v.name}</div>
-                  <div className="text-white/35 text-[11px] font-mono mt-0.5">
-                    {v.plate}
-                    {v.fleet_number ? ` · №${v.fleet_number}` : ''}
+                  <div className="mt-1">
+                    <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
                   </div>
                 </td>
 

@@ -6,20 +6,23 @@
 // 19:00–21:00 (ужин/отдых — НЕ работа), ночь-фаза 21:00–07:00.
 // ИТР (дневники 5/2): 07:30–16:30, обед 12:00–12:45.
 
-import type { ShiftType } from '@/types'
+import type { JournalPeriod } from '@/types'
 
 export interface ShiftHours {
   emoji: string
-  label: string       // 'День' / 'Ночь'
+  label: string       // 'День' / 'Ночь' / 'Сутки'
   shiftStart: string  // заступление на смену
   shiftEnd: string
   workStart: string   // начало производства работ
   workEnd: string
 }
 
-export const SHIFT_HOURS: Record<ShiftType, ShiftHours> = {
-  DAY:   { emoji: '☀️', label: 'День', shiftStart: '07:30', shiftEnd: '19:00', workStart: '08:00', workEnd: '19:00' },
-  NIGHT: { emoji: '🌙', label: 'Ночь', shiftStart: '21:00', shiftEnd: '07:00', workStart: '21:00', workEnd: '07:00' },
+// Keyed by JournalPeriod (superset of ShiftType). СУТКИ ('AROUND') = the whole
+// 24h duty shift (07:30→07:30): both the day-block and the night-block.
+export const SHIFT_HOURS: Record<JournalPeriod, ShiftHours> = {
+  DAY:    { emoji: '☀️', label: 'День',  shiftStart: '07:30', shiftEnd: '19:00', workStart: '08:00', workEnd: '19:00' },
+  NIGHT:  { emoji: '🌙', label: 'Ночь',  shiftStart: '21:00', shiftEnd: '07:00', workStart: '21:00', workEnd: '07:00' },
+  AROUND: { emoji: '🌗', label: 'Сутки', shiftStart: '07:30', shiftEnd: '07:30', workStart: '07:30', workEnd: '07:00' },
 }
 
 // ИТР с ежедневным графиком (дневники 5/2)
@@ -36,15 +39,15 @@ export const DUTY_ROSTER: Array<{ time: string; activity: string }> = [
   { time: '07:00–07:30', activity: 'Сдача дежурства, уборка, анализ' },
 ]
 
-/** '07:30–19:00' / '21:00–07:00' */
-export const shiftHours = (t: ShiftType): string => `${SHIFT_HOURS[t].shiftStart}–${SHIFT_HOURS[t].shiftEnd}`
+/** '07:30–19:00' / '21:00–07:00' / '07:30–07:30' */
+export const shiftHours = (t: JournalPeriod): string => `${SHIFT_HOURS[t].shiftStart}–${SHIFT_HOURS[t].shiftEnd}`
 
-/** '☀️ 07:30–19:00' / '🌙 21:00–07:00' */
-export const shiftEmojiHours = (t: ShiftType): string => `${SHIFT_HOURS[t].emoji} ${shiftHours(t)}`
+/** '☀️ 07:30–19:00' / '🌙 21:00–07:00' / '🌗 07:30–07:30' */
+export const shiftEmojiHours = (t: JournalPeriod): string => `${SHIFT_HOURS[t].emoji} ${shiftHours(t)}`
 
-/** '☀️ День · 07:30–19:00' / '🌙 Ночь · 21:00–07:00' */
-export const shiftLabel = (t: ShiftType): string => `${SHIFT_HOURS[t].emoji} ${SHIFT_HOURS[t].label} · ${shiftHours(t)}`
+/** '☀️ День · 07:30–19:00' / '🌙 Ночь · 21:00–07:00' / '🌗 Сутки · 07:30–07:30' */
+export const shiftLabel = (t: JournalPeriod): string => `${SHIFT_HOURS[t].emoji} ${SHIFT_HOURS[t].label} · ${shiftHours(t)}`
 
-/** Default наряд work time for a shift: day → 08:00–19:00, night → 21:00–07:00 */
-export const shiftWorkTimes = (t: ShiftType): { start: string; end: string } =>
+/** Default наряд work time for a shift: day → 08:00–19:00, night → 21:00–07:00, сутки → 07:30–07:00 */
+export const shiftWorkTimes = (t: JournalPeriod): { start: string; end: string } =>
   ({ start: SHIFT_HOURS[t].workStart, end: SHIFT_HOURS[t].workEnd })

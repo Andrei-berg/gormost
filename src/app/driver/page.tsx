@@ -7,6 +7,7 @@ import type { AuthSession, VehicleWithAssignments } from '@/types'
 import { VEHICLE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 export default function DriverPage() {
   return (
@@ -54,8 +55,8 @@ function Content({ session }: { session: AuthSession }) {
                   <span className="text-2xl">{VEHICLE_TYPE_CONFIG[vehicle.vehicle_type]?.emoji ?? '🚗'}</span>
                   <h2 className="text-lg font-bold text-white">{vehicle.name}</h2>
                 </div>
-                {vehicle.fleet_number && (
-                  <div className="text-white/40 text-xs">Гар. №{vehicle.fleet_number}</div>
+                {(vehicle.fleet_number || vehicle.plate) && (
+                  <div className="mt-1"><VehicleNumberBadge number={vehicle.fleet_number} plate={vehicle.plate} /></div>
                 )}
               </div>
               <div className={`px-3 py-1 rounded-full text-xs font-medium border ${VEHICLE_STATUS_CONFIG[vehicle.status]?.bg ?? ''}`}

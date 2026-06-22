@@ -4,6 +4,7 @@ import type { WorkPlanWithItems, Service, AuthSession } from '@/types'
 import { SERVICE_META } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import { WorkerIcon, MasterIcon } from '@/components/RoleIcons'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 import {
   fetchWorkPlans, fetchWorkPlansWithItems, confirmWorkPlanBoss,
 } from '@/lib/api-client'
@@ -208,9 +209,8 @@ function PlanMeetingCard({ plan, services, onConfirm, confirming, readOnly = fal
                       ? 'bg-red-500/10 border-red-500/20 text-red-300'
                       : 'bg-blue-500/8 border-blue-500/15 text-blue-200'
                   }`}>
-                    <span>🚛</span>
+                    <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
                     <span className="font-medium">{v.name}</span>
-                    {v.plate && <span className="font-mono text-white/35">{v.plate}</span>}
                     {v.status === 'BROKEN' && <span className="text-red-400">⚠</span>}
                   </span>
                 ))}

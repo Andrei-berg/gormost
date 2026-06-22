@@ -16,6 +16,7 @@ import {
 import { isWorkerOnDuty } from '@/lib/shifts'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
 import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -546,7 +547,7 @@ function ReviewItemCard({ item, activeVehicles, onEdit, onDelete, onAssignVehicl
             {item.vehicles.map(v => (
               <span key={v.id} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/25">
                 {VEHICLE_TYPE_CONFIG[v.vehicle_type]?.emoji ?? '🚛'} {v.name}
-                {v.plate && <span className="text-blue-400/60 font-mono">{v.plate}</span>}
+                <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
                 <button
                   onClick={() => onUnassignVehicle(v.id, item.id)}
                   className="text-blue-400/50 hover:text-red-400 ml-0.5 transition-colors"

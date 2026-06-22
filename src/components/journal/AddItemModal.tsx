@@ -1,9 +1,11 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CATEGORIES, norm, type ObjectRef, type Category, type ServiceRef, type AddInput } from './data'
+import { CATEGORIES, norm, formatSpecialties, FLAG_META, FLAG_OPTIONS, type ObjectRef, type Category, type ServiceRef, type AddInput, type SpecialtyCount, type DailyPlanItemFlag } from './data'
 import type { UI } from './ui'
 import ObjectCombobox from './ObjectCombobox'
+import SpecialtyEditor from './SpecialtyEditor'
+import VehicleNumbersEditor from './VehicleNumbersEditor'
 import { WorkerIcon, MasterIcon, ItrIcon, TruckIcon } from './icons'
 
 export interface AddCtx { objectId?: string; serviceId?: string }
@@ -29,6 +31,11 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
   const [foremen, setForemen]   = useState(1)
   const [itr, setItr]           = useState(0)
   const [vehicles, setVehicles] = useState(0)
+  const [specialties, setSpecialties] = useState<SpecialtyCount[]>([])
+  const [showSpecialties, setShowSpecialties] = useState(false)
+  const [vehicleNumbers, setVehicleNumbers] = useState<string[]>([])
+  const [showVehicles, setShowVehicles] = useState(false)
+  const [flag, setFlag]         = useState<DailyPlanItemFlag | null>(null)
   const [busy, setBusy]         = useState(false)
 
   // Existing object with exactly this name? → reuse, hide the new-object form.
@@ -44,7 +51,7 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
       const object = existingId
         ? { id: existingId }
         : { newName: objQuery.trim(), categoryId: newCat, address: newAddr.trim() || objQuery.trim() }
-      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles })
+      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: specialties.filter(s => s.count > 0), vehicleNumbers, flag })
       onClose()
     } finally {
       setBusy(false)
@@ -130,11 +137,76 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
               onKeyDown={e => { if (e.key === 'Enter') submit() }} />
           </div>
 
+          {/* Тип строки — обычная или стоячая/условная (по распоряжению и т.п.) */}
+          <div>
+            <label className={`${ui.label} mb-1 block`}>Тип строки</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setFlag(null)}
+                className="px-2.5 py-1.5 rounded-xl text-xs border transition-all"
+                style={!flag
+                  ? { color: 'var(--text-primary)', borderColor: 'var(--border-strong)', background: 'var(--bg-card-strong)' }
+                  : { color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+              >
+                обычная
+              </button>
+              {FLAG_OPTIONS.map(f => {
+                const m = FLAG_META[f]
+                const on = flag === f
+                return (
+                  <button
+                    key={f} onClick={() => setFlag(f)}
+                    className="px-2.5 py-1.5 rounded-xl text-xs border transition-all"
+                    style={on
+                      ? { color: m.color, borderColor: m.color + '80', background: m.bg }
+                      : { color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+                  >
+                    {m.em} {m.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {num(workers, setWorkers, <WorkerIcon className="w-3.5 h-3.5" />, 'Рабочие')}
             {num(foremen, setForemen, <MasterIcon className="w-3.5 h-3.5" />, 'Мастера')}
             {num(itr, setItr, <ItrIcon className="w-3.5 h-3.5" />, 'ИТР')}
             {num(vehicles, setVehicles, <TruckIcon className="w-3.5 h-3.5" />, 'Техника')}
+          </div>
+
+          {/* Optional detailed crew breakdown by specialty (11д+3эл+3итр) */}
+          <div className={`${ui.inset} ${ui.radiusSm} p-3`}>
+            <button
+              onClick={() => setShowSpecialties(s => !s)}
+              className={`flex items-center gap-2 text-xs ${ui.textSub} ${ui.hoverText} transition-colors w-full`}
+            >
+              <span>{showSpecialties ? '▾' : '▸'}</span>
+              <span>Состав по специальностям</span>
+              <span className={`ml-auto font-mono ${ui.textMuted}`}>{formatSpecialties(specialties) || 'не задан'}</span>
+            </button>
+            {showSpecialties && (
+              <div className="mt-3">
+                <SpecialtyEditor value={specialties} onChange={setSpecialties} ui={ui} />
+              </div>
+            )}
+          </div>
+
+          {/* Optional garage numbers (335, 196, 533с …) — prominent everywhere */}
+          <div className={`${ui.inset} ${ui.radiusSm} p-3`}>
+            <button
+              onClick={() => setShowVehicles(s => !s)}
+              className={`flex items-center gap-2 text-xs ${ui.textSub} ${ui.hoverText} transition-colors w-full`}
+            >
+              <span>{showVehicles ? '▾' : '▸'}</span>
+              <span>№ машин (гаражные)</span>
+              <span className={`ml-auto font-mono ${ui.textMuted}`}>{vehicleNumbers.join(', ') || 'не заданы'}</span>
+            </button>
+            {showVehicles && (
+              <div className="mt-3">
+                <VehicleNumbersEditor value={vehicleNumbers} onChange={setVehicleNumbers} ui={ui} />
+              </div>
+            )}
           </div>
         </div>
 

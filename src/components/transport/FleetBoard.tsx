@@ -7,6 +7,7 @@ import { updateVehicleStatus, deleteVehicle } from '@/lib/api-client'
 import VehicleStatusModal from './VehicleStatusModal'
 import VehicleForm from './VehicleForm'
 import FleetTable from './FleetTable'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 interface Props {
   vehicles: VehicleWithAssignments[]
@@ -282,10 +283,9 @@ export default function FleetBoard({ vehicles, drivers, canEdit, onRefresh }: Pr
                     <span className="text-2xl shrink-0">{typeCfg.emoji}</span>
                     <div className="min-w-0">
                       <div className="text-white font-medium text-sm truncate">{v.name}</div>
-                      <div className="text-xs text-white/30">
-                        {v.plate}
-                        {v.fleet_number ? ` · №${v.fleet_number}` : ''}
-                        {' · '}{typeCfg.label}
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" />
+                        <span className="text-xs text-white/30">{typeCfg.label}</span>
                       </div>
                       <VehicleSpecs v={v} />
                     </div>

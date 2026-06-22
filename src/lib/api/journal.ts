@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import type { JournalObjectCategory, JournalObject, DailyPlanItem } from '@/types'
+import type { JournalObjectCategory, JournalObject, DailyPlanItem, JournalShiftHeader } from '@/types'
 
 // ============ JOURNAL OBJECT CATEGORIES ============
 
@@ -59,4 +59,25 @@ export async function updateDailyPlanItem(id: string, updates: Partial<DailyPlan
 export async function deleteDailyPlanItem(id: string): Promise<boolean> {
   const { error } = await supabase.from('daily_plan_items').delete().eq('id', id)
   return !error
+}
+
+// ============ JOURNAL SHIFT HEADERS (шапка дня) ============
+
+export async function fetchShiftHeader(planDate: string, shiftType: string): Promise<JournalShiftHeader | null> {
+  const { data } = await supabase
+    .from('journal_shift_headers')
+    .select('*')
+    .eq('plan_date', planDate)
+    .eq('shift_type', shiftType)
+    .maybeSingle()
+  return (data as JournalShiftHeader | null) ?? null
+}
+
+export async function upsertShiftHeader(header: Partial<JournalShiftHeader>): Promise<JournalShiftHeader | null> {
+  const { data } = await supabase
+    .from('journal_shift_headers')
+    .upsert({ ...header, updated_at: new Date().toISOString() }, { onConflict: 'plan_date,shift_type' })
+    .select()
+    .single()
+  return data as JournalShiftHeader | null
 }

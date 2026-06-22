@@ -1,9 +1,14 @@
 'use client'
 import { useMemo } from 'react'
 import type { ObjectRef, ServiceRef, PlanItem } from './data'
-import { CATEGORIES, PERIOD_META } from './data'
+import { CATEGORIES, PERIOD_META, FLAG_META } from './data'
 import type { UI } from './ui'
 import type { AddCtx } from './AddItemModal'
+import type { JournalShiftHeader, SpecialtyCount, DailyPlanItemFlag } from '@/types'
+import PermitReadiness from './PermitReadiness'
+import CrewDetail from './CrewDetail'
+import TransportDetail from './TransportDetail'
+import FlagSelect from './FlagSelect'
 import { Counts } from './icons'
 import { requiresWorkPermit } from '@/lib/highRiskWorks'
 
@@ -12,13 +17,17 @@ interface Props {
   objects: ObjectRef[]
   services: ServiceRef[]
   ui: UI
+  header: JournalShiftHeader | null
   onDelete: (id: string) => void
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
   onOpenPermit: (item: PlanItem) => void
+  onUpdateSpecialties: (id: string, specialties: SpecialtyCount[]) => void
+  onUpdateVehicleNumbers: (id: string, numbers: string[]) => void
+  onUpdateFlag: (id: string, flag: DailyPlanItemFlag | null) => void
 }
 
-export default function TableView({ items, objects, services, ui, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
+export default function TableView({ items, objects, services, ui, header, onDelete, onReassign, onOpenAdd, onOpenPermit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -65,23 +74,30 @@ export default function TableView({ items, objects, services, ui, onDelete, onRe
                     {services.map(s2 => <option key={s2.id} value={s2.id} className="text-black">{s2.em} {s2.name}</option>)}
                   </select>
                 </td>
-                <td className={`${td} w-full`}>{it.work}</td>
+                <td className={`${td} w-full`}>
+                  <div className={it.flag ? 'font-semibold' : undefined} style={it.flag ? { color: FLAG_META[it.flag].color } : undefined}>
+                    {it.flag && <span className="mr-1">{FLAG_META[it.flag].em}</span>}{it.work}
+                  </div>
+                  <div className="mt-0.5"><FlagSelect flag={it.flag} ui={ui} onChange={f => onUpdateFlag(it.id, f)} /></div>
+                </td>
                 <td className={`${td} text-center whitespace-nowrap`} title={p.label}>{p.em}</td>
-                <td className={`${td} whitespace-nowrap`}>
-                  <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles} className={ui.textSub} />
+                <td className={td}>
+                  <Counts workers={it.workers} masters={it.foremen} itr={it.itr} vehicles={it.vehicles} className={`${ui.textSub} whitespace-nowrap`} />
+                  <div className="mt-1"><CrewDetail item={it} ui={ui} onUpdate={onUpdateSpecialties} /></div>
+                  <div className="mt-1"><TransportDetail item={it} ui={ui} onUpdate={onUpdateVehicleNumbers} /></div>
                 </td>
                 <td className={`${td} text-center whitespace-nowrap`}>
-                  {requiresWorkPermit(it.work) && (
-                    <span title="Работы повышенной опасности (п.15) — требуется наряд-допуск"
-                      className="text-[10px] mr-1 px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30">🔺</span>
+                  {requiresWorkPermit(it.work) ? (
+                    <PermitReadiness item={it} header={header} ui={ui} onOpen={() => onOpenPermit(it)} />
+                  ) : (
+                    <button
+                      onClick={() => onOpenPermit(it)}
+                      title="Оформить наряд-допуск из этой строки"
+                      className={`text-xs px-2 py-1 ${ui.radiusSm} border ${ui.border} ${ui.textSub} ${ui.hoverText} hover:border-blue-400/40 transition-colors`}
+                    >
+                      📄 наряд
+                    </button>
                   )}
-                  <button
-                    onClick={() => onOpenPermit(it)}
-                    title="Оформить наряд-допуск из этой строки"
-                    className={`text-xs px-2 py-1 ${ui.radiusSm} border ${ui.border} ${ui.textSub} ${ui.hoverText} hover:border-blue-400/40 transition-colors`}
-                  >
-                    📄 наряд
-                  </button>
                 </td>
                 <td className={`${td} text-center`}>
                   <button onClick={() => onDelete(it.id)} className={`${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity`}>✕</button>

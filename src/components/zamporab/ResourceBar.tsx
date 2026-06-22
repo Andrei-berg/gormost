@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import type { UserWithAssignment, Vehicle } from '@/types'
 import { VEHICLE_STATUS_CONFIG } from '@/types'
 import { isWorkerOnDuty } from '@/lib/shifts'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 interface Props {
   driverUsers: UserWithAssignment[]
@@ -159,8 +160,8 @@ export default function ResourceBar({ driverUsers, vehicles }: Props) {
                     <span className={`text-xs ${v.status === 'ACTIVE' ? 'text-white/70' : 'text-white/25'}`}>
                       {v.name}
                     </span>
-                    {v.plate && (
-                      <span className="text-[10px] text-white/20 font-mono ml-auto">{v.plate}</span>
+                    {(v.fleet_number || v.plate) && (
+                      <span className="ml-auto"><VehicleNumberBadge number={v.fleet_number} plate={v.plate} size="sm" /></span>
                     )}
                   </div>
                 )

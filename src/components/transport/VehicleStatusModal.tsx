@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { Vehicle, VehicleStatus } from '@/types'
 import { VEHICLE_STATUS_CONFIG } from '@/types'
+import VehicleNumberBadge from '@/components/VehicleNumberBadge'
 
 interface Props {
   vehicle: Vehicle
@@ -29,7 +30,7 @@ export default function VehicleStatusModal({ vehicle, onSave, onClose }: Props) 
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="glass rounded-2xl p-6 w-full max-w-md">
         <h2 className="text-white font-semibold mb-0.5">{vehicle.name}</h2>
-        <p className="text-white/30 text-xs mb-4">{vehicle.plate}</p>
+        <div className="mb-4"><VehicleNumberBadge number={vehicle.fleet_number} plate={vehicle.plate} /></div>
 
         {/* Status buttons */}
         <div className="flex gap-2 mb-4">

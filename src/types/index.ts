@@ -968,7 +968,7 @@ export const CERT_CATEGORY_CONFIG: Record<CertCategory, { emoji: string; color: 
 // ============ JOURNAL — ежедневное планирование (миграция 042) ============
 // Отдельные лёгкие таблицы; воронка work_plans не задействована.
 
-export type JournalPeriod = 'DAY' | 'NIGHT'
+export type JournalPeriod = 'DAY' | 'NIGHT' | 'AROUND' // AROUND = сутки (24h duty shift)
 
 export interface JournalObjectCategory {
   id: string
@@ -986,6 +986,15 @@ export interface JournalObject {
   created_at?: string
 }
 
+// Состав по специальностям — optional detailed crew breakdown (11д+3эл+3итр).
+export interface SpecialtyCount {
+  code: string   // 'д' | 'эл' | 'с.т' | 'слаб' | 'св' | 'итр' | custom
+  count: number
+}
+
+// Тип строки журнала: обычная работа (null) или стоячая/условная строка.
+export type DailyPlanItemFlag = 'BY_ORDER' | 'STANDBY' | 'NOTICE'
+
 export interface DailyPlanItem {
   id: string
   plan_date: string // ISO yyyy-mm-dd
@@ -997,6 +1006,24 @@ export interface DailyPlanItem {
   required_foremen: number  // мастера
   required_itr: number      // ИТР
   required_vehicles: number
+  specialties?: SpecialtyCount[] | null   // optional detailed breakdown
+  vehicle_numbers?: string[] | null       // optional garage numbers (335, 196, …)
+  item_flag?: DailyPlanItemFlag | null    // standing/conditional row type (null = ordinary)
+  note?: string | null
+  created_by?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+// Шапка дня — per (date × shift) header, entered once and reused across every
+// наряд of that shift. Documented bridge: issuer → permit's «наряд-допуск выдал».
+export interface JournalShiftHeader {
+  id: string
+  plan_date: string // ISO yyyy-mm-dd
+  shift_type: JournalPeriod
+  duty_master?: string | null   // дежурный мастер
+  shift_driver?: string | null  // водитель смены (напр. "8/11")
+  issuer?: string | null        // Отв. — кто выдаёт наряд
   note?: string | null
   created_by?: string | null
   created_at?: string
