@@ -1,5 +1,8 @@
 // Утилита для расчёта смен
 // База: 2 января 2025 = 4 смена (Станишевский А.В.)
+// Часы смен берём из единого источника распорядка дня (workSchedule.ts).
+
+import { shiftHours, ITR_HOURS } from './workSchedule'
 
 export interface ShiftInfo {
   shiftNumber: 1 | 2 | 3 | 4
@@ -82,15 +85,17 @@ export function getCurrentShift(): ShiftInfo {
  */
 export function getCurrentPeriod(): 'day' | 'night' {
   const hour = new Date().getHours()
-  // День: 07:00-19:00, Ночь: 19:00-07:00
+  // Грубое деление дня/ночи (день-блок до 19:00, далее ночь)
   return (hour >= 7 && hour < 19) ? 'day' : 'night'
 }
 
 /**
- * Получить текст периода
+ * Получить текст периода — часы из единого распорядка (workSchedule.ts)
  */
 export function getPeriodText(period: 'day' | 'night'): string {
-  return period === 'day' ? 'ДНЕВНАЯ (07:00-19:00)' : 'НОЧНАЯ (19:00-07:00)'
+  return period === 'day'
+    ? `ДНЕВНАЯ (${shiftHours('DAY')})`
+    : `НОЧНАЯ (${shiftHours('NIGHT')})`
 }
 
 /**
@@ -318,15 +323,15 @@ export function resolveShiftStatus(
     }
   }
 
-  // --- Пятидневка ---
+  // --- Пятидневка (ИТР-дневники по распорядку: 07:30–16:30) ---
   if (schedule_code === '5/2') {
     const dow = target.getDay()
     const working = dow !== 0 && dow !== 6
     return {
       working,
       phase: working ? 'day' : null,
-      shift_start: working ? '08:00' : null,
-      shift_end:   working ? '17:00' : null,
+      shift_start: working ? ITR_HOURS.start : null,
+      shift_end:   working ? ITR_HOURS.end : null,
     }
   }
 
