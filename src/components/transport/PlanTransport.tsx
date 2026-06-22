@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { Vehicle, WorkPlan, WorkPlanItemWithVehicles, VehicleAssignment, UserWithAssignment } from '@/types'
+import { shiftEmojiHours as fmtShiftEmojiHours } from '@/lib/workSchedule'
 import { SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import { assignVehicle, unassignVehicle, fetchVehicleAssignmentsForItems, updateVehicleAssignmentDriver } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
@@ -93,7 +94,7 @@ export default function PlanTransport({ plans, activeVehicles, userId, planDate,
             <div className="flex items-center gap-2 mb-3 px-1">
               {meta && <span className="text-lg">{meta.emoji}</span>}
               <span className="text-white font-semibold text-sm">{SERVICE_NAMES[plan.service_id] ?? plan.service_id}</span>
-              <span className="text-white/30 text-xs ml-1">{plan.shift_type === 'DAY' ? '☀️ 07:30–19:00' : '🌙 19:00–07:00'}</span>
+              <span className="text-white/30 text-xs ml-1">{fmtShiftEmojiHours(plan.shift_type)}</span>
               {plan.plan_date && (
                 <span className="text-[10px] font-mono text-white/20 ml-1">{plan.plan_date.split('-').reverse().join('.')}</span>
               )}

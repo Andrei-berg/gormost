@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession, Service } from '@/types'
+import { shiftLabel as fmtShiftLabel } from '@/lib/workSchedule'
 import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
 import { WorkerIcon, MasterIcon } from '@/components/RoleIcons'
 import SharedPlanItemForm, { type PlanItemFormData } from '@/components/shared/PlanItemForm'
@@ -108,8 +109,8 @@ export default function ZamporabOwnPlan({ session, services, refreshAt }: Props)
                 onChange={e => setNewShift(e.target.value as 'DAY' | 'NIGHT')}
                 className="form-select w-full text-sm px-2.5 py-1.5"
               >
-                <option value="DAY">☀️ День (07:30–19:00)</option>
-                <option value="NIGHT">🌙 Ночь (21:00–07:00)</option>
+                <option value="DAY">{fmtShiftLabel('DAY')}</option>
+                <option value="NIGHT">{fmtShiftLabel('NIGHT')}</option>
               </select>
             </div>
           </div>

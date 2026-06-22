@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { WorkPlan, AuthSession, ShiftType } from '@/types'
+import { shiftLabel as fmtShiftLabel } from '@/lib/workSchedule'
 import { createWorkPlan } from '@/lib/api-client'
 
 interface SlotOption {
@@ -23,7 +24,7 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
     const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
     const dd = d.getDate().toString().padStart(2, '0')
     const mm = (d.getMonth() + 1).toString().padStart(2, '0')
-    const shiftLabel = shift === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 21:00–07:00'
+    const shiftLabel = fmtShiftLabel(shift)
     options.push({ date: dateStr, shift, label: `${dayNames[d.getDay()]} ${dd}.${mm} · ${shiftLabel}` })
   }
 

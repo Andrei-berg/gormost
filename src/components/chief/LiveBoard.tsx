@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { fetchWorkPlans, fetchWorkPlansWithItems, fetchServices, fetchUsers } from '@/lib/api-client'
 import type { WorkPlanWithItems, Service, User } from '@/types'
+import { shiftEmojiHours as fmtShiftEmojiHours } from '@/lib/workSchedule'
 import { SERVICE_META, WORK_PLAN_STATUS_CONFIG } from '@/types'
 import { WorkerIcon } from '@/components/RoleIcons'
 
@@ -92,7 +93,7 @@ export default function LiveBoard({ onRefresh }: Props) {
               <div className="space-y-3">
                 {svcPlans.map(plan => {
                   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
-                  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ 07:30–19:00' : '🌙 21:00–07:00'
+                  const shiftLabel = fmtShiftEmojiHours(plan.shift_type)
                   const totalPlanWorkers = plan.items.reduce((s, i) => s + i.workers.length, 0)
                   return (
                     <div key={plan.id} className={`glass rounded-xl overflow-hidden border ${

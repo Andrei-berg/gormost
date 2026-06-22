@@ -4,6 +4,7 @@ import type {
   WorkPlanWithItems, WorkPlanItemWithVehicles, Service, AuthSession, CrossServiceRequest,
   UserWithAssignment, Vehicle, VehicleType,
 } from '@/types'
+import { shiftLabel as fmtShiftLabel } from '@/lib/workSchedule'
 import {
   SERVICE_META, WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, VEHICLE_TYPE_CONFIG,
 } from '@/types'
@@ -92,7 +93,7 @@ export default function ZamporabReviewModal({ plan, services, session, driverUse
   const isOwnService = plan.service_id === ZAMPORAB_OWN_SERVICE
   const isDirect = isOwnService && plan.status === 'SUBMITTED'
 
-  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
+  const shiftLabel = fmtShiftLabel(plan.shift_type)
 
   const [d, m, y] = (() => {
     const parts = plan.plan_date.split('-')

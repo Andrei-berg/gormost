@@ -2,6 +2,7 @@
 import { useConfirm } from '@/components/ConfirmDialog'
 import { useState, useEffect } from 'react'
 import type { WorkPlanWithItems, WorkPlanItemWithVehicles, AuthSession, CrossServiceDraft, VehicleRequirement, WorkAssignmentWithUser } from '@/types'
+import { shiftLabel as fmtShiftLabel } from '@/lib/workSchedule'
 import { WORK_PLAN_STATUS_CONFIG, CROSS_SERVICE_STATUS_CONFIG, SERVICE_META, VEHICLE_TYPE_CONFIG } from '@/types'
 import WorkPermitModal from './WorkPermitModal'
 import PlanItemForm, { PlanItemFormData } from '@/components/shared/PlanItemForm'
@@ -67,7 +68,7 @@ export default function PlanCard({ plan, session, onRefresh }: Props) {
   const canEdit = ['DRAFT', 'REJECTED', 'SUBMITTED', 'APPROVED', 'PLANNED', 'BOSS_CONFIRMED'].includes(plan.status)
   const canSubmit = canEdit && plan.items.length > 0
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
-  const shiftLabel = plan.shift_type === 'DAY' ? '☀️ День · 07:30–19:00' : '🌙 Ночь · 19:00–07:00'
+  const shiftLabel = fmtShiftLabel(plan.shift_type)
   const shiftShort = plan.shift_type === 'DAY' ? 'день' : 'ночь'
 
   // Load brigade assignments when plan is in execution phase

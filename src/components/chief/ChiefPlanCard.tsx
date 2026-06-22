@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { WorkPlanWithItems, WorkPlanItem, AuthSession, Service } from '@/types'
+import { shiftHours as fmtShiftHours } from '@/lib/workSchedule'
 import { WORK_PLAN_STATUS_CONFIG, SERVICE_META } from '@/types'
 import {
   approveWorkPlan, rejectWorkPlan,
@@ -38,7 +39,7 @@ export default function ChiefPlanCard({ plan, session, services, onRefresh }: Pr
   const statusCfg = WORK_PLAN_STATUS_CONFIG[plan.status]
   const isNight = plan.shift_type === 'NIGHT'
   const shiftLabel = isNight ? 'ночь' : 'день'
-  const shiftTime = isNight ? '21:00–07:00' : '07:30–19:00'
+  const shiftTime = fmtShiftHours(isNight ? 'NIGHT' : 'DAY')
   const canEdit = plan.status === 'SUBMITTED'
 
   const dateStr = (() => {

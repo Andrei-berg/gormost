@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createWorkPlan, createWorkPlanItem, createCrossServiceRequest, fetchUsers } from '@/lib/api-client'
 import type { WorkPlan, AuthSession, ShiftType, User } from '@/types'
+import { shiftEmojiHours as fmtShiftEmojiHours } from '@/lib/workSchedule'
 import { SERVICE_META } from '@/types'
 
 // ── Shift slot helpers ─────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ function getPlanOptions(existing: WorkPlan[]): SlotOption[] {
     options.push({
       date: dateStr,
       shift,
-      label: `${dayName} ${dd}.${mm} · ${isDay ? '☀️ 07:30–19:00' : '🌙 19:00–07:00'}`,
+      label: `${dayName} ${dd}.${mm} · ${fmtShiftEmojiHours(isDay ? 'DAY' : 'NIGHT')}`,
       shortLabel: `${isDay ? '☀️' : '🌙'} ${dd}.${mm}`,
     })
   }
