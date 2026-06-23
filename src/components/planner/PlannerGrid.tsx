@@ -365,7 +365,6 @@ export default function PlannerGrid({
                             style={{ width: DAY_W, minWidth: DAY_W }}
                             className={`relative border-l ${t.gridLine} flex items-center justify-center
                               ${isWE ? t.weBg : ''}
-                              ${isTd ? t.todayBg : ''}
                               ${mb ? `border-l-2 ${t.mbBorder}` : ''}
                               ${canEdit ? 'cursor-pointer' : ''}
                               ${isSavingCell ? 'opacity-30' : ''}
