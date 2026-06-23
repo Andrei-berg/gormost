@@ -39,7 +39,7 @@ npx tsc --noEmit     # TypeScript check without compilation
 - Use `npm run test:watch` during development for instant feedback
 - Test files live next to the source file: `src/lib/foo.ts` → `src/lib/foo.test.ts`
 - Tests cover core business logic only (shift calculations, scheduling rules, data transforms) — not UI components or API calls
-- Current suite: 63 tests — `shifts.test.ts` (30), `timesheet.test.ts` (22), `export1c.test.ts` (11)
+- Current suite: 97 tests — `shifts.test.ts` (30), `timesheet.test.ts` (20), `export1c.test.ts` (13), `journalPermit.test.ts` (18), `highRiskWorks.test.ts` (10), `journalStats.test.ts` (6)
 
 ### Component Architecture (follow this every time)
 Goal: add/remove features without rewriting code.
@@ -122,6 +122,7 @@ Rules for all pages:
 | Service Chief | `src/app/head/page.tsx` | HEAD, ADMIN, BOSS |
 | Chief Engineer | `src/app/chief/page.tsx` | CHIEF_ENGINEER, ADMIN, BOSS |
 | Boss Dashboard | `src/app/boss/page.tsx` | BOSS, ADMIN |
+| Journal planner | `src/app/journal/page.tsx` | BOSS, ADMIN |
 | Transport | `src/app/transport/page.tsx` | TRANSPORT, ADMIN, BOSS, ZAMPORAB |
 | Complaints | `src/app/complaints/page.tsx` | COMPLAINTS, ADMIN, BOSS, DISPATCHER |
 | Admin Panel | `src/app/admin/page.tsx` | ADMIN |
@@ -167,6 +168,17 @@ Site Foreman (after meeting, evening)
 
 **Key function:** `isWorkerOnDuty(assignment, date)` in `shifts.ts`
 
+### Two schedule эталоны (single sources — change these, propagates everywhere)
+- **Hours & phases** (день/ночь/сутки): `SHIFT_HOURS` in `src/lib/workSchedule.ts` —
+  per phase: emoji, label, short, one-letter code (Д/Н/С), canonical colour, hours.
+  Helper `phaseMeta('day'|'night'|'round')`. Резолвится фаза 'round' = суточная (1/3).
+  Journal `PERIOD_META`, dispatcher OnDutyMonitor, HR roster/tabel/check, print forms all derive.
+- **Schedule TYPES** (график сменности): `SCHEDULES` in `src/lib/shifts.ts` —
+  per code (1/3, 5/2, 2/2, 3/3, 6/6, 15/15, X/Y): short, label, tip, kind,
+  requiresShiftNum, requiresPhase. Helper `scheduleMeta(code)`. `PHASE_SCHEDULE_CODES`,
+  `isPhaseSchedule`, planner `CYCLIC_CODES`, `help/ScheduleBadge` all derive.
+- Daily-routine work hours live ONLY in `workSchedule.ts` — never hardcode '21:00' etc.
+
 ## Brigade Formation
 A "brigade" (бригада) = a work group for one specific work plan item.
 A "shift" (смена) = all workers on duty today (one of 4 rotating crews).
@@ -186,7 +198,9 @@ After boss confirms plans, the site foreman:
 - `src/lib/useLoadData.ts` — loading/error hook for all panel pages
 - `src/lib/session-token.ts` — HMAC session tokens for the httpOnly auth cookie
 - `src/lib/auth.ts` — loginWithPin, getSession, logout, hasRole (client side)
-- `src/lib/shifts.ts` — shift calculation + `isWorkerOnDuty()` for all schedule types
+- `src/lib/shifts.ts` — shift calculation + `isWorkerOnDuty()` + **`SCHEDULES` эталон** (schedule types)
+- `src/lib/workSchedule.ts` — **`SHIFT_HOURS` эталон** (распорядок дня: hours/phases/colours)
+- `src/lib/journalStats.ts` — `aggregateJournal()` for the boss «План дня» dashboard
 - `src/types/index.ts` — all TypeScript types + STATUS_CONFIG, PANELS, SERVICE_META
 - `src/components/ConfirmDialog.tsx` — DialogProvider + useConfirm() (replaces window.confirm/alert)
 - `src/components/DataState.tsx` — PanelLoader skeleton + DataErrorBanner
@@ -197,8 +211,12 @@ After boss confirms plans, the site foreman:
 - `src/components/ShiftRoster.tsx` — who is on duty today/any date (shared widget)
 - `src/components/admin/ShiftTab.tsx` — manage employee shift assignments
 - `src/components/boss/WorkPlansMeeting.tsx` — 16:30 meeting plan confirmation
+- `src/components/boss/JournalDashboard.tsx` — boss «План дня» dashboard from `daily_plan_items`
 - `src/components/foreman/BrigadeAssigner.tsx` — assign workers to brigades
 - `src/components/zamporab/ZamporabPlanCard.tsx` — edit plan before confirming
+- `src/components/journal/` — Журнал планов applet (`JournalApp` + Feed/Board/Table views,
+  ShiftHeaderBar «шапка дня», SpecialtyEditor, TransportDetail, FlagSelect, PermitReadiness)
+- `src/components/VehicleNumberBadge.tsx` — prominent garage-number badge (used app-wide)
 
 ## New DB Tables (migration 012)
 - `work_assignments` — employee assignments to work plan items (brigade)
@@ -239,7 +257,14 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Active development, not in production use
 - Used for internal demos to colleagues
 - Main branch = demo-ready at all times
-- **Pending in Supabase SQL Editor:** `038_status_metadata.sql`, `041_directive_worker_assignments.sql`, `042_journal_daily_plans.sql`
+- **Migrations:** journal migrations `042`–`049` applied in Supabase (042 daily plans,
+  043/044 work-permit catalog, 045 сутки shift, 046 shift headers, 047 specialties,
+  048 vehicle numbers, 049 item flag). Older `038_status_metadata` / `041_directive_worker_assignments`
+  — verify before relying on them.
 - June 2026 overhaul complete: api split into domain modules, httpOnly auth on /api/db,
   unified loading/error handling, CSS-token theming (dark default), batch plan loading,
-  ConfirmDialog, lint baseline 0 errors / 47 warnings, 63 tests
+  ConfirmDialog, lint baseline 0 errors / 47 warnings.
+- Journal planner (`/journal`, BOSS/ADMIN): daily plans by object × service × shift
+  (день/ночь/сутки), permit-readiness strip, specialties, garage numbers, «по распоряжению»
+  flags; launches наряд-допуск; feeds the boss «План дня» dashboard. Two schedule эталоны
+  established (`SHIFT_HOURS`, `SCHEDULES`). Suite: 97 tests.
