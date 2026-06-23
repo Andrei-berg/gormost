@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ShiftPhase, AuthSession } from '@/types'
 import { saveShiftPhase, deleteShiftPhase } from '@/lib/api-client'
+import { phaseMeta } from '@/lib/workSchedule'
 
 interface Props {
   userId: string
@@ -116,22 +117,18 @@ export default function PlannerPhaseEditor({
       <div>
         <div className={`text-[10px] mb-1.5 uppercase tracking-wide ${lbl}`}>Тип фазы</div>
         <div className="flex gap-1.5">
-          <button
-            onClick={() => setPhase('day')}
-            className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
-              phase === 'day'
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-500/40 shadow-inner'
-                : inaBg
-            }`}
-          >☀️ День</button>
-          <button
-            onClick={() => setPhase('night')}
-            className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
-              phase === 'night'
-                ? 'bg-blue-500/25 text-blue-200 border border-blue-500/40 shadow-inner'
-                : inaBg
-            }`}
-          >🌙 Ночь</button>
+          {(['day', 'night'] as const).map(p => {
+            const m = phaseMeta(p) // эталон цвета/иконки/подписи фазы
+            const on = phase === p
+            return (
+              <button
+                key={p}
+                onClick={() => setPhase(p)}
+                className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${on ? 'border shadow-inner' : inaBg}`}
+                style={on ? { background: m.color + '40', color: m.color, borderColor: m.color + '66' } : undefined}
+              >{m.emoji} {m.label}</button>
+            )
+          })}
         </div>
       </div>
 

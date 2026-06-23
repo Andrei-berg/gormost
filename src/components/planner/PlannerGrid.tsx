@@ -4,6 +4,7 @@ import type { UserWithAssignment, ShiftPhase, DriverManualShift, Schedule, Servi
 import type { PlannerSettings, PlannerMode, PhaseEditorState, ScheduleEditorState, CellState } from './types'
 import { CYCLIC_CODES, toDateStr, isWeekend, getMonthBoundaries } from './utils'
 import { resolveShiftStatus, getShiftForDate } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 import PlannerPhaseEditor from './PlannerPhaseEditor'
 import PlannerScheduleEditor from './PlannerScheduleEditor'
 import type { AuthSession } from '@/types'
@@ -456,17 +457,17 @@ export default function PlannerGrid({
                           const cell = rowCells[di]
                           const isWorking = (cell.manual ?? cell.auto) !== null && (cell.manual ?? cell.auto) !== 'OFF'
 
-                          let bgCls = 'bg-transparent'
-                          if (phase && isWorking) {
-                            bgCls = phase.phase === 'day' ? 'bg-amber-500/35' : 'bg-blue-500/35'
-                          }
+                          // Phase fill colour from the эталон (phaseMeta), ~35% alpha
+                          const cellStyle: React.CSSProperties = { width: DAY_W, minWidth: DAY_W }
+                          if (phase && isWorking) cellStyle.background = phaseMeta(phase.phase).color + '59'
+                          const pm = phase ? phaseMeta(phase.phase) : null
 
                           return (
                             <div
                               key={di}
-                              style={{ width: DAY_W, minWidth: DAY_W }}
-                              className={`${bgCls} ${isStart ? `border-l-2 ${t.phaseStart}` : `border-l ${t.gridLine}`} ${mb ? `border-l-2 ${t.mbBorder}` : ''} ${canEdit ? 'cursor-pointer hover:brightness-125' : ''}`}
-                              title={phase ? `${phase.phase === 'day' ? '☀️ День' : '🌙 Ночь'} · с ${phase.valid_from}${phase.valid_to ? ` по ${phase.valid_to}` : ''}` : canEdit ? 'Нажмите чтобы добавить фазу' : 'Нет фазы'}
+                              style={cellStyle}
+                              className={`${isStart ? `border-l-2 ${t.phaseStart}` : `border-l ${t.gridLine}`} ${mb ? `border-l-2 ${t.mbBorder}` : ''} ${canEdit ? 'cursor-pointer hover:brightness-125' : ''}`}
+                              title={pm ? `${pm.emoji} ${pm.label} · с ${phase!.valid_from}${phase!.valid_to ? ` по ${phase!.valid_to}` : ''}` : canEdit ? 'Нажмите чтобы добавить фазу' : 'Нет фазы'}
                               onClick={canEdit ? e => onPhaseStripClick(user, d, phase, e) : undefined}
                             />
                           )

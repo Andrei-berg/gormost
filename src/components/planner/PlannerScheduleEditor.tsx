@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { UserWithAssignment, Schedule, AuthSession } from '@/types'
 import { upsertEmployeeAssignment } from '@/lib/api-client'
+import { scheduleMeta } from '@/lib/shifts'
 
 interface Props {
   user: UserWithAssignment
@@ -10,11 +11,6 @@ interface Props {
   onClose: () => void
   onSaved: () => void
 }
-
-const SHIFT_BASED_CODES  = new Set(['1/3', '5/2'])
-const REF_DATE_CODES     = new Set(['2/2', '3/3', '6/6'])
-const ROTATION_CODES     = new Set(['15/15'])
-const CUSTOM_CODE        = 'X/Y'
 
 export default function PlannerScheduleEditor({ user, schedules, session, onClose, onSaved }: Props) {
   const a = user.assignment
@@ -41,10 +37,14 @@ export default function PlannerScheduleEditor({ user, schedules, session, onClos
   const selectedSchedule = schedules.find(s => s.id === scheduleId)
   const code = selectedSchedule?.code ?? ''
 
-  const needsShiftNum  = SHIFT_BASED_CODES.has(code)
-  const needsRefDate   = REF_DATE_CODES.has(code)
-  const needsRotation  = ROTATION_CODES.has(code)
-  const isCustom       = code === CUSTOM_CODE
+  // Field visibility derives from the schedule эталон (SCHEDULES in shifts.ts):
+  // kind cyclic → anchor ref date, calendar15 → rotation group, custom → N/M days;
+  // shift_num only when the schedule requires it (1/3). 5/2 = weekday, no shift_num.
+  const kind = scheduleMeta(code)?.kind
+  const needsShiftNum  = scheduleMeta(code)?.requiresShiftNum ?? false
+  const needsRefDate   = kind === 'cyclic'
+  const needsRotation  = kind === 'calendar15'
+  const isCustom       = kind === 'custom'
 
   async function handleSave() {
     if (!scheduleId) return
