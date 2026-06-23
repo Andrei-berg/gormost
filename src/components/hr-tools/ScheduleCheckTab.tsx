@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service, ShiftPhase, Schedule } from '@/types'
 import { resolveShiftStatus, isPhaseSchedule } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -230,11 +231,11 @@ function HeatmapView({ users, phases, services, days }: {
                           <div className="flex flex-wrap gap-1.5">
                             {cell.workers.map(w => {
                               const st = getUserDayStatus(w, phases, cell.day)
+                              const m = st.working && st.phase ? phaseMeta(st.phase) : null
                               return (
-                                <span key={w.user_id} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                                  st.phase === 'night' ? 'bg-blue-500/15 border-blue-500/25 text-blue-300' : st.phase === 'round' ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-300' : 'bg-amber-500/15 border-amber-500/25 text-amber-300'
-                                }`}>
-                                  {st.phase === 'day' ? '☀' : st.phase === 'round' ? '🌗' : '🌙'} {w.full_name}
+                                <span key={w.user_id} className="px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                                  style={m ? { color: m.color, background: m.color + '26', borderColor: m.color + '40' } : undefined}>
+                                  {m ? m.emoji : '·'} {w.full_name}
                                 </span>
                               )
                             })}
@@ -354,6 +355,7 @@ function GanttView({ users, phases, services, days }: {
                       const d = days[di]
                       const isToday = d.toISOString().split('T')[0] === today
                       let cellCls = ''
+                      let cellStyle: React.CSSProperties | undefined
                       let content: string = ''
                       if (st.noSchedule) {
                         cellCls = 'bg-white/5 text-white/15'
@@ -361,15 +363,10 @@ function GanttView({ users, phases, services, days }: {
                       } else if (st.missingPhase) {
                         cellCls = 'bg-red-500/20 text-red-400 border border-red-500/30'
                         content = '?'
-                      } else if (st.working && st.phase === 'day') {
-                        cellCls = 'bg-amber-500/25 text-amber-300'
-                        content = '☀'
-                      } else if (st.working && st.phase === 'night') {
-                        cellCls = 'bg-blue-500/25 text-blue-300'
-                        content = '🌙'
-                      } else if (st.working && st.phase === 'round') {
-                        cellCls = 'bg-emerald-500/25 text-emerald-300'
-                        content = '🌗'
+                      } else if (st.working && st.phase) {
+                        const m = phaseMeta(st.phase)
+                        cellStyle = { color: m.color, background: m.color + '40' }
+                        content = m.emoji
                       } else if (st.working) {
                         cellCls = 'bg-white/15 text-white/60'
                         content = '·'
@@ -378,7 +375,7 @@ function GanttView({ users, phases, services, days }: {
                       }
                       return (
                         <td key={di} className={`px-0 py-0 text-center ${isToday ? 'bg-blue-500/5' : ''}`}>
-                          <div className={`w-[26px] h-7 flex items-center justify-center text-[11px] mx-auto rounded-sm ${cellCls}`}>
+                          <div className={`w-[26px] h-7 flex items-center justify-center text-[11px] mx-auto rounded-sm ${cellCls}`} style={cellStyle}>
                             {content}
                           </div>
                         </td>
@@ -510,6 +507,8 @@ function ValidatorView({ users, phases, services, days }: {
                 let bg = ''
                 let icon = ''
                 let textCls = 'text-white/20'
+                let cellStyle: React.CSSProperties | undefined
+                let textStyle: React.CSSProperties | undefined
                 if (st?.noSchedule) {
                   bg = 'bg-white/3'
                   textCls = 'text-white/20'
@@ -517,18 +516,12 @@ function ValidatorView({ users, phases, services, days }: {
                   bg = 'bg-red-500/20 border border-red-500/30'
                   textCls = 'text-red-300'
                   icon = '?'
-                } else if (st?.working && st.phase === 'day') {
-                  bg = 'bg-amber-500/20 border border-amber-500/25'
-                  textCls = 'text-amber-200'
-                  icon = '☀'
-                } else if (st?.working && st.phase === 'night') {
-                  bg = 'bg-blue-500/20 border border-blue-500/25'
-                  textCls = 'text-blue-200'
-                  icon = '🌙'
-                } else if (st?.working && st.phase === 'round') {
-                  bg = 'bg-emerald-500/20 border border-emerald-500/25'
-                  textCls = 'text-emerald-200'
-                  icon = '🌗'
+                } else if (st?.working && st.phase) {
+                  const m = phaseMeta(st.phase)
+                  cellStyle = { background: m.color + '33', border: `1px solid ${m.color}40` }
+                  textStyle = { color: m.color }
+                  textCls = ''
+                  icon = m.emoji
                 } else if (st?.working) {
                   bg = 'bg-white/12 border border-white/15'
                   textCls = 'text-white/70'
@@ -542,8 +535,9 @@ function ValidatorView({ users, phases, services, days }: {
                   <div
                     key={ds}
                     className={`rounded-lg p-1.5 text-center ${bg} ${isToday ? 'ring-1 ring-blue-400/50' : ''}`}
+                    style={cellStyle}
                   >
-                    <div className={`text-[11px] font-medium ${textCls}`}>{day.getDate()}</div>
+                    <div className={`text-[11px] font-medium ${textCls}`} style={textStyle}>{day.getDate()}</div>
                     <div className="text-[13px] leading-none mt-0.5">{icon}</div>
                   </div>
                 )

@@ -6,6 +6,7 @@
 
 import type { UserWithAssignment, ShiftPhase, Schedule, Service, EnrichedEmployee } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 
 export interface PrintOptions {
   orgName: string
@@ -150,7 +151,7 @@ export function printRoster(
           shift_reference_date: u.assignment.shift_reference_date,
           active_phase: phase ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code } : null,
         }, today)
-        return `<td class="center small">${st.working ? (st.phase === 'day' ? 'ДЕНЬ' : st.phase === 'round' ? 'СУТКИ' : 'НОЧЬ') : 'выходной'}</td>`
+        return `<td class="center small">${st.working && st.phase ? phaseMeta(st.phase).label.toUpperCase() : 'выходной'}</td>`
       }
     },
   }
@@ -205,9 +206,9 @@ export function printTabel(
       active_phase: phase ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code } : null,
     }, date)
     if (isWeekend && !st.working) return '<td class="center small weekend">—</td>'
-    if (st.working) {
+    if (st.working && st.phase) {
       const cls = st.phase === 'day' ? 'work-d' : st.phase === 'round' ? 'work-r' : 'work-n'
-      return `<td class="center small ${cls}">${st.phase === 'day' ? 'Д' : st.phase === 'round' ? 'С' : 'Н'}</td>`
+      return `<td class="center small ${cls}">${phaseMeta(st.phase).code}</td>`
     }
     return '<td class="center small">—</td>'
   }

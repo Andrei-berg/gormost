@@ -4,6 +4,7 @@
 // holds reference data (categories/services) that mirrors the seeded DB rows.
 
 import type { JournalObject, DailyPlanItem, SpecialtyCount, DailyPlanItemFlag } from '@/types'
+import { SHIFT_HOURS } from '@/lib/workSchedule'
 
 export type Period = 'DAY' | 'NIGHT' | 'AROUND' // AROUND = сутки (24h duty shift)
 export type { SpecialtyCount, DailyPlanItemFlag }
@@ -142,11 +143,15 @@ export const fmtDateRu = (iso: string) =>
     day: 'numeric', month: 'long', weekday: 'long',
   })
 
-export const PERIOD_META: Record<Period, { label: string; em: string; color: string; bg: string }> = {
-  DAY:    { label: 'День',  em: '☀️', color: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
-  NIGHT:  { label: 'Ночь',  em: '🌙', color: '#818cf8', bg: 'rgba(99,102,241,0.20)' },
-  AROUND: { label: 'Сутки', em: '🌗', color: '#10b981', bg: 'rgba(16,185,129,0.18)' },
-}
+// Derived from the эталон (SHIFT_HOURS in workSchedule.ts) — single source for
+// label/emoji/colour; bg is the colour at ~16% alpha.
+export const PERIOD_META: Record<Period, { label: string; em: string; color: string; bg: string }> =
+  Object.fromEntries(
+    (Object.keys(SHIFT_HOURS) as Period[]).map(p => {
+      const m = SHIFT_HOURS[p]
+      return [p, { label: m.label, em: m.emoji, color: m.color, bg: m.color + '29' }]
+    }),
+  ) as Record<Period, { label: string; em: string; color: string; bg: string }>
 
 // Тип строки (стоячие/условные пункты плана). null = обычная работа.
 export const FLAG_META: Record<DailyPlanItemFlag, { label: string; short: string; em: string; color: string; bg: string }> = {

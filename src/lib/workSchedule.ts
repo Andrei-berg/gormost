@@ -11,19 +11,32 @@ import type { JournalPeriod } from '@/types'
 export interface ShiftHours {
   emoji: string
   label: string       // 'День' / 'Ночь' / 'Сутки'
+  short: string       // compact label for tables/counters: 'дн.'/'ноч.'/'сут.'
+  code: string        // one-letter tabel code: 'Д' / 'Н' / 'С'
+  color: string       // canonical hex — single source for every schedule UI
   shiftStart: string  // заступление на смену
   shiftEnd: string
   workStart: string   // начало производства работ
   workEnd: string
 }
 
-// Keyed by JournalPeriod (superset of ShiftType). СУТКИ ('AROUND') = the whole
-// 24h duty shift (07:30→07:30): both the day-block and the night-block.
+// ЭТАЛОН распорядка/смен. Keyed by JournalPeriod (superset of ShiftType).
+// СУТКИ ('AROUND') = the whole 24h duty shift (07:30→07:30): both day and night
+// blocks. Hours, emoji, label AND colour all come from here — every schedule UI
+// (журнал, диспетчер «кто на смене», HR-табель/ростер, печатные формы) derives
+// from this, so a change here propagates everywhere.
 export const SHIFT_HOURS: Record<JournalPeriod, ShiftHours> = {
-  DAY:    { emoji: '☀️', label: 'День',  shiftStart: '07:30', shiftEnd: '19:00', workStart: '08:00', workEnd: '19:00' },
-  NIGHT:  { emoji: '🌙', label: 'Ночь',  shiftStart: '21:00', shiftEnd: '07:00', workStart: '21:00', workEnd: '07:00' },
-  AROUND: { emoji: '🌗', label: 'Сутки', shiftStart: '07:30', shiftEnd: '07:30', workStart: '07:30', workEnd: '07:00' },
+  DAY:    { emoji: '☀️', label: 'День',  short: 'дн.',  code: 'Д', color: '#f59e0b', shiftStart: '07:30', shiftEnd: '19:00', workStart: '08:00', workEnd: '19:00' },
+  NIGHT:  { emoji: '🌙', label: 'Ночь',  short: 'ноч.', code: 'Н', color: '#818cf8', shiftStart: '21:00', shiftEnd: '07:00', workStart: '21:00', workEnd: '07:00' },
+  AROUND: { emoji: '🌗', label: 'Сутки', short: 'сут.', code: 'С', color: '#10b981', shiftStart: '07:30', shiftEnd: '07:30', workStart: '07:30', workEnd: '07:00' },
 }
+
+// Resolved shift phase (output of resolveShiftStatus) ↔ canonical period.
+export type ShiftPhase = 'day' | 'night' | 'round'
+export const PHASE_TO_PERIOD: Record<ShiftPhase, JournalPeriod> = { day: 'DAY', night: 'NIGHT', round: 'AROUND' }
+
+/** Эталонная мета фазы смены (день/ночь/сутки) — emoji/label/short/color/часы. */
+export const phaseMeta = (p: ShiftPhase): ShiftHours => SHIFT_HOURS[PHASE_TO_PERIOD[p]]
 
 // ИТР с ежедневным графиком (дневники 5/2)
 export const ITR_HOURS = { start: '07:30', end: '16:30', lunch: '12:00–12:45' } as const

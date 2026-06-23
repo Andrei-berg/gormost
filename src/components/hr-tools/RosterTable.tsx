@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import type { UserWithAssignment, Service } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 
 const COLUMNS = [
   { key: 'tab_number',   label: 'Таб. №',        always: false },
@@ -229,6 +230,7 @@ function UserRow({ user: u, visibleDefs, svcMap, today }: {
     shift_reference_date: a.shift_reference_date,
     active_phase: a.active_phase,
   }, today) : null
+  const todayMeta = status?.working && status.phase ? phaseMeta(status.phase) : null
 
   return (
     <tr className="border-b border-white/5 hover:bg-white/3">
@@ -265,16 +267,10 @@ function UserRow({ user: u, visibleDefs, svcMap, today }: {
           {c.key === 'status_today' && (
             !a
               ? <span className="text-yellow-400/40 text-xs">нет графика</span>
-              : status?.working
-                ? <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                    status.phase === 'day'
-                      ? 'bg-blue-500/15 text-blue-300'
-                      : status.phase === 'round'
-                        ? 'bg-emerald-500/15 text-emerald-300'
-                        : 'bg-indigo-500/15 text-indigo-300'
-                  }`}>
-                    {status.phase === 'day' ? '☀ День' : status.phase === 'round' ? '🌗 Сутки' : '🌙 Ночь'}
-                    {status.shift_start && <span className="ml-1 opacity-60">{status.shift_start}</span>}
+              : todayMeta
+                ? <span className="text-xs font-medium px-1.5 py-0.5 rounded" style={{ color: todayMeta.color, background: todayMeta.color + '26' }}>
+                    {todayMeta.emoji} {todayMeta.label}
+                    {status?.shift_start && <span className="ml-1 opacity-60">{status.shift_start}</span>}
                   </span>
                 : <span className="text-xs text-white/25">выходной</span>
           )}

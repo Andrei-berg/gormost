@@ -2,6 +2,7 @@
 import { useMemo } from 'react'
 import type { UserWithAssignment, ShiftPhase } from '@/types'
 import { resolveShiftStatus } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 
 interface Props {
   users: UserWithAssignment[]
@@ -118,15 +119,13 @@ export default function TabeTable({ users, phases, period }: Props) {
                   )
                 }
 
-                if (status?.working) {
-                  const isDay = status.phase === 'day'
-                  const isRound = status.phase === 'round'
+                if (status?.working && status.phase) {
+                  const m = phaseMeta(status.phase)
                   return (
                     <td key={ds} className={`text-center py-1 ${isToday ? 'bg-blue-500/10' : ''}`}>
-                      <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[10px] font-bold ${
-                        isDay ? 'bg-blue-500/25 text-blue-300' : isRound ? 'bg-emerald-500/25 text-emerald-300' : 'bg-indigo-500/25 text-indigo-300'
-                      }`}>
-                        {isDay ? 'Д' : isRound ? 'С' : 'Н'}
+                      <span className="inline-flex items-center justify-center w-6 h-5 rounded text-[10px] font-bold"
+                        style={{ color: m.color, background: m.color + '33' }}>
+                        {m.code}
                       </span>
                     </td>
                   )

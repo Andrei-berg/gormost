@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import type { UserWithAssignment, Service } from '@/types'
 import { resolveShiftStatus, getShiftForDate } from '@/lib/shifts'
+import { phaseMeta } from '@/lib/workSchedule'
 import ShiftRotationStrip from '@/components/ShiftRotationStrip'
 
 // Absence types (sick/vacation) require migration 025 — currently only schedule-based
@@ -184,23 +185,15 @@ export default function OnDutyMonitor({ users, services }: Props) {
                   <span className="text-sm shrink-0">{SERVICE_EMOJI[svc.service_id] ?? '🏢'}</span>
                   <span className={`text-xs font-medium flex-1 ${svcTxt}`}>{svc.service_name}</span>
 
-                  {/* Day/night breakdown */}
+                  {/* Day/night/сутки breakdown — colours from the эталон */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {dayCount > 0 && (
-                      <span className={`text-[10px] text-amber-400/70`}>
-                        ☀ {dayCount}
-                      </span>
-                    )}
-                    {nightCount > 0 && (
-                      <span className={`text-[10px] text-blue-400/70`}>
-                        🌙 {nightCount}
-                      </span>
-                    )}
-                    {roundCount > 0 && (
-                      <span className={`text-[10px] text-emerald-400/70`}>
-                        🌗 {roundCount}
-                      </span>
-                    )}
+                    {([['day', dayCount], ['night', nightCount], ['round', roundCount]] as const)
+                      .filter(([, n]) => n > 0)
+                      .map(([ph, n]) => (
+                        <span key={ph} className="text-[10px]" style={{ color: phaseMeta(ph).color }}>
+                          {phaseMeta(ph).emoji} {n}
+                        </span>
+                      ))}
                   </div>
 
                   {/* Total count */}
@@ -222,10 +215,11 @@ export default function OnDutyMonitor({ users, services }: Props) {
                       >
                         {e.phase ? (
                           <span
-                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? 'text-amber-300' : e.phase === 'round' ? 'text-emerald-300' : 'text-blue-300'}`}
+                            className="text-xs w-4 shrink-0 leading-none"
+                            style={{ color: phaseMeta(e.phase).color }}
                             title={e.shiftStart && e.shiftEnd ? `${e.shiftStart}–${e.shiftEnd}` : undefined}
                           >
-                            {e.phase === 'day' ? '☀' : e.phase === 'round' ? '🌗' : '🌙'}
+                            {phaseMeta(e.phase).emoji}
                           </span>
                         ) : (
                           <span className="w-4 shrink-0" />
@@ -250,9 +244,13 @@ export default function OnDutyMonitor({ users, services }: Props) {
             <span className={`text-[10px] ${mutedTxt}`}>
               Итого: <span className={`font-semibold text-white/60`}>{onDuty.length} чел.</span>
             </span>
-            {totalDay > 0 && <span className={`text-[10px] text-amber-300/50`}>☀ дн. {totalDay}</span>}
-            {totalNight > 0 && <span className={`text-[10px] text-blue-300/50`}>🌙 ноч. {totalNight}</span>}
-            {totalRound > 0 && <span className={`text-[10px] text-emerald-300/50`}>🌗 сут. {totalRound}</span>}
+            {([['day', totalDay], ['night', totalNight], ['round', totalRound]] as const)
+              .filter(([, n]) => n > 0)
+              .map(([ph, n]) => (
+                <span key={ph} className="text-[10px]" style={{ color: phaseMeta(ph).color }}>
+                  {phaseMeta(ph).emoji} {phaseMeta(ph).short} {n}
+                </span>
+              ))}
             {onDuty.filter(e => !e.phase).length > 0 && (
               <span className={`text-[10px] ${dimTxt}`}>{onDuty.filter(e => !e.phase).length} без фазы</span>
             )}
