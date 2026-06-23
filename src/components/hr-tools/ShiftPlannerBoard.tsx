@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo, useCallback, useRef } from 'react'
 import type { UserWithAssignment, ShiftPhase, AuthSession, DriverManualShift, Service, Schedule } from '@/types'
-import { resolveShiftStatus } from '@/lib/shifts'
+import { resolveShiftStatus, PHASE_SCHEDULE_CODES } from '@/lib/shifts'
 import { upsertDriverManualShift, deleteDriverManualShift, fetchDriverManualShifts } from '@/lib/api-client'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -10,7 +10,8 @@ const RU_MONTHS = ['Январь','Февраль','Март','Апрель','М
                    'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
 const RU_DOW_SHORT = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб']
 
-const CYCLIC_CODES = new Set(['2/2', '3/3', '6/6', '15/15'])
+// Из эталона графиков (shifts.ts): графики, которым нужна фаза.
+const CYCLIC_CODES = new Set(PHASE_SCHEDULE_CODES)
 
 function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
   const d = new Date(year, month + delta, 1)

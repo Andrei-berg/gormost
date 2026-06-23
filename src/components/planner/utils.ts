@@ -1,10 +1,13 @@
+import { PHASE_SCHEDULE_CODES } from '@/lib/shifts'
+
 export const RU_MONTHS = [
   'Январь','Февраль','Март','Апрель','Май','Июнь',
   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
 ]
 export const RU_DOW_SHORT = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб']
 
-export const CYCLIC_CODES = new Set(['2/2', '3/3', '6/6', '15/15'])
+// Derived from the эталон графиков сменности (shifts.ts): schedules needing a фаза.
+export const CYCLIC_CODES = new Set(PHASE_SCHEDULE_CODES)
 
 export function addMonths(year: number, month: number, delta: number) {
   const d = new Date(year, month + delta, 1)

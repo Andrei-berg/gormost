@@ -240,17 +240,47 @@ export function isWorkerOnDuty(
 // Variant 2: Phase-aware shift resolution
 // ============================================
 
-// Schedule codes that use shift_phases for day/night determination
-export const PHASE_SCHEDULE_CODES = ['2/2', '3/3', '6/6', '15/15'] as const
-export type PhaseScheduleCode = typeof PHASE_SCHEDULE_CODES[number]
+// ─── ЭТАЛОН графиков сменности ───────────────────────────────────────────────
+// Single source for all schedule TYPES (график сменности). The rotation logic
+// (isWorkerOnDuty / resolveShiftStatus) branches on these codes; UI labels/tips,
+// the «нужна фаза» classifier and the planner's cyclic set all DERIVE from here.
+// Describe a schedule type once → everything picks it up.
+export type ScheduleKind = 'shift' | 'weekday' | 'cyclic' | 'calendar15' | 'custom'
 
-export function isPhaseSchedule(code: string): code is PhaseScheduleCode {
-  return PHASE_SCHEDULE_CODES.includes(code as PhaseScheduleCode)
+export interface ScheduleMeta {
+  code: string
+  short: string             // compact badge label
+  label: string             // full name
+  tip: string               // description (tooltip)
+  kind: ScheduleKind
+  requiresShiftNum: boolean  // bound to a crew number 1–4 (1/3)
+  requiresPhase: boolean     // needs an active ShiftPhase (day/night) record
+}
+
+export const SCHEDULES: Record<string, ScheduleMeta> = {
+  '1/3':   { code: '1/3',   short: 'Сутки/3', label: 'Сутки через трое',   tip: 'Сутки через трое: 24ч на работе, 72ч отдых. 4 бригады по очереди.',              kind: 'shift',      requiresShiftNum: true,  requiresPhase: false },
+  '5/2':   { code: '5/2',   short: '5/2',     label: 'Пятидневка',         tip: 'Пятидневка: работает по будням (пн–пт), вне зависимости от смены тоннеля.',       kind: 'weekday',    requiresShiftNum: false, requiresPhase: false },
+  '2/2':   { code: '2/2',   short: '2/2',     label: 'Два через два',      tip: 'Два через два: 2 рабочих дня, 2 выходных — скользящий цикл.',                      kind: 'cyclic',     requiresShiftNum: false, requiresPhase: true  },
+  '3/3':   { code: '3/3',   short: '3/3',     label: 'Три через три',      tip: 'Три через три: 3 рабочих дня, 3 выходных — скользящий цикл.',                      kind: 'cyclic',     requiresShiftNum: false, requiresPhase: true  },
+  '6/6':   { code: '6/6',   short: '6/6',     label: 'Шесть через шесть',  tip: 'Шесть через шесть: 6 рабочих дней, 6 выходных — скользящий цикл.',                 kind: 'cyclic',     requiresShiftNum: false, requiresPhase: true  },
+  '15/15': { code: '15/15', short: '15/15',   label: 'Половинный месяц',   tip: 'Половинный месяц: работает либо 1–15 числа, либо 16–конец месяца, чередуется.',    kind: 'calendar15', requiresShiftNum: false, requiresPhase: true  },
+  'X/Y':   { code: 'X/Y',   short: 'X/Y',     label: 'Нестандартный',      tip: 'Нестандартный цикл: N рабочих дней через M выходных (водители/операторы).',        kind: 'custom',     requiresShiftNum: false, requiresPhase: false },
+}
+
+/** Эталонная мета графика по коду (undefined для неизвестного кода). */
+export const scheduleMeta = (code: string): ScheduleMeta | undefined => SCHEDULES[code]
+
+// Schedule codes that use shift_phases for day/night determination — derived.
+export const PHASE_SCHEDULE_CODES: string[] =
+  Object.values(SCHEDULES).filter(s => s.requiresPhase).map(s => s.code)
+
+export function isPhaseSchedule(code: string): boolean {
+  return SCHEDULES[code]?.requiresPhase ?? false
 }
 
 /** X/Y custom schedule: whether code requires an anchor ref date (not 5/2 or 1/3) */
 export function isCustomSchedule(code: string): boolean {
-  return code === 'X/Y'
+  return SCHEDULES[code]?.kind === 'custom'
 }
 
 /**
