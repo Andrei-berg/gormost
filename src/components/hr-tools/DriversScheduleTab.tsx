@@ -64,7 +64,7 @@ interface DriverRow {
   schedule: string
   displayCode: string
   serviceName: string
-  dayBreakdown: { date: Date; working: boolean; phase: 'day' | 'night' | null }[]
+  dayBreakdown: { date: Date; working: boolean; phase: 'day' | 'night' | 'round' | null }[]
 }
 
 export default function DriversScheduleTab({ users, phases, services, schedules, session, onPhasesChanged }: Props) {

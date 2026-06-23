@@ -569,7 +569,7 @@ export interface ShiftPhase {
 // Resolved shift status for a specific date
 export interface ShiftStatus {
   working: boolean
-  phase: 'day' | 'night' | null
+  phase: 'day' | 'night' | 'round' | null // 'round' = суточная смена (1/3, 24ч)
   shift_start: string | null   // 'HH:MM', null when not working
   shift_end: string | null     // 'HH:MM', null when not working
 }

@@ -120,12 +120,13 @@ export default function TabeTable({ users, phases, period }: Props) {
 
                 if (status?.working) {
                   const isDay = status.phase === 'day'
+                  const isRound = status.phase === 'round'
                   return (
                     <td key={ds} className={`text-center py-1 ${isToday ? 'bg-blue-500/10' : ''}`}>
                       <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[10px] font-bold ${
-                        isDay ? 'bg-blue-500/25 text-blue-300' : 'bg-indigo-500/25 text-indigo-300'
+                        isDay ? 'bg-blue-500/25 text-blue-300' : isRound ? 'bg-emerald-500/25 text-emerald-300' : 'bg-indigo-500/25 text-indigo-300'
                       }`}>
-                        {isDay ? 'Д' : 'Н'}
+                        {isDay ? 'Д' : isRound ? 'С' : 'Н'}
                       </span>
                     </td>
                   )

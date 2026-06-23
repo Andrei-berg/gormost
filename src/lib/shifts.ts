@@ -2,7 +2,7 @@
 // База: 2 января 2025 = 4 смена (Станишевский А.В.)
 // Часы смен берём из единого источника распорядка дня (workSchedule.ts).
 
-import { shiftHours, ITR_HOURS } from './workSchedule'
+import { shiftHours, ITR_HOURS, SHIFT_HOURS } from './workSchedule'
 
 export interface ShiftInfo {
   shiftNumber: 1 | 2 | 3 | 4
@@ -262,10 +262,11 @@ export function customScheduleLabel(workDays: number | null | undefined, restDay
   return 'X/Y'
 }
 
-// Shift times per phase
+// Shift times per phase — from the single source (official распорядок дня).
+// Day-block 07:30–19:00, night-block 21:00–07:00 (workSchedule.ts).
 const SHIFT_TIMES = {
-  day:   { start: '07:45', end: '19:45' },
-  night: { start: '19:45', end: '07:45' },  // end = next calendar day
+  day:   { start: SHIFT_HOURS.DAY.shiftStart,   end: SHIFT_HOURS.DAY.shiftEnd },
+  night: { start: SHIFT_HOURS.NIGHT.shiftStart, end: SHIFT_HOURS.NIGHT.shiftEnd },
 } as const
 
 /**
@@ -312,12 +313,12 @@ export function resolveShiftStatus(
     return { working, phase: working ? p : null, shift_start: working ? t.start : null, shift_end: working ? t.end : null }
   }
 
-  // --- Суточный: 24h shift-based ---
+  // --- Суточный: 24h shift-based (фаза 'round' = сутки) ---
   if (schedule_code === '1/3') {
     const working = !!shift_num && getShiftNumberForDate(target) === shift_num
     return {
       working,
-      phase: working ? 'night' : null,
+      phase: working ? 'round' : null,
       shift_start: working ? '07:30' : null,
       shift_end:   working ? '07:30' : null,  // next day
     }

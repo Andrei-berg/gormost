@@ -10,7 +10,7 @@ type DutyStatus = 'on_duty' | 'off_today' | 'no_schedule'
 interface Entry {
   user: UserWithAssignment
   status: DutyStatus
-  phase: 'day' | 'night' | null
+  phase: 'day' | 'night' | 'round' | null
   shiftStart: string | null
   shiftEnd: string | null
 }
@@ -73,6 +73,7 @@ export default function OnDutyMonitor({ users, services }: Props) {
 
   const totalDay   = onDuty.filter(e => e.phase === 'day').length
   const totalNight = onDuty.filter(e => e.phase === 'night').length
+  const totalRound = onDuty.filter(e => e.phase === 'round').length
 
   function toggleService(id: string) {
     setExpandedServices(prev => {
@@ -170,6 +171,7 @@ export default function OnDutyMonitor({ users, services }: Props) {
             const isExpanded = expandedServices.has(svc.service_id)
             const dayCount   = workers.filter(e => e.phase === 'day').length
             const nightCount = workers.filter(e => e.phase === 'night').length
+            const roundCount = workers.filter(e => e.phase === 'round').length
             const isLast     = idx === byService.length - 1
 
             return (
@@ -194,6 +196,11 @@ export default function OnDutyMonitor({ users, services }: Props) {
                         🌙 {nightCount}
                       </span>
                     )}
+                    {roundCount > 0 && (
+                      <span className={`text-[10px] text-emerald-400/70`}>
+                        🌗 {roundCount}
+                      </span>
+                    )}
                   </div>
 
                   {/* Total count */}
@@ -215,10 +222,10 @@ export default function OnDutyMonitor({ users, services }: Props) {
                       >
                         {e.phase ? (
                           <span
-                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? 'text-amber-300' : 'text-blue-300'}`}
+                            className={`text-xs w-4 shrink-0 leading-none ${e.phase === 'day' ? 'text-amber-300' : e.phase === 'round' ? 'text-emerald-300' : 'text-blue-300'}`}
                             title={e.shiftStart && e.shiftEnd ? `${e.shiftStart}–${e.shiftEnd}` : undefined}
                           >
-                            {e.phase === 'day' ? '☀' : '🌙'}
+                            {e.phase === 'day' ? '☀' : e.phase === 'round' ? '🌗' : '🌙'}
                           </span>
                         ) : (
                           <span className="w-4 shrink-0" />
@@ -245,6 +252,7 @@ export default function OnDutyMonitor({ users, services }: Props) {
             </span>
             {totalDay > 0 && <span className={`text-[10px] text-amber-300/50`}>☀ дн. {totalDay}</span>}
             {totalNight > 0 && <span className={`text-[10px] text-blue-300/50`}>🌙 ноч. {totalNight}</span>}
+            {totalRound > 0 && <span className={`text-[10px] text-emerald-300/50`}>🌗 сут. {totalRound}</span>}
             {onDuty.filter(e => !e.phase).length > 0 && (
               <span className={`text-[10px] ${dimTxt}`}>{onDuty.filter(e => !e.phase).length} без фазы</span>
             )}

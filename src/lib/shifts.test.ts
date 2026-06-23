@@ -161,7 +161,7 @@ describe('resolveShiftStatus — cyclic schedules without phase return not worki
     )
     expect(result.working).toBe(true)
     expect(result.phase).toBe('day')
-    expect(result.shift_start).toBe('07:45')
+    expect(result.shift_start).toBe('07:30') // канон: день-блок 07:30–19:00
   })
 })
 

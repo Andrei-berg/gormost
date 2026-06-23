@@ -37,6 +37,7 @@ const BASE_CSS = `
   .print-date { font-size: 8pt; color: #666; text-align: right; margin-top: 8px; }
   .work-d { background: #dbeafe; }
   .work-n { background: #e0e7ff; }
+  .work-r { background: #d1fae5; }
   .weekend { background: #fafafa; color: #bbb; }
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
@@ -149,7 +150,7 @@ export function printRoster(
           shift_reference_date: u.assignment.shift_reference_date,
           active_phase: phase ? { phase: phase.phase, anchor_date: phase.anchor_date, schedule_code: phase.schedule_code } : null,
         }, today)
-        return `<td class="center small">${st.working ? (st.phase === 'day' ? 'ДЕНЬ' : 'НОЧЬ') : 'выходной'}</td>`
+        return `<td class="center small">${st.working ? (st.phase === 'day' ? 'ДЕНЬ' : st.phase === 'round' ? 'СУТКИ' : 'НОЧЬ') : 'выходной'}</td>`
       }
     },
   }
@@ -205,8 +206,8 @@ export function printTabel(
     }, date)
     if (isWeekend && !st.working) return '<td class="center small weekend">—</td>'
     if (st.working) {
-      const cls = st.phase === 'day' ? 'work-d' : 'work-n'
-      return `<td class="center small ${cls}">${st.phase === 'day' ? 'Д' : 'Н'}</td>`
+      const cls = st.phase === 'day' ? 'work-d' : st.phase === 'round' ? 'work-r' : 'work-n'
+      return `<td class="center small ${cls}">${st.phase === 'day' ? 'Д' : st.phase === 'round' ? 'С' : 'Н'}</td>`
     }
     return '<td class="center small">—</td>'
   }

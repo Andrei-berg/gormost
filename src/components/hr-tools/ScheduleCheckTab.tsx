@@ -40,7 +40,7 @@ function getActivePhase(phases: ShiftPhase[], userId: string, dateStr: string) {
 
 interface DayStatus {
   working: boolean
-  phase: 'day' | 'night' | null
+  phase: 'day' | 'night' | 'round' | null
   noSchedule: boolean
   missingPhase: boolean
 }
@@ -232,9 +232,9 @@ function HeatmapView({ users, phases, services, days }: {
                               const st = getUserDayStatus(w, phases, cell.day)
                               return (
                                 <span key={w.user_id} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                                  st.phase === 'night' ? 'bg-blue-500/15 border-blue-500/25 text-blue-300' : 'bg-amber-500/15 border-amber-500/25 text-amber-300'
+                                  st.phase === 'night' ? 'bg-blue-500/15 border-blue-500/25 text-blue-300' : st.phase === 'round' ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-300' : 'bg-amber-500/15 border-amber-500/25 text-amber-300'
                                 }`}>
-                                  {st.phase === 'day' ? '☀' : '🌙'} {w.full_name}
+                                  {st.phase === 'day' ? '☀' : st.phase === 'round' ? '🌗' : '🌙'} {w.full_name}
                                 </span>
                               )
                             })}
@@ -367,6 +367,9 @@ function GanttView({ users, phases, services, days }: {
                       } else if (st.working && st.phase === 'night') {
                         cellCls = 'bg-blue-500/25 text-blue-300'
                         content = '🌙'
+                      } else if (st.working && st.phase === 'round') {
+                        cellCls = 'bg-emerald-500/25 text-emerald-300'
+                        content = '🌗'
                       } else if (st.working) {
                         cellCls = 'bg-white/15 text-white/60'
                         content = '·'
@@ -522,6 +525,10 @@ function ValidatorView({ users, phases, services, days }: {
                   bg = 'bg-blue-500/20 border border-blue-500/25'
                   textCls = 'text-blue-200'
                   icon = '🌙'
+                } else if (st?.working && st.phase === 'round') {
+                  bg = 'bg-emerald-500/20 border border-emerald-500/25'
+                  textCls = 'text-emerald-200'
+                  icon = '🌗'
                 } else if (st?.working) {
                   bg = 'bg-white/12 border border-white/15'
                   textCls = 'text-white/70'

@@ -269,9 +269,11 @@ function UserRow({ user: u, visibleDefs, svcMap, today }: {
                 ? <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     status.phase === 'day'
                       ? 'bg-blue-500/15 text-blue-300'
-                      : 'bg-indigo-500/15 text-indigo-300'
+                      : status.phase === 'round'
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-indigo-500/15 text-indigo-300'
                   }`}>
-                    {status.phase === 'day' ? '☀ День' : '🌙 Ночь'}
+                    {status.phase === 'day' ? '☀ День' : status.phase === 'round' ? '🌗 Сутки' : '🌙 Ночь'}
                     {status.shift_start && <span className="ml-1 opacity-60">{status.shift_start}</span>}
                   </span>
                 : <span className="text-xs text-white/25">выходной</span>
