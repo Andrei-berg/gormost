@@ -14,9 +14,9 @@ import type {
   EmployeePositionWithProfession, EmployeeDetail,
   UserWithAssignment, WorkAssignment, WorkAssignmentWithUser,
   CrossServiceRequest,
-  WorkRedirect, WorkSource, OriginalPlanFate, ShiftType,
-  Directive, DirectiveStatus,
-  DirectiveWorkerAssignment, ServiceOrderType,
+  WorkRedirect,
+  ServiceOrderType,
+  UrgentOrder, UrgentOrderWithWorkers, UrgentOrderStatus, CreateUrgentOrderInput,
   CertType, EmployeeCert, CertRequirement,
   DriverManualShift,
   AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
@@ -711,31 +711,6 @@ export function redirectWorkPlanItem(itemId: string, reason: string, userId: str
 
 // ============ OVERRIDE / REDIRECT SYSTEM ============
 
-export function createOverrideOrder(data: {
-  serviceId: string
-  planDate: string
-  shiftType: ShiftType
-  location: string
-  workDescription: string
-  source: WorkSource
-  sourceRef: string | null
-  sourceOrg: string | null
-  fastTrackReason: string
-  fromPlanId: string | null
-  fromPlanStatus: string | null
-  partialWorkDone: string | null
-  originalPlanFate: OriginalPlanFate
-  suspendedUntil: string | null
-  orderedBySource: WorkSource
-  orderReference: string | null
-  orderText: string
-  affectedUsers: string[]
-  fullBrigade: boolean
-  createdBy: string
-}): Promise<{ plan: WorkPlan; redirect: WorkRedirect | null } | null> {
-  return call('createOverrideOrder', [data])
-}
-
 export function pauseWorkPlan(planId: string, reason: string, userId: string): Promise<boolean> {
   return call('pauseWorkPlan', [planId, reason, userId])
 }
@@ -766,41 +741,22 @@ export function deleteStaleWorkPlans(olderThanDays: number): Promise<number> {
   return call('deleteStaleWorkPlans', [olderThanDays])
 }
 
-// ============ DIRECTIVES ============
+// ============ URGENT ORDERS (срочные поручения сверху) ============
 
-export function fetchDirectives(): Promise<Directive[]> {
-  return call('fetchDirectives', [])
+export function fetchUrgentOrders(): Promise<UrgentOrderWithWorkers[]> {
+  return call('fetchUrgentOrders', [])
 }
 
-export function createDirective(
-  data: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan' | 'service_id' | 'order_type' | 'location'>,
-  userId: string
-): Promise<Directive | null> {
-  return call('createDirective', [data, userId])
-}
-
-export function updateDirectiveStatus(id: string, status: DirectiveStatus): Promise<void> {
-  return call('updateDirectiveStatus', [id, status])
-}
-
-export function createDirectiveWithWorkers(
-  directiveData: Pick<Directive, 'title' | 'description' | 'priority' | 'plan_id' | 'suspend_plan' | 'service_id' | 'order_type' | 'location'>,
-  workers: Pick<DirectiveWorkerAssignment, 'worker_id' | 'worker_name' | 'source_plan_id' | 'source_plan_name'>[],
-  userId: string
-): Promise<Directive | null> {
-  return call('createDirectiveWithWorkers', [directiveData, workers, userId])
-}
-
-export function fetchDirectiveWorkers(directiveId: string): Promise<DirectiveWorkerAssignment[]> {
-  return call('fetchDirectiveWorkers', [directiveId])
-}
-
-export function fetchDirectivesWithWorkers(): Promise<(Directive & { workers: DirectiveWorkerAssignment[] })[]> {
-  return call('fetchDirectivesWithWorkers', [])
-}
-
-export function fetchPulledWorkerIds(planDate: string): Promise<Set<string>> {
+export function fetchPulledWorkerIds(planDate: string): Promise<string[]> {
   return call('fetchPulledWorkerIds', [planDate])
+}
+
+export function createUrgentOrder(input: CreateUrgentOrderInput): Promise<UrgentOrder | null> {
+  return call('createUrgentOrder', [input])
+}
+
+export function updateUrgentOrderStatus(id: string, status: UrgentOrderStatus): Promise<boolean> {
+  return call('updateUrgentOrderStatus', [id, status])
 }
 
 export function fetchServiceOrderTypes(serviceId: string): Promise<ServiceOrderType[]> {

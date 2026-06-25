@@ -10,11 +10,10 @@ import TableView from '@/components/dispatcher/TableView'
 import PeopleStats from '@/components/dispatcher/PeopleStats'
 import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
-import OverrideModal from '@/components/dispatcher/OverrideModal'
-import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
+import UrgentOrders from '@/components/shared/UrgentOrders'
 import DayPlanView from '@/components/shared/DayPlanView'
-import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
-import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
+import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api-client'
+import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 import { HelpPanel } from '@/components/help'
@@ -42,8 +41,6 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [peopleStats, setPeopleStats] = useState<{ totalDeployed: number; byService: Record<string, number>; activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> }>({ totalDeployed: 0, byService: {}, activeAssignments: [] })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [shiftUsers, setShiftUsers] = useState<UserWithAssignment[]>([])
-  const [activePlans, setActivePlans] = useState<WorkPlanWithItems[]>([])
-  const [showOverrideModal, setShowOverrideModal] = useState(false)
   const [showDirectives,    setShowDirectives]    = useState(false)
   const [showDayPlan,       setShowDayPlan]       = useState(false)
 
@@ -61,12 +58,6 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
     const ps = await fetchPeopleStats()
     setPeopleStats(ps)
-
-    // Load active plans for override modal
-    const today = new Date().toISOString().split('T')[0]
-    const rawActivePlans = await fetchWorkPlans({ planDate: today, statuses: ['ASSIGNED', 'IN_PROGRESS', 'BOSS_CONFIRMED', 'FAST_TRACK'] })
-    const withItems = await fetchWorkPlansWithItems(rawActivePlans.map(p => p.id))
-    setActivePlans(withItems)
 
     setLastUpdated(new Date())
   }, [filterService])
@@ -116,15 +107,8 @@ function DispatcherContent({ session }: { session: AuthSession }) {
               : 'bg-amber-600/10 hover:bg-amber-600/20 border-amber-500/25 text-amber-400'
           }`}
         >
-          <span className="text-base">📝</span>
-          Поручения
-        </button>
-        <button
-          onClick={() => setShowOverrideModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-medium text-sm transition-colors"
-        >
           <span className="text-base">⚡</span>
-          Fast Track
+          Срочное поручение
         </button>
       </div>
 
@@ -136,7 +120,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
       {showDirectives && (
         <div className="mb-6 glass rounded-2xl p-5 border border-amber-500/20">
-          <UrgentOrdersPanel session={session} />
+          <UrgentOrders session={session} />
         </div>
       )}
 
@@ -177,16 +161,6 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={reload} />
-      )}
-
-      {showOverrideModal && (
-        <OverrideModal
-          session={session}
-          activePlans={activePlans}
-          services={services}
-          onClose={() => setShowOverrideModal(false)}
-          onSuccess={reload}
-        />
       )}
     </div>
   )

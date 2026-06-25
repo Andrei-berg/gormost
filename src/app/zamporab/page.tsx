@@ -29,7 +29,7 @@ import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
 import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
-import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
+import UrgentOrders from '@/components/shared/UrgentOrders'
 import DayPlanView from '@/components/shared/DayPlanView'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
@@ -382,7 +382,7 @@ function Content({ session }: { session: AuthSession }) {
 
       {tab === 'staff' && <ShiftOverview />}
       {tab === 'incoming' && <IncomingRequests session={session} />}
-      {tab === 'directives' && <UrgentOrdersPanel session={session} />}
+      {tab === 'directives' && <UrgentOrders session={session} />}
       {tab === 'dayplan' && <DayPlanView serviceId={session.service_id ?? undefined} onlyPublished />}
 
       {showModal && (
