@@ -9,6 +9,7 @@ import ServiceStats from '@/components/head/ServiceStats'
 import PlanList from '@/components/head/PlanList'
 import CreatePlanModal from '@/components/head/CreatePlanModal'
 import StaffBoard from '@/components/head/StaffBoard'
+import DayPlanView from '@/components/shared/DayPlanView'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import AlertBanner from '@/components/AlertBanner'
 import { WhatNextBanner, GuidedTour, HelpPanel } from '@/components/help'
@@ -47,7 +48,7 @@ function Content({ session }: { session: AuthSession }) {
   const [incomingRequests, setIncomingRequests] = useState<CrossServiceRequest[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [showTaskSheet, setShowTaskSheet] = useState(false)
-  const [tab, setTab] = useState<'plans' | 'staff' | 'transport' | 'incoming'>('plans')
+  const [tab, setTab] = useState<'plans' | 'staff' | 'transport' | 'incoming' | 'dayplan'>('plans')
   const [timerLabel, setTimerLabel] = useState<string | null>(getDeadlineCountdown())
 
   const loadData = useCallback(async () => {
@@ -103,6 +104,7 @@ function Content({ session }: { session: AuthSession }) {
             { key: 'staff',    label: 'Состав смены',    count: null },
             { key: 'transport',label: 'Транспорт',       count: null },
             { key: 'incoming', label: 'Запросы от служб',count: incomingRequests.length },
+            { key: 'dayplan',  label: '📒 План дня',      count: null },
           ] as const).map(t => (
             <button
               key={t.key}
@@ -173,6 +175,8 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'transport' && <HeadTransportTab plans={plans} services={services} />}
 
       {tab === 'incoming' && <IncomingRequests session={session} />}
+
+      {tab === 'dayplan' && <DayPlanView serviceId={session.service_id ?? undefined} onlyPublished />}
 
       {showTaskSheet && plans.length > 0 && (
         <PlanTaskSheetModal

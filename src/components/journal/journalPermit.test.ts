@@ -11,7 +11,8 @@ const session: AuthSession = {
 const item: PlanItem = {
   id: 'i1', planDate: '2026-06-20', period: 'NIGHT',
   objectId: 'o1', serviceId: 'SRV-ENG', work: 'Замена камеры на проезжей части',
-  workers: 3, foremen: 2, itr: 1, vehicles: 1, specialties: [], vehicleNumbers: [], flag: null, note: 'примечание',
+  workers: 3, foremen: 2, itr: 1, vehicles: 1, specialties: [], vehicleNumbers: [], workerNames: [],
+  flag: null, published: false, note: 'примечание',
 }
 
 describe('journalItemToWorkPlan (журнал → наряд)', () => {

@@ -979,6 +979,10 @@ export function deleteDailyPlanItem(id: string): Promise<boolean> {
   return call('deleteDailyPlanItem', [id])
 }
 
+export function publishDailyPlanItems(planDate: string, shiftType: string, published: boolean): Promise<boolean> {
+  return call('publishDailyPlanItems', [planDate, shiftType, published])
+}
+
 export function fetchShiftHeader(planDate: string, shiftType: string): Promise<JournalShiftHeader | null> {
   return call('fetchShiftHeader', [planDate, shiftType])
 }

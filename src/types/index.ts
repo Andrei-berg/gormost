@@ -995,6 +995,13 @@ export interface SpecialtyCount {
 // Тип строки журнала: обычная работа (null) или стоячая/условная строка.
 export type DailyPlanItemFlag = 'BY_ORDER' | 'STANDBY' | 'NOTICE'
 
+// Named crew member on a journal row — picked per service, feeds наряд состав.
+export interface WorkerName {
+  user_id: string | null  // null when typed by hand (no matching employee)
+  name: string
+  role: WorkAssignmentRole // WORKER | BRIGADIER | MASTER | DRIVER | ITR
+}
+
 export interface DailyPlanItem {
   id: string
   plan_date: string // ISO yyyy-mm-dd
@@ -1009,6 +1016,8 @@ export interface DailyPlanItem {
   specialties?: SpecialtyCount[] | null   // optional detailed breakdown
   vehicle_numbers?: string[] | null       // optional garage numbers (335, 196, …)
   item_flag?: DailyPlanItemFlag | null    // standing/conditional row type (null = ordinary)
+  worker_names?: WorkerName[] | null      // named crew (optional layer over the counters)
+  published?: boolean                     // mirrored read-only into other panels when true
   note?: string | null
   created_by?: string | null
   created_at?: string

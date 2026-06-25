@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AuthSession, JournalShiftHeader, SpecialtyCount, DailyPlanItemFlag } from '@/types'
 import {
   fetchJournalObjects, fetchDailyPlanItems, createJournalObject,
-  createDailyPlanItem, updateDailyPlanItem, deleteDailyPlanItem,
+  createDailyPlanItem, updateDailyPlanItem, deleteDailyPlanItem, publishDailyPlanItems,
   fetchShiftHeader, upsertShiftHeader,
 } from '@/lib/api-client'
 import { useLoadData } from '@/lib/useLoadData'
@@ -146,10 +146,16 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   const updateFlag = (id: string, item_flag: DailyPlanItemFlag | null) => guard(async () => {
     await updateDailyPlanItem(id, { item_flag }); await reload()
   })
+  // Publish/unpublish the active slice → mirrors it read-only into other panels.
+  const publishSlice = (value: boolean) => guard(async () => {
+    await publishDailyPlanItems(date, period, value); await reload()
+  })
 
   // KPIs (over the visible slice)
   const objectsTouched  = new Set(visible.map(i => i.objectId)).size
   const servicesTouched = new Set(visible.map(i => i.serviceId)).size
+  // Publish state of the active slice (all rows published = опубликовано).
+  const allPublished = visible.length > 0 && visible.every(i => i.published)
 
   const seg = (active: boolean) =>
     `px-3 py-1.5 ${S.radiusSm} text-sm font-medium transition-all ${active ? S.segActive : S.segIdle}`
@@ -249,15 +255,33 @@ export default function JournalApp({ session }: { session: AuthSession }) {
             ))}
           </div>
 
-          {view === 'board' && (
-            <div className="flex items-center gap-2">
-              <span className={S.label}>пивот</span>
-              <div className={`inline-flex p-0.5 ${S.inset} ${S.radiusSm}`}>
-                <button onClick={() => setPivot('service')} className={seg(pivot === 'service')}>по службам</button>
-                <button onClick={() => setPivot('object')}  className={seg(pivot === 'object')}>по объектам</button>
+          <div className="flex items-center gap-2">
+            {view === 'board' && (
+              <div className="flex items-center gap-2">
+                <span className={S.label}>пивот</span>
+                <div className={`inline-flex p-0.5 ${S.inset} ${S.radiusSm}`}>
+                  <button onClick={() => setPivot('service')} className={seg(pivot === 'service')}>по службам</button>
+                  <button onClick={() => setPivot('object')}  className={seg(pivot === 'object')}>по объектам</button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Publish toggle — only for a single concrete slice (date × shift) */}
+            {!bothShifts && visible.length > 0 && (
+              <button
+                onClick={() => publishSlice(!allPublished)}
+                title={allPublished
+                  ? 'План виден диспетчеру/зам.прорабу/нач.службы. Нажмите, чтобы снять с публикации.'
+                  : 'Опубликовать смену — план станет виден диспетчеру/зам.прорабу/нач.службы (только чтение).'}
+                className="px-3 py-1.5 rounded-xl text-sm font-medium border transition-all"
+                style={allPublished
+                  ? { color: '#3FB950', borderColor: '#3FB95066', background: 'rgba(63,185,80,0.14)' }
+                  : { color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }}
+              >
+                {allPublished ? '✓ Опубликовано' : '📢 Опубликовать смену'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Active view */}

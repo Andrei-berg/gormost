@@ -30,6 +30,7 @@ import { ZAMPORAB_TOUR, ZAMPORAB_HELP } from '@/components/help/tours'
 import IncomingRequests from '@/components/head/IncomingRequests'
 import WorkPlanSummaryModal from '@/components/zamporab/WorkPlanSummaryModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
+import DayPlanView from '@/components/shared/DayPlanView'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 
@@ -41,7 +42,7 @@ export default function ZamPorabPage() {
   )
 }
 
-type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'directives'
+type Tab = 'plans' | 'pending' | 'kanban' | 'staff' | 'incoming' | 'directives' | 'dayplan'
 
 function isOverduePlan(dateStr: string): boolean {
   const today = new Date()
@@ -132,6 +133,7 @@ function Content({ session }: { session: AuthSession }) {
     { id: 'staff', label: 'Смена' },
     { id: 'incoming', label: 'Смежные', count: pendingIncoming || undefined },
     { id: 'directives', label: 'Поручения' },
+    { id: 'dayplan', label: '📒 План дня' },
   ]
 
   if (loading) return <PanelLoader />
@@ -381,6 +383,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'staff' && <ShiftOverview />}
       {tab === 'incoming' && <IncomingRequests session={session} />}
       {tab === 'directives' && <UrgentOrdersPanel session={session} />}
+      {tab === 'dayplan' && <DayPlanView serviceId={session.service_id ?? undefined} onlyPublished />}
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={reload} />

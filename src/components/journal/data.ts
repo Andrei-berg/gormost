@@ -3,11 +3,11 @@
 // module maps DB rows (snake_case) to the journal's UI types (camelCase) and
 // holds reference data (categories/services) that mirrors the seeded DB rows.
 
-import type { JournalObject, DailyPlanItem, SpecialtyCount, DailyPlanItemFlag } from '@/types'
+import type { JournalObject, DailyPlanItem, SpecialtyCount, DailyPlanItemFlag, WorkerName } from '@/types'
 import { SHIFT_HOURS } from '@/lib/workSchedule'
 
 export type Period = 'DAY' | 'NIGHT' | 'AROUND' // AROUND = сутки (24h duty shift)
-export type { SpecialtyCount, DailyPlanItemFlag }
+export type { SpecialtyCount, DailyPlanItemFlag, WorkerName }
 
 export interface Category {
   id: string
@@ -42,7 +42,9 @@ export interface PlanItem {
   vehicles: number
   specialties: SpecialtyCount[]  // optional detailed breakdown ([] when none)
   vehicleNumbers: string[]       // optional garage numbers ([] when none)
+  workerNames: WorkerName[]      // optional named crew ([] when none)
   flag: DailyPlanItemFlag | null // standing/conditional row type (null = ordinary)
+  published: boolean             // mirrored read-only into other panels when true
   note?: string
 }
 
@@ -121,7 +123,9 @@ export const toPlanItem = (r: DailyPlanItem): PlanItem => ({
   vehicles: r.required_vehicles,
   specialties: r.specialties ?? [],
   vehicleNumbers: r.vehicle_numbers ?? [],
+  workerNames: r.worker_names ?? [],
   flag: r.item_flag ?? null,
+  published: r.published ?? false,
   note: r.note ?? undefined,
 })
 

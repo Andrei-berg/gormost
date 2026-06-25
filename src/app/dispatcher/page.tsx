@@ -12,6 +12,7 @@ import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
 import OverrideModal from '@/components/dispatcher/OverrideModal'
 import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
+import DayPlanView from '@/components/shared/DayPlanView'
 import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
 import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
@@ -44,6 +45,7 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [activePlans, setActivePlans] = useState<WorkPlanWithItems[]>([])
   const [showOverrideModal, setShowOverrideModal] = useState(false)
   const [showDirectives,    setShowDirectives]    = useState(false)
+  const [showDayPlan,       setShowDayPlan]       = useState(false)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, shiftU] = await Promise.all([
@@ -96,6 +98,17 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       <div className="mb-4 flex justify-end gap-2">
         <HelpPanel panelTitle="Диспетчерская" panelEmoji="🗂️" sections={DISPATCHER_HELP} />
         <button
+          onClick={() => setShowDayPlan(v => !v)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition-colors ${
+            showDayPlan
+              ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+              : 'bg-sky-600/10 hover:bg-sky-600/20 border-sky-500/25 text-sky-400'
+          }`}
+        >
+          <span className="text-base">📒</span>
+          План дня
+        </button>
+        <button
           onClick={() => setShowDirectives(v => !v)}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition-colors ${
             showDirectives
@@ -114,6 +127,12 @@ function DispatcherContent({ session }: { session: AuthSession }) {
           Fast Track
         </button>
       </div>
+
+      {showDayPlan && (
+        <div className="mb-6">
+          <DayPlanView onlyPublished title="📒 План дня · опубликованные планы" />
+        </div>
+      )}
 
       {showDirectives && (
         <div className="mb-6 glass rounded-2xl p-5 border border-amber-500/20">
