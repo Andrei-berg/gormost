@@ -60,6 +60,7 @@ export interface AddInput {
   vehicles: number
   specialties: SpecialtyCount[]
   vehicleNumbers: string[]
+  workerNames: WorkerName[]
   flag: DailyPlanItemFlag | null
 }
 

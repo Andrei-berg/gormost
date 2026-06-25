@@ -2,8 +2,9 @@
 // the existing WorkPermitModal can generate a наряд-допуск straight from the
 // Журнал планов. The journal is a separate lightweight tool (not work_plans),
 // so the synthetic plan carries only what the permit needs — object, work,
-// service, date, shift and headcount requirements. Состав исполнителей and
-// транспорт are filled by hand in the permit (the journal has counts, not names).
+// service, date, shift and headcount requirements. Состав исполнителей is
+// pre-filled from the journal's named crew (worker_names) when present, else
+// named in the permit; транспорт is filled by hand there.
 //
 // The synthetic id is the journal item id; markWorkPlanPermit() inside the modal
 // simply no-ops (no work_plan with that id), which is fine — the document prints.
@@ -115,7 +116,9 @@ export function journalItemToWorkPlan(item: PlanItem, objectName: string, sessio
       plan_id: item.id,
       location: objectName,
       work_description: item.work,
-      workers: [],
+      // Named crew picked in the journal pre-fills the permit composition;
+      // empty when only counts were entered (master names them later).
+      workers: (item.workerNames ?? []).map(w => w.name),
       time_start: null,
       time_end: null,
       sort_order: 0,

@@ -6,6 +6,8 @@ import type { UI } from './ui'
 import ObjectCombobox from './ObjectCombobox'
 import SpecialtyEditor from './SpecialtyEditor'
 import VehicleNumbersEditor from './VehicleNumbersEditor'
+import WorkerPicker from './WorkerPicker'
+import type { WorkerName } from '@/types'
 import { WorkerIcon, MasterIcon, ItrIcon, TruckIcon } from './icons'
 
 export interface AddCtx { objectId?: string; serviceId?: string }
@@ -15,6 +17,7 @@ interface Props {
   objects: ObjectRef[]
   services: ServiceRef[]
   ui: UI
+  planDate: string // active slice date — for the crew on-duty highlight
   onClose: () => void
   onAdd: (item: AddInput) => Promise<void>
   // When set, the modal edits an existing row instead of adding a new one.
@@ -22,7 +25,7 @@ interface Props {
   onSave?: (id: string, item: AddInput) => Promise<void>
 }
 
-export default function AddItemModal({ ctx, objects, services, ui, onClose, onAdd, editItem, onSave }: Props) {
+export default function AddItemModal({ ctx, objects, services, ui, planDate, onClose, onAdd, editItem, onSave }: Props) {
   const isEdit = !!editItem
   const editObj = editItem ? objects.find(o => o.id === editItem.objectId) : undefined
   const preset = ctx.objectId ? objects.find(o => o.id === ctx.objectId) : undefined
@@ -40,6 +43,8 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
   const [showSpecialties, setShowSpecialties] = useState((editItem?.specialties.length ?? 0) > 0)
   const [vehicleNumbers, setVehicleNumbers] = useState<string[]>(editItem?.vehicleNumbers ?? [])
   const [showVehicles, setShowVehicles] = useState((editItem?.vehicleNumbers.length ?? 0) > 0)
+  const [workerNames, setWorkerNames] = useState<WorkerName[]>(editItem?.workerNames ?? [])
+  const [showWorkers, setShowWorkers] = useState((editItem?.workerNames.length ?? 0) > 0)
   const [flag, setFlag]         = useState<DailyPlanItemFlag | null>(editItem?.flag ?? null)
   const [busy, setBusy]         = useState(false)
 
@@ -56,7 +61,7 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
       const object = existingId
         ? { id: existingId }
         : { newName: objQuery.trim(), categoryId: newCat, address: newAddr.trim() || objQuery.trim() }
-      const input: AddInput = { object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: specialties.filter(s => s.count > 0), vehicleNumbers, flag }
+      const input: AddInput = { object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: specialties.filter(s => s.count > 0), vehicleNumbers, workerNames, flag }
       if (isEdit && editItem && onSave) await onSave(editItem.id, input)
       else await onAdd(input)
       onClose()
@@ -212,6 +217,23 @@ export default function AddItemModal({ ctx, objects, services, ui, onClose, onAd
             {showVehicles && (
               <div className="mt-3">
                 <VehicleNumbersEditor value={vehicleNumbers} onChange={setVehicleNumbers} ui={ui} />
+              </div>
+            )}
+          </div>
+
+          {/* Optional named crew — picked from this service, feeds the work permit */}
+          <div className={`${ui.inset} ${ui.radiusSm} p-3`}>
+            <button
+              onClick={() => setShowWorkers(s => !s)}
+              className={`flex items-center gap-2 text-xs ${ui.textSub} ${ui.hoverText} transition-colors w-full`}
+            >
+              <span>{showWorkers ? '▾' : '▸'}</span>
+              <span>Состав по фамилиям</span>
+              <span className={`ml-auto font-mono ${ui.textMuted}`}>{workerNames.length ? `${workerNames.length} чел.` : 'не задан'}</span>
+            </button>
+            {showWorkers && (
+              <div className="mt-3">
+                <WorkerPicker serviceId={serviceId} date={planDate} value={workerNames} onChange={setWorkerNames} />
               </div>
             )}
           </div>

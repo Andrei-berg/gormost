@@ -67,7 +67,7 @@ export default function FeedView({ items, objects, services, ui, header, onAdd, 
       const object = objId
         ? { id: objId }
         : { newName: objQuery.trim(), categoryId: QUICK_CATEGORY, address: objQuery.trim() }
-      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: [], vehicleNumbers: [], flag })
+      await onAdd({ object, serviceId, work: work.trim(), workers, foremen, itr, vehicles, specialties: [], vehicleNumbers: [], workerNames: [], flag })
       setWork(''); setObjQuery(''); setObjId(null); setFlag(null)
     } finally {
       setBusy(false)

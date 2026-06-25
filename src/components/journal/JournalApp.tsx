@@ -117,7 +117,8 @@ export default function JournalApp({ session }: { session: AuthSession }) {
       plan_date: date, shift_type: period, object_id: objectId, service_id: inp.serviceId,
       work_text: inp.work, required_workers: inp.workers, required_foremen: inp.foremen,
       required_itr: inp.itr, required_vehicles: inp.vehicles, specialties: inp.specialties,
-      vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag, created_by: session.user_id,
+      vehicle_numbers: inp.vehicleNumbers, worker_names: inp.workerNames, item_flag: inp.flag,
+      created_by: session.user_id,
     })
     await reload()
   })
@@ -129,7 +130,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
       object_id: objectId, service_id: inp.serviceId, work_text: inp.work,
       required_workers: inp.workers, required_foremen: inp.foremen, required_itr: inp.itr,
       required_vehicles: inp.vehicles, specialties: inp.specialties,
-      vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag,
+      vehicle_numbers: inp.vehicleNumbers, worker_names: inp.workerNames, item_flag: inp.flag,
     })
     await reload()
   })
@@ -318,14 +319,14 @@ export default function JournalApp({ session }: { session: AuthSession }) {
 
       {addCtx && (
         <AddItemModal
-          ctx={addCtx} objects={objects} services={SERVICES} ui={S}
+          ctx={addCtx} objects={objects} services={SERVICES} ui={S} planDate={date}
           onClose={() => setAddCtx(null)} onAdd={addItem}
         />
       )}
 
       {editTarget && (
         <AddItemModal
-          ctx={{}} objects={objects} services={SERVICES} ui={S}
+          ctx={{}} objects={objects} services={SERVICES} ui={S} planDate={editTarget.planDate}
           editItem={editTarget} onSave={saveItem} onAdd={addItem}
           onClose={() => setEditTarget(null)}
         />
