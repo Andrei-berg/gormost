@@ -7,6 +7,7 @@ import {
   fetchShiftHeader, upsertShiftHeader,
 } from '@/lib/api-client'
 import { useLoadData } from '@/lib/useLoadData'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 import {
   SERVICES, fmtDateRu, TODAY_ISO, TOMORROW_ISO, PERIOD_META,
@@ -42,6 +43,7 @@ const PRESETS: { date: string; period: Period; label: string }[] = [
 ]
 
 export default function JournalApp({ session }: { session: AuthSession }) {
+  const notify = useConfirm()
   const [objects, setObjects] = useState<ObjectRef[]>([])
   const [items, setItems]     = useState<PlanItem[]>([])
   const [view, setView]       = useState<View>('feed')
@@ -78,15 +80,25 @@ export default function JournalApp({ session }: { session: AuthSession }) {
     return () => { alive = false }
   }, [date, period, bothShifts])
 
-  const saveHeader = async (patch: ShiftHeaderPatch) => {
+  // Run a mutation, surfacing any thrown error to the user instead of failing
+  // silently (an unhandled rejection in an onClick handler shows nothing).
+  const guard = async (fn: () => Promise<void>) => {
+    try {
+      await fn()
+    } catch (e) {
+      await notify(e instanceof Error ? e.message : 'Не удалось выполнить операцию', { alert: true })
+    }
+  }
+
+  const saveHeader = (patch: ShiftHeaderPatch) => guard(async () => {
     const saved = await upsertShiftHeader({
       plan_date: date, shift_type: period, created_by: session.user_id, ...patch,
     })
     setHeader(saved)
-  }
+  })
 
   // ── mutations ───────────────────────────────────────────────────────────
-  const addItem = async (inp: AddInput) => {
+  const addItem = (inp: AddInput) => guard(async () => {
     let objectId: string
     if ('id' in inp.object) {
       objectId = inp.object.id
@@ -105,20 +117,20 @@ export default function JournalApp({ session }: { session: AuthSession }) {
       vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag, created_by: session.user_id,
     })
     await reload()
-  }
-  const deleteItem = async (id: string) => { await deleteDailyPlanItem(id); await reload() }
-  const reassign = async (id: string, serviceId: string) => {
+  })
+  const deleteItem = (id: string) => guard(async () => { await deleteDailyPlanItem(id); await reload() })
+  const reassign = (id: string, serviceId: string) => guard(async () => {
     await updateDailyPlanItem(id, { service_id: serviceId }); await reload()
-  }
-  const updateSpecialties = async (id: string, specialties: SpecialtyCount[]) => {
+  })
+  const updateSpecialties = (id: string, specialties: SpecialtyCount[]) => guard(async () => {
     await updateDailyPlanItem(id, { specialties }); await reload()
-  }
-  const updateVehicleNumbers = async (id: string, vehicle_numbers: string[]) => {
+  })
+  const updateVehicleNumbers = (id: string, vehicle_numbers: string[]) => guard(async () => {
     await updateDailyPlanItem(id, { vehicle_numbers }); await reload()
-  }
-  const updateFlag = async (id: string, item_flag: DailyPlanItemFlag | null) => {
+  })
+  const updateFlag = (id: string, item_flag: DailyPlanItemFlag | null) => guard(async () => {
     await updateDailyPlanItem(id, { item_flag }); await reload()
-  }
+  })
 
   // KPIs (over the visible slice)
   const objectsTouched  = new Set(visible.map(i => i.objectId)).size

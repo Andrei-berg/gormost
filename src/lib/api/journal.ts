@@ -16,18 +16,21 @@ export async function fetchJournalObjects(): Promise<JournalObject[]> {
 }
 
 export async function createJournalObject(obj: Partial<JournalObject>): Promise<JournalObject | null> {
-  const { data } = await supabase.from('journal_objects').insert(obj).select().single()
+  const { data, error } = await supabase.from('journal_objects').insert(obj).select().single()
+  if (error) throw new Error(`Не удалось создать объект журнала: ${error.message}`)
   return data as JournalObject | null
 }
 
 export async function updateJournalObject(id: string, updates: Partial<JournalObject>): Promise<JournalObject | null> {
-  const { data } = await supabase.from('journal_objects').update(updates).eq('id', id).select().single()
+  const { data, error } = await supabase.from('journal_objects').update(updates).eq('id', id).select().single()
+  if (error) throw new Error(`Не удалось обновить объект журнала: ${error.message}`)
   return data as JournalObject | null
 }
 
 export async function deleteJournalObject(id: string): Promise<boolean> {
   const { error } = await supabase.from('journal_objects').delete().eq('id', id)
-  return !error
+  if (error) throw new Error(`Не удалось удалить объект журнала: ${error.message}`)
+  return true
 }
 
 // ============ DAILY PLAN ITEMS ============
@@ -42,23 +45,26 @@ export async function fetchDailyPlanItems(planDate: string): Promise<DailyPlanIt
 }
 
 export async function createDailyPlanItem(item: Partial<DailyPlanItem>): Promise<DailyPlanItem | null> {
-  const { data } = await supabase.from('daily_plan_items').insert(item).select().single()
+  const { data, error } = await supabase.from('daily_plan_items').insert(item).select().single()
+  if (error) throw new Error(`Не удалось добавить строку плана: ${error.message}`)
   return data as DailyPlanItem | null
 }
 
 export async function updateDailyPlanItem(id: string, updates: Partial<DailyPlanItem>): Promise<DailyPlanItem | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('daily_plan_items')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
+  if (error) throw new Error(`Не удалось обновить строку плана: ${error.message}`)
   return data as DailyPlanItem | null
 }
 
 export async function deleteDailyPlanItem(id: string): Promise<boolean> {
   const { error } = await supabase.from('daily_plan_items').delete().eq('id', id)
-  return !error
+  if (error) throw new Error(`Не удалось удалить строку плана: ${error.message}`)
+  return true
 }
 
 // ============ JOURNAL SHIFT HEADERS (шапка дня) ============
@@ -74,10 +80,11 @@ export async function fetchShiftHeader(planDate: string, shiftType: string): Pro
 }
 
 export async function upsertShiftHeader(header: Partial<JournalShiftHeader>): Promise<JournalShiftHeader | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('journal_shift_headers')
     .upsert({ ...header, updated_at: new Date().toISOString() }, { onConflict: 'plan_date,shift_type' })
     .select()
     .single()
+  if (error) throw new Error(`Не удалось сохранить шапку дня: ${error.message}`)
   return data as JournalShiftHeader | null
 }
