@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { WorkPlanWithItems, AuthSession, UserWithAssignment, ResolvedWorkPermitType } from '@/types'
+import type { WorkPlanWithItems, AuthSession, UserWithAssignment, ResolvedWorkPermitType, WorkerName } from '@/types'
 import { fetchUsersWithAssignments, markWorkPlanPermit, fetchServiceWorkPermitTypes } from '@/lib/api-client'
 import { isWorkerOnDuty } from '@/lib/shifts'
 import { useConfirm } from '@/components/ConfirmDialog'
+import WorkerPicker from '@/components/journal/WorkerPicker'
 
 // ─── Russian month names ───────────────────────────────────────────────────
 const RU_MONTHS = [
@@ -481,6 +482,11 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const [endTime,            setEndTime]            = useState('06:30')
   const [endDate,            setEndDate]            = useState(nextDay)
   const [vehicleNotes,       setVehicleNotes]       = useState(permitDefaults?.vehicleNote ?? '')
+  // Состав исполнителей (п.6) — editable, prefilled from the plan's named crew
+  // (journal worker_names) and confined to the plan's own service (приказ п.18.1).
+  const [crew,               setCrew]               = useState<WorkerName[]>(() =>
+    [...new Set(plan.items.flatMap(i => i.workers))].map(name => ({ user_id: null, name, role: 'WORKER' as const }))
+  )
 
   // Issuer (point 7) — журнал шапка дня (Отв.) wins; else auto-fill from session.
   const [issuedBy,           setIssuedBy]           = useState(
@@ -539,7 +545,6 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
   const brig_ownAll       = allUsers.filter(u => u.service_id === plan.service_id && isBrigadierUser(u))
   const brigadierOwn   = brig_ownOnDuty.length  > 0 ? brig_ownOnDuty  : brig_ownAll
 
-  const allWorkers  = [...new Set(plan.items.flatMap(i => i.workers))]
   const allVehicles: string[] = plan.items.flatMap(i =>
     (i as WorkPlanWithItems['items'][number] & { vehicles?: Array<{ name: string; plate?: string }> }).vehicles?.map(v =>
       [v.name, v.plate].filter(Boolean).join(' ')
@@ -567,7 +572,7 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
     endDate,
     issuedBy,
     issuedByPosition,
-    workers:      allWorkers,
+    workers:      crew.map(c => c.name),
     vehicles:     allVehicles,
     vehicleNotes,
     factors:       workTypeCfg.factors,
@@ -883,23 +888,13 @@ export default function WorkPermitModal({ plan, session, onClose, onPermitPrinte
             </div>
           )}
 
-          {/* Workers (п.6 — автоматически из плана) */}
-          {allWorkers.length > 0 && (
-            <div>
-              <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>
-                6. Состав исполнителей — инструктаж проводит руководитель работ
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {allWorkers.map((w, i) => (
-                  <span key={i} className={`text-[11px] px-2 py-0.5 rounded-full ${
-                    lightMode ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-emerald-500/15 text-emerald-300'
-                  }`}>
-                    {w}
-                  </span>
-                ))}
-              </div>
+          {/* Workers (п.6 — состав исполнителей, по фамилиям из своей службы) */}
+          <div>
+            <div className={`text-[10px] uppercase tracking-wider mb-2 ${subtitleText}`}>
+              6. Состав исполнителей — только сотрудники своей службы (инструктаж проводит руководитель работ)
             </div>
-          )}
+            <WorkerPicker serviceId={plan.service_id} date={plan.plan_date} value={crew} onChange={setCrew} />
+          </div>
 
           {/* Vehicle notes (п.6.1 — editable) */}
           <div>

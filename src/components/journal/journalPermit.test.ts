@@ -11,7 +11,8 @@ const session: AuthSession = {
 const item: PlanItem = {
   id: 'i1', planDate: '2026-06-20', period: 'NIGHT',
   objectId: 'o1', serviceId: 'SRV-ENG', work: 'Замена камеры на проезжей части',
-  workers: 3, foremen: 2, itr: 1, vehicles: 1, specialties: [], vehicleNumbers: [], flag: null, note: 'примечание',
+  workers: 3, foremen: 2, itr: 1, vehicles: 1, specialties: [], vehicleNumbers: [], workerNames: [],
+  flag: null, published: false, note: 'примечание',
 }
 
 describe('journalItemToWorkPlan (журнал → наряд)', () => {
@@ -38,10 +39,22 @@ describe('journalItemToWorkPlan (журнал → наряд)', () => {
     expect(it0.required_vehicles).toBe(1)
   })
 
-  it('leaves состав/транспорт empty (journal has counts, not names)', () => {
+  it('leaves состав/транспорт empty when only counts were entered', () => {
     expect(plan.items[0].workers).toEqual([])
     expect(plan.items[0].vehicles).toEqual([])
     expect(plan.items[0].cross_requests).toEqual([])
+  })
+
+  it('pre-fills the permit composition from the named crew (worker_names → workers)', () => {
+    const named: PlanItem = {
+      ...item,
+      workerNames: [
+        { user_id: 'u9', name: 'Сибгатулин Р.М.', role: 'BRIGADIER' },
+        { user_id: null, name: 'Волков С.В.', role: 'WORKER' },
+      ],
+    }
+    const p = journalItemToWorkPlan(named, 'Школа', session)
+    expect(p.items[0].workers).toEqual(['Сибгатулин Р.М.', 'Волков С.В.'])
   })
 
   it('produces a printable plan with no permit recorded yet', () => {

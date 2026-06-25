@@ -67,6 +67,20 @@ export async function deleteDailyPlanItem(id: string): Promise<boolean> {
   return true
 }
 
+// Publish/unpublish a whole slice (date × shift). Published rows are mirrored
+// read-only into the dispatcher / zamporab / head "План дня" view.
+export async function publishDailyPlanItems(
+  planDate: string, shiftType: string, published: boolean,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('daily_plan_items')
+    .update({ published, updated_at: new Date().toISOString() })
+    .eq('plan_date', planDate)
+    .eq('shift_type', shiftType)
+  if (error) throw new Error(`Не удалось ${published ? 'опубликовать' : 'снять с публикации'} план: ${error.message}`)
+  return true
+}
+
 // ============ JOURNAL SHIFT HEADERS (шапка дня) ============
 
 export async function fetchShiftHeader(planDate: string, shiftType: string): Promise<JournalShiftHeader | null> {

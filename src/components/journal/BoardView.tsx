@@ -22,9 +22,10 @@ interface Props {
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
   onOpenPermit: (item: PlanItem) => void
+  onEdit: (item: PlanItem) => void
 }
 
-export default function BoardView({ items, objects, services, ui, header, pivot, onDelete, onReassign, onOpenAdd, onOpenPermit }: Props) {
+export default function BoardView({ items, objects, services, ui, header, pivot, onDelete, onReassign, onOpenAdd, onOpenPermit, onEdit }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -46,7 +47,10 @@ export default function BoardView({ items, objects, services, ui, header, pivot,
           {pivot === 'service'
             ? <span className={`text-xs font-medium ${ui.text} leading-snug`}>{cat.get(o.categoryId)?.em} {o.name}</span>
             : <span className="text-[11px] px-1.5 py-0.5 rounded-full border" style={{ color: s.color, borderColor: s.color + '55', background: s.color + '18' }}>{s.em} {s.name}</span>}
-          <button onClick={() => onDelete(it.id)} className={`text-xs ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity`}>✕</button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => onEdit(it)} title="Изменить запись" className={`text-xs ${ui.textMuted} ${ui.hoverText} opacity-0 group-hover:opacity-100 transition-opacity`}>✎</button>
+            <button onClick={() => onDelete(it.id)} className={`text-xs ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity`}>✕</button>
+          </div>
         </div>
         <div className={`text-[13px] mt-1 leading-snug ${it.flag ? 'font-semibold' : ui.text}`} style={it.flag ? { color: FLAG_META[it.flag].color } : undefined}>
           {it.period !== 'DAY' && <span title={PERIOD_META[it.period].label}>{PERIOD_META[it.period].em} </span>}

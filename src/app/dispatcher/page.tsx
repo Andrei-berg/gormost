@@ -10,10 +10,10 @@ import TableView from '@/components/dispatcher/TableView'
 import PeopleStats from '@/components/dispatcher/PeopleStats'
 import ServiceSummary from '@/components/dispatcher/ServiceSummary'
 import OnDutyMonitor from '@/components/dispatcher/OnDutyMonitor'
-import OverrideModal from '@/components/dispatcher/OverrideModal'
-import UrgentOrdersPanel from '@/components/shared/UrgentOrdersPanel'
-import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments, fetchWorkPlans, fetchWorkPlansWithItems } from '@/lib/api-client'
-import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession, WorkPlanWithItems } from '@/types'
+import UrgentOrders from '@/components/shared/UrgentOrders'
+import DayPlanView from '@/components/shared/DayPlanView'
+import { fetchRequests, fetchCategories, fetchObjects, fetchConstructions, fetchWorkTypes, fetchServices, fetchPeopleStats, fetchUsersWithAssignments } from '@/lib/api-client'
+import type { Request, Category, GObject, Construction, WorkType, Service, UserWithAssignment, AuthSession } from '@/types'
 import { useLoadData } from '@/lib/useLoadData'
 import { PanelLoader, DataErrorBanner } from '@/components/DataState'
 import { HelpPanel } from '@/components/help'
@@ -41,9 +41,8 @@ function DispatcherContent({ session }: { session: AuthSession }) {
   const [peopleStats, setPeopleStats] = useState<{ totalDeployed: number; byService: Record<string, number>; activeAssignments: Array<{ user_id: string; full_name: string; service_id: string | null; request_id: string; object_name?: string }> }>({ totalDeployed: 0, byService: {}, activeAssignments: [] })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [shiftUsers, setShiftUsers] = useState<UserWithAssignment[]>([])
-  const [activePlans, setActivePlans] = useState<WorkPlanWithItems[]>([])
-  const [showOverrideModal, setShowOverrideModal] = useState(false)
   const [showDirectives,    setShowDirectives]    = useState(false)
+  const [showDayPlan,       setShowDayPlan]       = useState(false)
 
   const loadData = useCallback(async () => {
     const [reqs, cats, objs, cons, wts, svcs, shiftU] = await Promise.all([
@@ -59,12 +58,6 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
     const ps = await fetchPeopleStats()
     setPeopleStats(ps)
-
-    // Load active plans for override modal
-    const today = new Date().toISOString().split('T')[0]
-    const rawActivePlans = await fetchWorkPlans({ planDate: today, statuses: ['ASSIGNED', 'IN_PROGRESS', 'BOSS_CONFIRMED', 'FAST_TRACK'] })
-    const withItems = await fetchWorkPlansWithItems(rawActivePlans.map(p => p.id))
-    setActivePlans(withItems)
 
     setLastUpdated(new Date())
   }, [filterService])
@@ -96,6 +89,17 @@ function DispatcherContent({ session }: { session: AuthSession }) {
       <div className="mb-4 flex justify-end gap-2">
         <HelpPanel panelTitle="Диспетчерская" panelEmoji="🗂️" sections={DISPATCHER_HELP} />
         <button
+          onClick={() => setShowDayPlan(v => !v)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition-colors ${
+            showDayPlan
+              ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+              : 'bg-sky-600/10 hover:bg-sky-600/20 border-sky-500/25 text-sky-400'
+          }`}
+        >
+          <span className="text-base">📒</span>
+          План дня
+        </button>
+        <button
           onClick={() => setShowDirectives(v => !v)}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition-colors ${
             showDirectives
@@ -103,21 +107,20 @@ function DispatcherContent({ session }: { session: AuthSession }) {
               : 'bg-amber-600/10 hover:bg-amber-600/20 border-amber-500/25 text-amber-400'
           }`}
         >
-          <span className="text-base">📝</span>
-          Поручения
-        </button>
-        <button
-          onClick={() => setShowOverrideModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-medium text-sm transition-colors"
-        >
           <span className="text-base">⚡</span>
-          Fast Track
+          Срочное поручение
         </button>
       </div>
 
+      {showDayPlan && (
+        <div className="mb-6">
+          <DayPlanView onlyPublished title="📒 План дня · опубликованные планы" />
+        </div>
+      )}
+
       {showDirectives && (
         <div className="mb-6 glass rounded-2xl p-5 border border-amber-500/20">
-          <UrgentOrdersPanel session={session} />
+          <UrgentOrders session={session} />
         </div>
       )}
 
@@ -158,16 +161,6 @@ function DispatcherContent({ session }: { session: AuthSession }) {
 
       {showModal && (
         <RequestModal session={session} existingRequest={selectedReq} onClose={() => setShowModal(false)} onSaved={reload} />
-      )}
-
-      {showOverrideModal && (
-        <OverrideModal
-          session={session}
-          activePlans={activePlans}
-          services={services}
-          onClose={() => setShowOverrideModal(false)}
-          onSuccess={reload}
-        />
       )}
     </div>
   )

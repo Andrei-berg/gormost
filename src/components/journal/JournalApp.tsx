@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AuthSession, JournalShiftHeader, SpecialtyCount, DailyPlanItemFlag } from '@/types'
 import {
   fetchJournalObjects, fetchDailyPlanItems, createJournalObject,
-  createDailyPlanItem, updateDailyPlanItem, deleteDailyPlanItem,
+  createDailyPlanItem, updateDailyPlanItem, deleteDailyPlanItem, publishDailyPlanItems,
   fetchShiftHeader, upsertShiftHeader,
 } from '@/lib/api-client'
 import { useLoadData } from '@/lib/useLoadData'
@@ -49,6 +49,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   const [view, setView]       = useState<View>('feed')
   const [pivot, setPivot]     = useState<Pivot>('service')
   const [addCtx, setAddCtx]   = useState<AddCtx | null>(null)
+  const [editTarget, setEditTarget] = useState<PlanItem | null>(null)
   const [permitItem, setPermitItem] = useState<PlanItem | null>(null)
 
   // ── active slice (date × period) ──────────────────────────────────────────
@@ -98,23 +99,38 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   })
 
   // ── mutations ───────────────────────────────────────────────────────────
+  // Resolve the AddInput object to an id, creating a new object on the fly.
+  // Returns null if the new object could not be created (error already surfaced).
+  const resolveObjectId = async (object: AddInput['object']): Promise<string | null> => {
+    if ('id' in object) return object.id
+    const created = await createJournalObject({
+      name: object.newName, category_id: object.categoryId,
+      address: object.address, created_by: session.user_id,
+    })
+    return created?.id ?? null
+  }
+
   const addItem = (inp: AddInput) => guard(async () => {
-    let objectId: string
-    if ('id' in inp.object) {
-      objectId = inp.object.id
-    } else {
-      const created = await createJournalObject({
-        name: inp.object.newName, category_id: inp.object.categoryId,
-        address: inp.object.address, created_by: session.user_id,
-      })
-      if (!created) return
-      objectId = created.id
-    }
+    const objectId = await resolveObjectId(inp.object)
+    if (!objectId) return
     await createDailyPlanItem({
       plan_date: date, shift_type: period, object_id: objectId, service_id: inp.serviceId,
       work_text: inp.work, required_workers: inp.workers, required_foremen: inp.foremen,
       required_itr: inp.itr, required_vehicles: inp.vehicles, specialties: inp.specialties,
-      vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag, created_by: session.user_id,
+      vehicle_numbers: inp.vehicleNumbers, worker_names: inp.workerNames, item_flag: inp.flag,
+      created_by: session.user_id,
+    })
+    await reload()
+  })
+  // Edit an existing row — keeps its slice (plan_date/shift_type), updates the rest.
+  const saveItem = (id: string, inp: AddInput) => guard(async () => {
+    const objectId = await resolveObjectId(inp.object)
+    if (!objectId) return
+    await updateDailyPlanItem(id, {
+      object_id: objectId, service_id: inp.serviceId, work_text: inp.work,
+      required_workers: inp.workers, required_foremen: inp.foremen, required_itr: inp.itr,
+      required_vehicles: inp.vehicles, specialties: inp.specialties,
+      vehicle_numbers: inp.vehicleNumbers, worker_names: inp.workerNames, item_flag: inp.flag,
     })
     await reload()
   })
@@ -131,10 +147,16 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   const updateFlag = (id: string, item_flag: DailyPlanItemFlag | null) => guard(async () => {
     await updateDailyPlanItem(id, { item_flag }); await reload()
   })
+  // Publish/unpublish the active slice → mirrors it read-only into other panels.
+  const publishSlice = (value: boolean) => guard(async () => {
+    await publishDailyPlanItems(date, period, value); await reload()
+  })
 
   // KPIs (over the visible slice)
   const objectsTouched  = new Set(visible.map(i => i.objectId)).size
   const servicesTouched = new Set(visible.map(i => i.serviceId)).size
+  // Publish state of the active slice (all rows published = опубликовано).
+  const allPublished = visible.length > 0 && visible.every(i => i.published)
 
   const seg = (active: boolean) =>
     `px-3 py-1.5 ${S.radiusSm} text-sm font-medium transition-all ${active ? S.segActive : S.segIdle}`
@@ -234,15 +256,33 @@ export default function JournalApp({ session }: { session: AuthSession }) {
             ))}
           </div>
 
-          {view === 'board' && (
-            <div className="flex items-center gap-2">
-              <span className={S.label}>пивот</span>
-              <div className={`inline-flex p-0.5 ${S.inset} ${S.radiusSm}`}>
-                <button onClick={() => setPivot('service')} className={seg(pivot === 'service')}>по службам</button>
-                <button onClick={() => setPivot('object')}  className={seg(pivot === 'object')}>по объектам</button>
+          <div className="flex items-center gap-2">
+            {view === 'board' && (
+              <div className="flex items-center gap-2">
+                <span className={S.label}>пивот</span>
+                <div className={`inline-flex p-0.5 ${S.inset} ${S.radiusSm}`}>
+                  <button onClick={() => setPivot('service')} className={seg(pivot === 'service')}>по службам</button>
+                  <button onClick={() => setPivot('object')}  className={seg(pivot === 'object')}>по объектам</button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Publish toggle — only for a single concrete slice (date × shift) */}
+            {!bothShifts && visible.length > 0 && (
+              <button
+                onClick={() => publishSlice(!allPublished)}
+                title={allPublished
+                  ? 'План виден диспетчеру/зам.прорабу/нач.службы. Нажмите, чтобы снять с публикации.'
+                  : 'Опубликовать смену — план станет виден диспетчеру/зам.прорабу/нач.службы (только чтение).'}
+                className="px-3 py-1.5 rounded-xl text-sm font-medium border transition-all"
+                style={allPublished
+                  ? { color: '#3FB950', borderColor: '#3FB95066', background: 'rgba(63,185,80,0.14)' }
+                  : { color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }}
+              >
+                {allPublished ? '✓ Опубликовано' : '📢 Опубликовать смену'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Active view */}
@@ -250,7 +290,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <FeedView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onAdd={addItem} onDelete={deleteItem} onReassign={reassign}
-            onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onOpenAdd={setAddCtx} onOpenPermit={setPermitItem} onEdit={setEditTarget}
             onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
             onUpdateFlag={updateFlag}
           />
@@ -259,12 +299,14 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <BoardView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header} pivot={pivot}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onEdit={setEditTarget}
           />
         )}
         {view === 'table' && (
           <TableView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onEdit={setEditTarget}
             onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
             onUpdateFlag={updateFlag}
           />
@@ -277,8 +319,16 @@ export default function JournalApp({ session }: { session: AuthSession }) {
 
       {addCtx && (
         <AddItemModal
-          ctx={addCtx} objects={objects} services={SERVICES} ui={S}
+          ctx={addCtx} objects={objects} services={SERVICES} ui={S} planDate={date}
           onClose={() => setAddCtx(null)} onAdd={addItem}
+        />
+      )}
+
+      {editTarget && (
+        <AddItemModal
+          ctx={{}} objects={objects} services={SERVICES} ui={S} planDate={editTarget.planDate}
+          editItem={editTarget} onSave={saveItem} onAdd={addItem}
+          onClose={() => setEditTarget(null)}
         />
       )}
 

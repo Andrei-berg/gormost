@@ -15,7 +15,7 @@ import { WORK_PLAN_STATUS_CONFIG } from '@/types'
 import StatusPlanBadge from '@/components/help/StatusPlanBadge'
 import WithTooltip from '@/components/help/WithTooltip'
 import WorkPermitModal from '@/components/head/WorkPermitModal'
-import DirectiveAlert from '@/components/foreman/DirectiveAlert'
+import UrgentOrderAlert from '@/components/foreman/UrgentOrderAlert'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { WorkerIcon, BrigadierIcon, MasterIcon, ItrIcon } from '@/components/RoleIcons'
 
@@ -152,7 +152,7 @@ export default function BrigadeAssigner({ session, services }: Props) {
 
   return (
     <div className="space-y-6">
-      <DirectiveAlert planWorkerIds={myWorkerIds} />
+      <UrgentOrderAlert planWorkerIds={myWorkerIds} />
 
       {/* Shift stats — interactive roster panel */}
       <div className="glass rounded-xl border border-cyan-500/20 overflow-hidden">

@@ -407,6 +407,79 @@ export interface DirectiveWorkerAssignment {
   assigned_by:      string
 }
 
+// ─── Urgent orders (срочные поручения сверху) — unified model, migration 052 ──
+export type UrgentOrderStatus   = 'ACTIVE' | 'DONE' | 'CANCELLED'
+export type UrgentOrderPullMode = 'BRIGADE' | 'NAMED'
+// REASSIGN/POSTPONE/CANCEL act on the source plan; WEAKENED = it just continues
+// short-handed after a partial pull.
+export type UrgentOrderFate     = 'REASSIGN' | 'POSTPONE' | 'CANCEL' | 'WEAKENED'
+
+export interface UrgentOrder {
+  id:                 string
+  created_at:         string
+  updated_at:         string
+  created_by:         string | null
+  source:             WorkSource
+  source_ref:         string | null
+  source_org:         string | null
+  priority:           DirectivePriority
+  service_id:         string | null
+  order_type:         string | null
+  location:           string | null
+  work_text:          string
+  plan_date:          string
+  shift_type:         JournalPeriod   // DAY | NIGHT | AROUND
+  pull_mode:          UrgentOrderPullMode
+  affected_plan_id:   string | null
+  original_plan_fate: UrgentOrderFate | null
+  suspended_until:    string | null
+  partial_work_done:  string | null
+  status:             UrgentOrderStatus
+}
+
+export interface UrgentOrderWorker {
+  id:               string
+  order_id:         string
+  worker_id:        string | null
+  worker_name:      string
+  role:             WorkAssignmentRole | null
+  source_plan_id:   string | null
+  source_plan_name: string | null
+  created_at:       string
+}
+
+export interface UrgentOrderWithWorkers extends UrgentOrder {
+  workers: UrgentOrderWorker[]
+}
+
+export interface UrgentOrderCrewMember {
+  workerId:       string | null
+  workerName:     string
+  role:           WorkAssignmentRole | null
+  sourcePlanId:   string | null
+  sourcePlanName: string | null
+}
+
+export interface CreateUrgentOrderInput {
+  source:          WorkSource
+  sourceRef:       string | null
+  sourceOrg:       string | null
+  priority:        DirectivePriority
+  serviceId:       string | null
+  orderType:       string | null
+  location:        string | null
+  workText:        string
+  planDate:        string
+  shiftType:       JournalPeriod
+  pullMode:        UrgentOrderPullMode
+  affectedPlanId:  string | null
+  fate:            UrgentOrderFate | null
+  suspendedUntil:  string | null
+  partialWorkDone: string | null
+  crew:            UrgentOrderCrewMember[]
+  createdBy:       string
+}
+
 export interface ServiceOrderType {
   id:         string
   service_id: string
@@ -995,6 +1068,13 @@ export interface SpecialtyCount {
 // Тип строки журнала: обычная работа (null) или стоячая/условная строка.
 export type DailyPlanItemFlag = 'BY_ORDER' | 'STANDBY' | 'NOTICE'
 
+// Named crew member on a journal row — picked per service, feeds наряд состав.
+export interface WorkerName {
+  user_id: string | null  // null when typed by hand (no matching employee)
+  name: string
+  role: WorkAssignmentRole // WORKER | BRIGADIER | MASTER | DRIVER | ITR
+}
+
 export interface DailyPlanItem {
   id: string
   plan_date: string // ISO yyyy-mm-dd
@@ -1009,6 +1089,8 @@ export interface DailyPlanItem {
   specialties?: SpecialtyCount[] | null   // optional detailed breakdown
   vehicle_numbers?: string[] | null       // optional garage numbers (335, 196, …)
   item_flag?: DailyPlanItemFlag | null    // standing/conditional row type (null = ordinary)
+  worker_names?: WorkerName[] | null      // named crew (optional layer over the counters)
+  published?: boolean                     // mirrored read-only into other panels when true
   note?: string | null
   created_by?: string | null
   created_at?: string
