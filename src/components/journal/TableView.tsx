@@ -22,12 +22,13 @@ interface Props {
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
   onOpenPermit: (item: PlanItem) => void
+  onEdit: (item: PlanItem) => void
   onUpdateSpecialties: (id: string, specialties: SpecialtyCount[]) => void
   onUpdateVehicleNumbers: (id: string, numbers: string[]) => void
   onUpdateFlag: (id: string, flag: DailyPlanItemFlag | null) => void
 }
 
-export default function TableView({ items, objects, services, ui, header, onDelete, onReassign, onOpenAdd, onOpenPermit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
+export default function TableView({ items, objects, services, ui, header, onDelete, onReassign, onOpenAdd, onOpenPermit, onEdit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const obj = useMemo(() => new Map(objects.map(o => [o.id, o])), [objects])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
@@ -99,7 +100,8 @@ export default function TableView({ items, objects, services, ui, header, onDele
                     </button>
                   )}
                 </td>
-                <td className={`${td} text-center`}>
+                <td className={`${td} text-center whitespace-nowrap`}>
+                  <button onClick={() => onEdit(it)} title="Изменить запись" className={`${ui.textMuted} ${ui.hoverText} opacity-0 group-hover:opacity-100 transition-opacity mr-1`}>✎</button>
                   <button onClick={() => onDelete(it.id)} className={`${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity`}>✕</button>
                 </td>
               </tr>

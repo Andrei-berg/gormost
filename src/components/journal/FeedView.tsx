@@ -37,12 +37,13 @@ interface Props {
   onReassign: (id: string, serviceId: string) => void
   onOpenAdd: (ctx: AddCtx) => void
   onOpenPermit: (item: PlanItem) => void
+  onEdit: (item: PlanItem) => void
   onUpdateSpecialties: (id: string, specialties: SpecialtyCount[]) => void
   onUpdateVehicleNumbers: (id: string, numbers: string[]) => void
   onUpdateFlag: (id: string, flag: DailyPlanItemFlag | null) => void
 }
 
-export default function FeedView({ items, objects, services, ui, header, onAdd, onDelete, onReassign, onOpenAdd, onOpenPermit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
+export default function FeedView({ items, objects, services, ui, header, onAdd, onDelete, onReassign, onOpenAdd, onOpenPermit, onEdit, onUpdateSpecialties, onUpdateVehicleNumbers, onUpdateFlag }: Props) {
   const svc = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
   const cat = useMemo(() => new Map(CATEGORIES.map(c => [c.id, c])), [])
 
@@ -180,6 +181,13 @@ export default function FeedView({ items, objects, services, ui, header, onAdd, 
                       >
                         {services.map(s2 => <option key={s2.id} value={s2.id} className="text-black">{s2.em}</option>)}
                       </select>
+                      <button
+                        onClick={() => onEdit(it)}
+                        title="Изменить запись"
+                        className={`text-[11px] ${ui.textMuted} ${ui.hoverText} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`}
+                      >
+                        ✎
+                      </button>
                       <button
                         onClick={() => onDelete(it.id)}
                         className={`text-sm ${ui.textMuted} hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0`}

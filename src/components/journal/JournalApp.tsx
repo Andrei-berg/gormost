@@ -49,6 +49,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   const [view, setView]       = useState<View>('feed')
   const [pivot, setPivot]     = useState<Pivot>('service')
   const [addCtx, setAddCtx]   = useState<AddCtx | null>(null)
+  const [editTarget, setEditTarget] = useState<PlanItem | null>(null)
   const [permitItem, setPermitItem] = useState<PlanItem | null>(null)
 
   // ── active slice (date × period) ──────────────────────────────────────────
@@ -98,23 +99,37 @@ export default function JournalApp({ session }: { session: AuthSession }) {
   })
 
   // ── mutations ───────────────────────────────────────────────────────────
+  // Resolve the AddInput object to an id, creating a new object on the fly.
+  // Returns null if the new object could not be created (error already surfaced).
+  const resolveObjectId = async (object: AddInput['object']): Promise<string | null> => {
+    if ('id' in object) return object.id
+    const created = await createJournalObject({
+      name: object.newName, category_id: object.categoryId,
+      address: object.address, created_by: session.user_id,
+    })
+    return created?.id ?? null
+  }
+
   const addItem = (inp: AddInput) => guard(async () => {
-    let objectId: string
-    if ('id' in inp.object) {
-      objectId = inp.object.id
-    } else {
-      const created = await createJournalObject({
-        name: inp.object.newName, category_id: inp.object.categoryId,
-        address: inp.object.address, created_by: session.user_id,
-      })
-      if (!created) return
-      objectId = created.id
-    }
+    const objectId = await resolveObjectId(inp.object)
+    if (!objectId) return
     await createDailyPlanItem({
       plan_date: date, shift_type: period, object_id: objectId, service_id: inp.serviceId,
       work_text: inp.work, required_workers: inp.workers, required_foremen: inp.foremen,
       required_itr: inp.itr, required_vehicles: inp.vehicles, specialties: inp.specialties,
       vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag, created_by: session.user_id,
+    })
+    await reload()
+  })
+  // Edit an existing row — keeps its slice (plan_date/shift_type), updates the rest.
+  const saveItem = (id: string, inp: AddInput) => guard(async () => {
+    const objectId = await resolveObjectId(inp.object)
+    if (!objectId) return
+    await updateDailyPlanItem(id, {
+      object_id: objectId, service_id: inp.serviceId, work_text: inp.work,
+      required_workers: inp.workers, required_foremen: inp.foremen, required_itr: inp.itr,
+      required_vehicles: inp.vehicles, specialties: inp.specialties,
+      vehicle_numbers: inp.vehicleNumbers, item_flag: inp.flag,
     })
     await reload()
   })
@@ -250,7 +265,7 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <FeedView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onAdd={addItem} onDelete={deleteItem} onReassign={reassign}
-            onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onOpenAdd={setAddCtx} onOpenPermit={setPermitItem} onEdit={setEditTarget}
             onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
             onUpdateFlag={updateFlag}
           />
@@ -259,12 +274,14 @@ export default function JournalApp({ session }: { session: AuthSession }) {
           <BoardView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header} pivot={pivot}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onEdit={setEditTarget}
           />
         )}
         {view === 'table' && (
           <TableView
             items={visible} objects={objects} services={SERVICES} ui={S} header={header}
             onDelete={deleteItem} onReassign={reassign} onOpenAdd={setAddCtx} onOpenPermit={setPermitItem}
+            onEdit={setEditTarget}
             onUpdateSpecialties={updateSpecialties} onUpdateVehicleNumbers={updateVehicleNumbers}
             onUpdateFlag={updateFlag}
           />
@@ -279,6 +296,14 @@ export default function JournalApp({ session }: { session: AuthSession }) {
         <AddItemModal
           ctx={addCtx} objects={objects} services={SERVICES} ui={S}
           onClose={() => setAddCtx(null)} onAdd={addItem}
+        />
+      )}
+
+      {editTarget && (
+        <AddItemModal
+          ctx={{}} objects={objects} services={SERVICES} ui={S}
+          editItem={editTarget} onSave={saveItem} onAdd={addItem}
+          onClose={() => setEditTarget(null)}
         />
       )}
 
