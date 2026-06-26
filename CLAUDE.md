@@ -39,7 +39,7 @@ npx tsc --noEmit     # TypeScript check without compilation
 - Use `npm run test:watch` during development for instant feedback
 - Test files live next to the source file: `src/lib/foo.ts` → `src/lib/foo.test.ts`
 - Tests cover core business logic only (shift calculations, scheduling rules, data transforms) — not UI components or API calls
-- Current suite: 97 tests — `shifts.test.ts` (30), `timesheet.test.ts` (20), `export1c.test.ts` (13), `journalPermit.test.ts` (18), `highRiskWorks.test.ts` (10), `journalStats.test.ts` (6)
+- Current suite: 98 tests — `shifts.test.ts` (30), `timesheet.test.ts` (20), `export1c.test.ts` (13), `journalPermit.test.ts` (19), `highRiskWorks.test.ts` (10), `journalStats.test.ts` (6)
 
 ### Component Architecture (follow this every time)
 Goal: add/remove features without rewriting code.
@@ -211,11 +211,15 @@ After boss confirms plans, the site foreman:
 - `src/components/ShiftRoster.tsx` — who is on duty today/any date (shared widget)
 - `src/components/admin/ShiftTab.tsx` — manage employee shift assignments
 - `src/components/boss/WorkPlansMeeting.tsx` — 16:30 meeting plan confirmation
-- `src/components/boss/JournalDashboard.tsx` — boss «План дня» dashboard from `daily_plan_items`
-- `src/components/foreman/BrigadeAssigner.tsx` — assign workers to brigades
+- `src/components/boss/JournalDashboard.tsx` — boss «План дня» (thin wrapper over `shared/DayPlanView`)
+- `src/components/shared/DayPlanView.tsx` — read-only «План дня» mirror (props `serviceId`/`onlyPublished`)
+- `src/components/shared/UrgentOrders.tsx` — unified «срочное поручение» list + 3-step wizard
+- `src/lib/api/urgent-orders.ts` — urgent_orders model (create/fetch/status, brigade reform + plan fate)
+- `src/components/foreman/BrigadeAssigner.tsx` — assign workers to brigades (`UrgentOrderAlert` inside)
 - `src/components/zamporab/ZamporabPlanCard.tsx` — edit plan before confirming
 - `src/components/journal/` — Журнал планов applet (`JournalApp` + Feed/Board/Table views,
-  ShiftHeaderBar «шапка дня», SpecialtyEditor, TransportDetail, FlagSelect, PermitReadiness)
+  ShiftHeaderBar «шапка дня», SpecialtyEditor, TransportDetail, FlagSelect, PermitReadiness,
+  `WorkerPicker` пофамильный состав по службе)
 - `src/components/VehicleNumberBadge.tsx` — prominent garage-number badge (used app-wide)
 
 ## New DB Tables (migration 012)
@@ -257,14 +261,28 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Active development, not in production use
 - Used for internal demos to colleagues
 - Main branch = demo-ready at all times
-- **Migrations:** journal migrations `042`–`049` applied in Supabase (042 daily plans,
+- **Migrations:** journal migrations `042`–`052` applied in Supabase (042 daily plans,
   043/044 work-permit catalog, 045 сутки shift, 046 shift headers, 047 specialties,
-  048 vehicle numbers, 049 item flag). Older `038_status_metadata` / `041_directive_worker_assignments`
+  048 vehicle numbers, 049 item flag, 050 journal RLS policies, 051 publish + worker_names,
+  052 urgent_orders). Older `038_status_metadata` / `041_directive_worker_assignments`
   — verify before relying on them.
+- **RLS invariant:** every table read/written through the anon-key server client needs a
+  permissive `anon_all_<table>` policy (`FOR ALL TO anon, authenticated USING(true) WITH CHECK(true)`,
+  mirror `anon_all_work_plans`). RLS-on with no policy = silent denials. Add it in the same migration
+  that creates the table.
 - June 2026 overhaul complete: api split into domain modules, httpOnly auth on /api/db,
   unified loading/error handling, CSS-token theming (dark default), batch plan loading,
   ConfirmDialog, lint baseline 0 errors / 47 warnings.
 - Journal planner (`/journal`, BOSS/ADMIN): daily plans by object × service × shift
-  (день/ночь/сутки), permit-readiness strip, specialties, garage numbers, «по распоряжению»
-  flags; launches наряд-допуск; feeds the boss «План дня» dashboard. Two schedule эталоны
-  established (`SHIFT_HOURS`, `SCHEDULES`). Suite: 97 tests.
+  (день/ночь/сутки), editable rows, permit-readiness strip, specialties, garage numbers,
+  named crew by service (`worker_names` → наряд composition), «по распоряжению» flags;
+  launches наряд-допуск; «📢 Опубликовать смену» mirrors the plan read-only into the
+  dispatcher/zamporab/head «📒 План дня» tab (`shared/DayPlanView`, published-only, no
+  work_plans funnel — journal is a stats/printing tool). Two schedule эталоны established
+  (`SHIFT_HOURS`, `SCHEDULES`). Suite: 98 tests.
+- **Urgent orders (срочные поручения сверху):** ONE unified mechanism — `urgent_orders` +
+  `urgent_order_workers` (migration 052), `src/lib/api/urgent-orders.ts`, `shared/UrgentOrders.tsx`
+  (one «⚡ Срочное поручение» wizard: source+priority → вся бригада⇄поимённо → судьба плана;
+  pulls workers off their plans = reforms brigades; foreman `UrgentOrderAlert`). Entry points:
+  /dispatcher (button), /chief & /zamporab (tab). The old Fast Track (OverrideModal) and
+  directives mechanism are RETIRED — do not reintroduce them.
