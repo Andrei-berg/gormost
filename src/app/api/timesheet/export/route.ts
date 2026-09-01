@@ -49,17 +49,19 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = getSupabase()
 
-    // Загружаем сотрудников с назначениями + активными фазами
+    const today = new Date().toISOString().split('T')[0]
+
+    // Загружаем сотрудников с назначениями. FK employee_assignments→users
+    // неоднозначен (user_id + created_by) — указываем связь по имени constraint.
+    // shift_phases не имеет FK на employee_assignments (только на users),
+    // поэтому грузим фазы отдельным запросом ниже и сшиваем по employee_id.
     let q = supabase
       .from('users')
       .select(`
         *,
-        assignment:employee_assignments!inner(
+        assignment:employee_assignments!employee_assignments_user_id_fkey!inner(
           *,
-          schedule:schedules(code, name, work_days, rest_days, default_day_night, is_shift_based),
-          active_phase:shift_phases(
-            id, phase, anchor_date, schedule_code, is_alternating, valid_from, valid_to
-          )
+          schedule:schedules(code, name, work_days, rest_days, default_day_night, is_shift_based)
         )
       `)
       .eq('is_active', true)
@@ -74,14 +76,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Нормализуем в UserWithAssignment — добавляем schedule_code на верхний уровень assignment
+    // Активные фазы день/ночь на сегодня — по одной (самой свежей) на сотрудника
     type RawPhase = {
-      id: string; phase: 'day' | 'night'; anchor_date: string; schedule_code: string
-      is_alternating?: boolean; valid_from: string; valid_to: string | null
+      id: string; employee_id: string; phase: 'day' | 'night'; anchor_date: string
+      schedule_code: string; is_alternating?: boolean; valid_from: string; valid_to: string | null
     }
+    const { data: rawPhases, error: phaseErr } = await supabase
+      .from('shift_phases')
+      .select('id, employee_id, phase, anchor_date, schedule_code, is_alternating, valid_from, valid_to')
+      .lte('valid_from', today)
+      .or(`valid_to.is.null,valid_to.gte.${today}`)
+      .order('valid_from', { ascending: false })
+
+    if (phaseErr) {
+      console.error('timesheet/export: shift_phases error', phaseErr)
+      return NextResponse.json({ error: phaseErr.message }, { status: 500 })
+    }
+
+    const phaseByUser = new Map<string, RawPhase>()
+    for (const p of (rawPhases ?? []) as RawPhase[]) {
+      if (!phaseByUser.has(p.employee_id)) phaseByUser.set(p.employee_id, p)
+    }
+
+    // Нормализуем в UserWithAssignment — добавляем schedule_code на верхний уровень assignment
     type RawAssignment = NonNullable<UserWithAssignment['assignment']> & {
       schedule?: { code?: string; name?: string } | null
-      active_phase?: RawPhase[] | RawPhase | null
     }
     type RawUserRow = Omit<UserWithAssignment, 'assignment'> & {
       assignment: RawAssignment | RawAssignment[] | null
@@ -90,12 +109,7 @@ export async function GET(req: NextRequest) {
       const asgn = Array.isArray(u.assignment) ? u.assignment[0] : u.assignment
       if (!asgn) return { ...u, assignment: null }
 
-      // Найти активную фазу: valid_to IS NULL или valid_to >= сегодня
-      const today = new Date().toISOString().split('T')[0]
-      const phases: RawPhase[] = Array.isArray(asgn.active_phase) ? asgn.active_phase : []
-      const activePhase = phases.find(p =>
-        (!p.valid_to || p.valid_to >= today) && p.valid_from <= today
-      ) ?? null
+      const activePhase = phaseByUser.get(u.user_id) ?? null
 
       return {
         ...u,
