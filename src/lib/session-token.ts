@@ -2,11 +2,15 @@ import 'server-only'
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { AuthSession } from '@/types'
 
-// HMAC key is derived from an existing server secret so no new env var is
-// required on Vercel. Rotating SUPABASE_ANON_KEY invalidates all sessions.
+// HMAC key for session signing. Prefer a dedicated SESSION_SECRET so that
+// rotating / migrating Supabase keys never invalidates live sessions.
+// The Supabase key fallbacks keep older deployments working with no new env var.
 function hmacKey(): string {
-  const base = process.env.SESSION_SECRET || process.env.SUPABASE_ANON_KEY
-  if (!base) throw new Error('No SESSION_SECRET or SUPABASE_ANON_KEY for session signing')
+  const base =
+    process.env.SESSION_SECRET ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY
+  if (!base) throw new Error('No SESSION_SECRET (or Supabase key fallback) for session signing')
   return base + ':gormost-session-v1'
 }
 
