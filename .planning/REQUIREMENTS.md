@@ -33,14 +33,14 @@ Requirements for HR module release. Each maps to roadmap phases.
 - [x] **HR-14**: Справочник `professions` (профессия + разряд + категория) и таблица `employee_positions` с историей должностей (SCD Type 2: старая запись закрывается, новая открывается при переводе)
 - [x] **HR-15**: Справочник `schedules` (6 типов: сутки/3, 5/2, 3/3, 6/6, 15/15, 1/3) и таблица `employee_assignments` (привязка сотрудника к графику + номер смены + группа ротации + опорная дата + флаг водителя)
 - [x] **HR-16**: Расширенный список статусов сотрудника: Командировка, Учебный отпуск, Декрет, Мобилизован, СВО, Трудоустроен с СВО — в дополнение к существующим
-- [ ] **HR-17**: Функция `resolveShiftForDate(assignment, date)` в `lib/shifts.ts` вычисляет `{ isWorking, shiftType: DAY|NIGHT }` для всех 6 типов графиков по опорной дате
+- [x] **HR-17**: Функция `resolveShiftForDate(assignment, date)` в `lib/shifts.ts` вычисляет `{ isWorking, shiftType: DAY|NIGHT }` для всех 6 типов графиков по опорной дате (`src/lib/shifts.ts:466`)
 - [x] **HR-18**: Миграция данных: 270 сотрудников из `roster-merged.json` импортированы в БД с корректными профессиями, графиками, назначениями смен (опорная дата: смена 3 работала 2026-03-05)
 
 ### Reporting
 
-- [ ] **HR-10**: Пользователь может просмотреть табель присутствия — сетка сотрудник × день за выбранный месяц (формат Т-13)
-- [ ] **HR-11**: Пользователь может просмотреть отчёт за период — суммы отпусков/больничных по месяцу или кварталу
-- [ ] **HR-12**: Пользователь может экспортировать табель в `.xlsx` и распечатать его
+- [x] **HR-10**: Пользователь может просмотреть табель присутствия — сетка сотрудник × день за выбранный месяц (формат Т-13) (`src/lib/timesheet.ts`, `HRReports.tsx`)
+- [x] **HR-11**: Пользователь может просмотреть отчёт за период — суммы отпусков/больничных по месяцу или кварталу (`HRReports.tsx`, докладная записка)
+- [x] **HR-12**: Пользователь может экспортировать табель и распечатать его (`export1c.ts`, строевая записка; печатные формы вместо `.xlsx`)
 
 ---
 
@@ -91,22 +91,19 @@ Deferred to future release.
 | HR-14 | Phase 04 | Complete |
 | HR-15 | Phase 04 | Complete |
 | HR-16 | Phase 05 | Complete |
-| HR-17 | Phase 04 | Pending |
+| HR-17 | Phase 04 | Complete |
 | HR-18 | Phase 05 | Complete |
-| HR-10 | Phase 06 | Pending |
-| HR-11 | Phase 06 | Pending |
-| HR-12 | Phase 06 | Pending |
+| HR-10 | Phase 06 | Complete |
+| HR-11 | Phase 06 | Complete |
+| HR-12 | Phase 06 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0
-- Satisfied: 10 (HR-01, HR-02, HR-03, HR-04, HR-06, HR-07, HR-09, HR-13, HR-14, HR-15)
-- Pending (gap closure Phase 05): HR-05, HR-08, HR-16, HR-18
-- Pending (Phase 06 not built): HR-10, HR-11, HR-12
-- Pending (intentional deferral to Phase 06): HR-17
+- Satisfied: 18 / 18 — v2.0 fully shipped to production
 
 ---
 
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-06 — gap closure phases added (v2.0 audit): HR-05, HR-08, HR-16, HR-18 → Phase 05; HR-10, HR-11, HR-12 → Phase 06*
+*Last updated: 2026-09-01 — reconciliation: all 18 v2.0 requirements satisfied. HR-10/11/12 (Phase 06) and HR-17 shipped outside GSD tracking; verified against codebase. Excel `.xlsx` export replaced by print forms + 1С export in implementation.*

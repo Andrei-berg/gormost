@@ -4,7 +4,7 @@
 
 - Completed: **v1.0 Core** - Phases 1-4 (dispatching, approvals, kanban, all 8 panels)
 - Completed: **v1.1 UI/UX** - Phase 01 (empty states, header improvements, mobile KPI)
-- Active: **v2.0 HR Module** - Phases 02-05
+- Completed: **v2.0 HR Module** - Phases 02-07 (all shipped to prod; Phases 05/06 executed outside GSD tracking, reconciled 2026-09-01)
 
 ## Overview
 
@@ -19,8 +19,9 @@ Build order is strict: DB schema must be correct before types, types before API,
 - [x] **Phase 02: DB Foundation** - HR schema migrations, TypeScript types, and API functions
 - [x] **Phase 03: Core HR Panel UI** - Daily operations screen for ZAMPORAB morning workflow (completed 2026-03-04)
 - [x] **Phase 04: Staff Management** - Hire/dismiss actions and employee detail card (completed 2026-03-06)
-- [ ] **Phase 05: Integration Bug Fixes** - Fix SummaryPanel headcount miscounts and service_id gap on hired/seeded employees
-- [ ] **Phase 06: Reporting & Export** - Attendance grid, period reports, and Excel export
+- [x] **Phase 05: Integration Bug Fixes** - SummaryPanel headcount + service_id gap fixed; migration 008 shipped (05-01/05-02 SUMMARY present)
+- [x] **Phase 06: Reporting & Export** - HRReports, timesheet (Т-13), export1c, докладная/строевая записка print forms shipped
+- [x] **Phase 07: HR Table View** - Compact list with search, filters, inline status editing
 
 ---
 
@@ -55,8 +56,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — PANELS entry, page.tsx orchestrator, SummaryPanel, ServiceSection skeleton
-- [ ] 03-02-PLAN.md — EmployeeCard (status buttons + optimistic update + reason input) and StatusHistory accordion
+- [x] 03-01-PLAN.md — PANELS entry, page.tsx orchestrator, SummaryPanel, ServiceSection skeleton
+- [x] 03-02-PLAN.md — EmployeeCard (status buttons + optimistic update + reason input) and StatusHistory accordion
 
 ### Phase 04: Staff Management
 **Goal**: The HR database layer is complete with full employee profiles, and ADMIN can manage the full employee lifecycle (hire, dismiss, transfer) with a rich employee detail card visible to all HR users
@@ -75,11 +76,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Schema migration 005 (ALTER users + CREATE 4 tables + fix employee_status CHECK) + human checkpoint
-- [ ] 04-02-PLAN.md — Seed migrations 006 (professions + schedules) + 007 (270 employees) + human checkpoint
-- [ ] 04-03-PLAN.md — TypeScript types extension + resolveShiftForDate in shifts.ts + 6 new API functions
-- [ ] 04-04-PLAN.md — EmployeeDetailCard + HireModal + DismissModal + TransferModal + /hr page wiring
-- [ ] 04-05-PLAN.md — EmployeeCard extended 10-status two-row button layout (HR-16)
+- [x] 04-01-PLAN.md — Schema migration 005 (ALTER users + CREATE 4 tables + fix employee_status CHECK) + human checkpoint
+- [x] 04-02-PLAN.md — Seed migrations 006 (professions + schedules) + 007 (270 employees) + human checkpoint
+- [x] 04-03-PLAN.md — TypeScript types extension + resolveShiftForDate in shifts.ts + 6 new API functions
+- [x] 04-04-PLAN.md — EmployeeDetailCard + HireModal + DismissModal + TransferModal + /hr page wiring
+- [x] 04-05-PLAN.md — EmployeeCard extended 10-status two-row button layout (HR-16)
 
 ### Phase 05: Integration Bug Fixes
 **Goal**: Fix 2 critical cross-phase integration bugs found in audit — SummaryPanel shows wrong headcounts, and all hired/seeded employees are invisible in /hr
@@ -94,13 +95,17 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Fix SummaryPanel ABSENT_STATUSES (INT-01) + HireModal service dropdown (INT-02a)
-- [ ] 05-02-PLAN.md — Migration 008: set service_id on 270 seeded employees (INT-02b) + human checkpoint
+- [x] 05-01-PLAN.md — Fix SummaryPanel ABSENT_STATUSES (INT-01) + HireModal service dropdown (INT-02a)
+- [x] 05-02-PLAN.md — Migration 008: set service_id on 270 seeded employees (INT-02b) + human checkpoint
 
 ### Phase 06: Reporting & Export
 **Goal**: BOSS and ZAMPORAB can view and export attendance data for any calendar month or quarter
 **Depends on**: Phase 05
 **Requirements**: HR-10, HR-11, HR-12
+**Status**: ✓ Complete — shipped outside GSD tracking. Evidence: `src/components/hr/HRReports.tsx`,
+`src/lib/timesheet.ts` (+ `timesheet.test.ts`), `src/lib/export1c.ts` (+ `export1c.test.ts`),
+докладная/строевая записка print forms, migration `030_timesheet_full.sql`. Timesheet export
+embed-query bug fixed in `d5ea916` (2026-09-01). Plans were never formally written.
 **Success Criteria** (what must be TRUE):
   1. User selects a month and sees an attendance grid: rows are employees grouped by service, columns are days 1-31, each cell shows a status code (R/O/B/P/U) matching T-13 format conventions
   2. User selects a date range and sees a period report: per-employee and per-service totals for vacation days, sick days, and compensatory days
@@ -115,21 +120,23 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — HRTableView component with StatusPopup inline editing
-- [ ] 07-02-PLAN.md — HRToolbar + page.tsx wiring (view toggle, search, service filter)
+- [x] 07-01-PLAN.md — HRTableView component with StatusPopup inline editing
+- [x] 07-02-PLAN.md — HRToolbar + page.tsx wiring (view toggle, search, service filter)
 
 ---
 
 ## Progress
 
-**Execution Order:** Phase 02 → Phase 03 → Phase 04 → Phase 05
+**Execution Order:** Phase 02 → Phase 03 → Phase 04 → Phase 05 → Phase 06 → Phase 07 — all complete
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 01. UI/UX Improvements | v1.1 | 3/3 | Complete | 2026-03-02 |
-| 02. DB Foundation | v2.0 | Complete    | 2026-03-02 | 2026-03-02 |
-| 03. Core HR Panel UI | v2.0 | Complete    | 2026-03-04 | - |
-| 04. Staff Management | v2.0 | 5/5 | Complete    | 2026-03-06 |
-| 05. Integration Bug Fixes | v2.0 | 0/2 | Not started | - |
-| 06. Reporting & Export | v2.0 | 0/? | Not started | - |
-| 07. HR Table View | 1/2 | In Progress|  | - |
+| 02. DB Foundation | v2.0 | 2/2 | Complete | 2026-03-02 |
+| 03. Core HR Panel UI | v2.0 | 2/2 | Complete | 2026-03-04 |
+| 04. Staff Management | v2.0 | 5/5 | Complete | 2026-03-06 |
+| 05. Integration Bug Fixes | v2.0 | 2/2 | Complete | 2026-03-06 |
+| 06. Reporting & Export | v2.0 | — (no formal plans) | Complete (shipped outside GSD) | ~2026-Q2 |
+| 07. HR Table View | v2.0 | 2/2 | Complete | 2026-03-07 |
+
+*Reconciled 2026-09-01: v2.0 fully shipped to production. `.planning/` tracking had frozen at Phase 07.*

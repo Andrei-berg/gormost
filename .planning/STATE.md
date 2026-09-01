@@ -1,33 +1,34 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-07T03:12:42.888Z"
+milestone_name: HR Module
+status: complete
+last_updated: "2026-09-01T00:00:00.000Z"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 15
+  completed_phases: 7
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-02)
+See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** Phase 04 — Staff Management complete. Phase 05 (period reports/export) is next.
+**Current focus:** None — v2.0 complete. Next milestone not yet scoped (candidates: журнал/планировщик + агент, наряд-допуск polish, срочные поручения polish).
 
 ## Current Position
 
-Phase: 07 of 07 (HR Table View) — Complete
-Plan: 2/2 complete (07-01: HRTableView component; 07-02: toolbar + page wiring)
-Status: Phase 07 complete — all plans done
-Last activity: 2026-03-07 — 07-02 complete: HRToolbar + view wiring (9843af7)
+Milestone: v2.0 HR Module — ✓ COMPLETE (all 7 phases shipped to production)
+Phase: — (no active milestone)
+Plan: —
+Status: Awaiting next milestone. Run `/gsd-new-milestone` when ready.
+Last activity: 2026-09-01 — reconciliation: `.planning/` had frozen at Phase 07 (2026-03-07); Phases 05/06 and much post-v2.0 work (journal, наряд-допуск, urgent orders, June 2026 overhaul) had shipped outside GSD tracking. PROJECT.md / ROADMAP.md / REQUIREMENTS.md refreshed to match prod.
 
-Progress: [##########] 100% (v1.0 + v1.1 + Phases 02-05 all done; Phase 07 all done)
+Progress: [##########] 100% — v1.0 + v1.1 + v2.0 (Phases 02–07) all shipped
 
 ## Performance Metrics
 
@@ -98,12 +99,14 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 05]: `xlsx` npm dependency requires developer sign-off before install (per CLAUDE.md rules)
-- [Phase 05]: Verify SheetJS CE compatibility with Next.js 16 App Router before Phase 05 (`npm info xlsx`)
-- [Phase 03]: Mobile nav may overflow with 9th panel — test hamburger at 375px width
+- None open. Historical (all resolved in shipped v2.0):
+  - `xlsx` dependency was avoided — export implemented via print forms + 1С export instead
+  - Mobile nav overflow with added panels — handled in June 2026 UI overhaul
+- Phase dirs 01–07 archived to `.planning/milestones/v2.0-phases/` (2026-09-01). No git tag created —
+  HEAD is far past v2.0, so a `v2.0` tag at HEAD would be inaccurate.
 
 ## Session Continuity
 
-Last session: 2026-03-07
-Stopped at: Completed 07-02-PLAN.md — HRToolbar and view wiring complete (9843af7)
+Last session: 2026-09-01
+Stopped at: v2.0 reconciliation — planning docs synced to production state; no new milestone started (user deferred scoping)
 Resume file: None
