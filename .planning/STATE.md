@@ -1,14 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: HR Module
-status: complete
-last_updated: "2026-09-01T00:00:00.000Z"
+milestone: v3.0
+milestone_name: Планировщик-агент
+status: planning
+last_updated: "2026-09-01T13:29:30.869Z"
+last_activity: 2026-09-01
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -22,17 +24,15 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 
 ## Current Position
 
-Milestone: v2.0 HR Module — ✓ COMPLETE (all 7 phases shipped to production)
-Phase: — (no active milestone)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone. Run `/gsd-new-milestone` when ready.
-Last activity: 2026-09-01 — reconciliation: `.planning/` had frozen at Phase 07 (2026-03-07); Phases 05/06 and much post-v2.0 work (journal, наряд-допуск, urgent orders, June 2026 overhaul) had shipped outside GSD tracking. PROJECT.md / ROADMAP.md / REQUIREMENTS.md refreshed to match prod.
-
-Progress: [##########] 100% — v1.0 + v1.1 + v2.0 (Phases 02–07) all shipped
+Status: Defining requirements
+Last activity: 2026-09-01 — Milestone v3.0 started
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 11 (Phase 01, milestone v1.1, Phase 02, Phase 03, Phase 04 Plans 01-04)
 - Average duration: ~6min
 - Total execution time: unknown
