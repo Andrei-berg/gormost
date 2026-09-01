@@ -1,513 +1,586 @@
-# Architecture Patterns: HR Module Integration
+# Architecture Research
 
-**Domain:** HR module added to existing tunnel operations management app (Gormost)
-**Researched:** 2026-03-02
-**Confidence:** HIGH — full codebase inspection, no external assumptions needed
-
----
-
-## Existing Architecture (Verified)
-
-The app follows a strict panel-per-role pattern. Every panel is structured identically:
-
-```
-src/app/[panel]/page.tsx          — thin orchestrator: AuthGuard wrapper + state + loadData + JSX layout (~50-100 lines)
-src/components/[panel]/           — UI sections, one component per visual block
-src/lib/api.ts                    — all Supabase queries live here, imported by page.tsx
-src/lib/auth.ts                   — session stored in localStorage, hasRole() for gating
-src/types/index.ts                — all TypeScript interfaces + PANELS array + config constants
-```
-
-### Verified Panel Pattern (dispatcher/page.tsx as canonical example)
-
-```
-page.tsx structure:
-  1. export default → AuthGuard roles={[...]} → renders Content(session)
-  2. Content component:
-     - useState for each data collection
-     - loadData = useCallback(async () => Promise.all([fetch1, fetch2, ...]))
-     - useEffect(() => loadData(), [loadData])
-     - optional setInterval(loadData, 30000) for LIVE panels
-     - derived/computed values (kpi object, filtered lists)
-     - JSX: <Header> + component grid
-```
-
-### Verified Shared Components
-
-| Component | Location | Used By |
-|-----------|----------|---------|
-| `AuthGuard` | `src/components/AuthGuard.tsx` | All panels |
-| `Header` | `src/components/Header.tsx` | All panels — reads PANELS array for nav menu |
-| `KanbanBoard` | `src/components/KanbanBoard.tsx` | Dispatcher, Foreman |
-| `RequestModal` | `src/components/RequestModal.tsx` | Dispatcher, Head, Zamporab |
-| `EmptyState` | `src/components/EmptyState.tsx` | Complaints, Zamporab |
-
-### Verified Navigation Mechanism
-
-`Header.tsx` reads `PANELS` array from `src/types/index.ts` and filters by `hasRole(session, p.roles)`. Adding HR to navigation = one new entry in the `PANELS` array. No other navigation code exists.
+**Domain:** AI "work dispatcher" (LLM/STT structured-extraction layer) bolted onto an existing Next.js 16 / Supabase / Vercel operations app (Gormost, Russian-language)
+**Researched:** 2026-09-01
+**Confidence:** HIGH for integration points (read from source), MEDIUM for provider-API specifics (not re-verified this session; standard REST patterns)
 
 ---
 
-## Recommended Architecture for HR Module
+## Executive Answer to the Five Questions
 
-### New File Layout
-
-```
-src/app/hr/page.tsx                          — NEW: thin orchestrator (~60 lines)
-src/components/hr/
-  EmployeeList.tsx                           — NEW: employees grouped by service
-  EmployeeCard.tsx                           — NEW: individual employee card with status badge + action button
-  StatusBadge.tsx                            — NEW: colored badge for PRESENT/SICK/VACATION/FIRED/DAY_OFF
-  TodaySummary.tsx                           — NEW: summary counts (working/absent today)
-  AttendanceGrid.tsx                         — NEW: grid of employee x day for a month
-  PeriodReport.tsx                           — NEW: report view for date range (vacations/sick leave totals)
-```
-
-This follows the established pattern exactly. No deviation needed.
+1. **Split by nature of the call.** Plain KB CRUD (vocabulary, aliases, staging rows, review queue, correction log) goes through the existing `/api/db` dispatcher as a new domain module `src/lib/api/knowledge.ts`. LLM/STT invocation, audio upload, and workbook parsing go in a **new `/api/agent/*` route group** that does its own `verifySessionToken` + role check (exactly like the existing `/api/timesheet/export` route). Reason: the dispatcher returns one `NextResponse.json({data})` blob — no streaming, no multipart — and every function it exposes becomes reachable by name for any valid session via `import * as api`. You do not want raw provider calls on that reflection surface.
+2. **Adapters are dumb transport.** A `src/lib/agent/` tree with an `LlmAdapter` / `SttAdapter` interface whose only job is `normalized request -> text`. Prompt building, JSON validation, guardrails ("no invented entities"), confidence scoring, threshold routing, and logging all sit **above** the adapter in `extract/index.ts` + `guardrails.ts` + `confidence.ts` + `log.ts`. Provider + model resolved once in `config.ts` from env; the only `switch(provider)` is the adapter factory.
+3. **Bridge, do not reconcile.** Reconciling the three existing catalogs is its own milestone and would touch live `requests`. Add a **fourth catalog** — the agent knowledge base (`kb_*` tables) — that is the agent's canonical vocabulary, carrying nullable *bridge columns* to the other three (`journal_object_id`, `main_object_id`, `main_work_type_id`, `work_permit_type_id`). The agent reads/writes only its own tables and *emits* `daily_plan_items` referencing `journal_objects`.
+4. **Reuse the existing unpublished-row seam.** `createDailyPlanItem()` already writes a row with `published=false`; publish is a separate explicit slice-level action. The agent's "Создать черновики" loops accepted drafts through the same `createDailyPlanItem` path. Nothing in the manual journal flow changes; the `work_plans` funnel is never touched.
+5. **Phases 8-13.** 8: KB schema + RLS + CRUD. 9: xls ingest / training tool (ADMIN). 10: provider-agnostic adapter + `extractPlan`. 11: dictation review UI, text path, commit to drafts. 12: voice capture + STT. 13 (optional): learn-from-correction loop + low-confidence queue UI. KB before extraction; adapter before UI; text before voice.
 
 ---
 
-## DB Schema
+## Standard Architecture
 
-### New Table: `employee_status`
+### System Overview
 
-```sql
--- Migration: 001_add_hr_module.sql
--- Adds HR module: employee status tracking with history
-
-CREATE TABLE employee_status (
-  id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id       text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  status        text NOT NULL CHECK (status IN ('PRESENT', 'SICK', 'VACATION', 'DAY_OFF', 'FIRED')),
-  date_from     date NOT NULL,
-  date_to       date,           -- NULL means open-ended (current status)
-  reason        text,           -- optional note (e.g. "Sick leave order #45")
-  created_by    text REFERENCES users(user_id),
-  created_at    timestamptz DEFAULT now()
-);
-
--- Index for the most common query: current status per user
-CREATE INDEX idx_employee_status_user_date ON employee_status(user_id, date_from DESC);
-
--- Index for date range queries (attendance grid, period reports)
-CREATE INDEX idx_employee_status_date_from ON employee_status(date_from);
-
--- ROLLBACK:
--- DROP TABLE IF EXISTS employee_status;
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                              BROWSER (client)                             │
+│  ┌────────────────────────┐   ┌──────────────────────┐  ┌──────────────┐  │
+│  │ /journal JournalApp    │   │ /dispatcher panel    │  │ /admin       │  │
+│  │  "🎤 Надиктовать план" │   │  "🎤 Надиктовать"    │  │  KB training │  │
+│  │  DictationReview modal  │   │  DictationReview      │  │  tool (xls)  │  │
+│  └───────────┬────────────┘   └──────────┬───────────┘  └──────┬───────┘  │
+│              │ agent-client.ts           │ agent-client.ts     │ api-client │
+│              │ (fetch /api/agent/*)      │                     │ (fetch /api/db)
+└──────────────┼───────────────────────────┼─────────────────────┼──────────┘
+               │                           │                     │
+┌──────────────▼───────────────────────────▼──────┐   ┌──────────▼──────────┐
+│           NEW  /api/agent/*  route group          │   │  /api/db dispatcher │
+│  verifySessionToken(gormost_token) + role check   │   │  (unchanged)        │
+│  ┌────────────┐ ┌────────────┐ ┌───────────────┐  │   │  + knowledge.ts     │
+│  │ /extract   │ │ /transcribe│ │ /ingest       │  │   │    module CRUD:     │
+│  │ text->JSON │ │ audio->text│ │ xls->staging  │  │   │  kb_* / agent_*     │
+│  └─────┬──────┘ └─────┬──────┘ └──────┬────────┘  │   │  fetch/create/apply │
+│        │              │               │            │   └──────────┬─────────┘
+│  ┌─────▼──────────────▼───────────────▼─────────┐  │              │
+│  │            src/lib/agent/  (server)          │  │              │
+│  │  config.ts  → resolveAgentConfig() (env)     │  │              │
+│  │  extract/index.ts → prompt + validate +      │  │              │
+│  │       guardrails + confidence + log          │  │              │
+│  │  guardrails.ts   confidence.ts   log.ts      │  │              │
+│  │  ingest/workbook.ts  ingest/classify.ts      │  │              │
+│  │  ┌───────────────── adapter factory ──────┐  │  │              │
+│  │  │ LlmAdapter:  anthropic | openai |      │  │  │              │
+│  │  │   yandexgpt | gigachat | selfhosted    │  │  │              │
+│  │  │ SttAdapter:  whisper | speechkit |     │  │  │              │
+│  │  │   selfhosted-whisper                   │  │  │              │
+│  │  └──────────────┬────────────────────────┘  │  │              │
+│  └─────────────────┼──────────────────────────┘  │              │
+└────────────────────┼─────────────────────────────┘              │
+                     │ HTTPS (server-only API keys)               │
+          ┌──────────▼───────────┐                    ┌────────────▼───────────┐
+          │  LLM / STT providers │                    │  Supabase (Postgres)   │
+          │  Anthropic / OpenAI  │                    │  anon key + RLS        │
+          │  YandexGPT / GigaChat│                    │  anon_all_<table>      │
+          │  self-hosted         │                    │  kb_*  agent_*         │
+          └──────────────────────┘                    │  daily_plan_items      │
+                                                      │  journal_objects       │
+                                                      └────────────────────────┘
 ```
 
-### Modified Table: `users`
+### Component Responsibilities
 
-```sql
--- Add HR lifecycle fields to existing users table
-
-ALTER TABLE users
-  ADD COLUMN date_hired date,            -- when they started
-  ADD COLUMN date_fired date;            -- when they left (soft delete support)
-
--- ROLLBACK:
--- ALTER TABLE users DROP COLUMN IF EXISTS date_hired;
--- ALTER TABLE users DROP COLUMN IF EXISTS date_fired;
-```
-
-### Status Semantics
-
-| Status | Meaning | date_to |
-|--------|---------|---------|
-| `PRESENT` | Working today (explicit check-in or default) | same as date_from |
-| `SICK` | Medical leave | date sick leave ends |
-| `VACATION` | Annual leave | date vacation ends |
-| `DAY_OFF` | Day off / compensatory | same as date_from |
-| `FIRED` | Terminated | NULL (open-ended) |
-
-**Design decision:** Use a status-history table rather than a single current-status field on `users`. This gives attendance grid, period reports, and history view for free. The "current status" is always the most recent record for a user where `date_from <= today` and `(date_to IS NULL OR date_to >= today)`.
+| Component | Responsibility | Implementation |
+|-----------|----------------|----------------|
+| `/api/agent/extract` | Accept `{text, planDate, context?}`, return `{drafts, parseLogId}`; own auth + role gate | Next.js route handler, `runtime='nodejs'`, `dynamic='force-dynamic'`, `maxDuration` bumped for LLM latency |
+| `/api/agent/transcribe` | Accept `multipart/form-data` audio blob, return `{text, confidence?}` | Route handler; reads `req.formData()`; passes bytes to `SttAdapter` |
+| `/api/agent/ingest` | Accept `multipart` xls/xlsx, parse to `kb_ingest_rows` staging, return batch id | Route handler; SheetJS parse (new dep — needs sign-off) |
+| `src/lib/agent/config.ts` | Single source for provider/model/base-URL/keys from env | `resolveAgentConfig(): AgentConfig` — typed, defaulted |
+| `src/lib/agent/extract/index.ts` | Orchestrate: build prompt, call adapter, parse+validate JSON, run guardrails, score confidence, write `agent_parse_log` | Pure-ish orchestrator; no provider branching |
+| `src/lib/agent/extract/adapters/*` | Turn `LlmRequest` -> text; provider auth quirks (GigaChat OAuth, Yandex folder id) | One `fetch` per provider; no business logic |
+| `src/lib/agent/guardrails.ts` | Drop/flag drafts whose object/service/work do not resolve against KB; clamp crew counts; assign `reviewStatus` by threshold | Pure function `validateDrafts(drafts, kbIndex)` — unit-tested (TDD) |
+| `src/lib/agent/confidence.ts` | Combine model-reported confidence + KB match strength + heuristics into `0..1` | Pure function — unit-tested |
+| `src/lib/agent/ingest/workbook.ts` | Sheet -> raw rows; detect sheet kind (Титул / Конструктив / Годовой план) | SheetJS; pure transform |
+| `src/lib/agent/ingest/classify.ts` | Raw row -> `{entityType, canonicalName, serviceGuess, unit, area}` | Heuristics + alias lookup; optional LLM assist |
+| `src/lib/api/knowledge.ts` | Ordinary Supabase CRUD for `kb_*` / `agent_*`; reached via `/api/db` | Mirrors `src/lib/api/journal.ts` style |
+| `src/lib/agent-client.ts` | Typed browser wrappers for `/api/agent/*`; mirrors `api-client.ts` 401 handling | ~6 functions total |
+| `src/components/journal/DictationReview.tsx` | Editable grid of proposed drafts, confidence chips, source phrase, per-row accept/edit/reassign; commit loop | Reuses `AddItemModal` field set; calls `createDailyPlanItem` per accepted row |
 
 ---
 
-## TypeScript Types
+## Recommended Project Structure
 
-### New interfaces in `src/types/index.ts`
+```
+src/
+├── app/
+│   └── api/
+│       ├── db/route.ts                 # UNCHANGED — generic dispatcher
+│       ├── auth/…                       # UNCHANGED
+│       ├── timesheet/export/route.ts    # existing precedent for a bespoke route
+│       └── agent/                        # NEW route group
+│           ├── extract/route.ts          #   POST text  -> drafts JSON (SSE optional later)
+│           ├── transcribe/route.ts       #   POST audio -> text  (multipart)
+│           ├── ingest/route.ts           #   POST xls   -> staging batch (multipart)
+│           └── correction/route.ts       #   POST human-vs-model diff -> agent_corrections
+│
+├── lib/
+│   ├── api/
+│   │   ├── journal.ts                    # UNCHANGED (reference style)
+│   │   ├── catalog.ts                    # UNCHANGED
+│   │   └── knowledge.ts                  # NEW — kb_* / agent_* CRUD, dispatched via /api/db
+│   ├── api.ts                            # + 1 line:  export * from './api/knowledge'
+│   ├── api-client.ts                     # + ~10 manual wrappers for knowledge.ts fns
+│   ├── agent-client.ts                   # NEW — typed wrappers for /api/agent/*
+│   └── agent/                            # NEW — provider-agnostic AI layer (server-only)
+│       ├── index.ts                      #   getExtractor(), getTranscriber()
+│       ├── config.ts                     #   resolveAgentConfig() — env is the single source
+│       ├── types.ts                      #   PlanDraft, ExtractInput/Result, TranscribeResult, ProviderId
+│       ├── guardrails.ts                 #   validateDrafts(drafts, kbIndex)   [pure, tested]
+│       ├── confidence.ts                 #   scoreDraft(...)                    [pure, tested]
+│       ├── log.ts                        #   recordParse(), recordCorrection()
+│       ├── kb-index.ts                   #   buildKbIndex(): normalized lookup maps for guardrails
+│       ├── extract/
+│       │   ├── index.ts                  #   extractPlan(input, cfg)
+│       │   ├── prompt.ts                 #   buildExtractPrompt(kbSlice, text, fewShot)  [pure, tested]
+│       │   ├── parse.ts                  #   parseModelJson(raw) -> PlanDraft[]           [pure, tested]
+│       │   ├── adapter.ts                #   interface LlmAdapter { id; complete(req): Promise<LlmResponse> }
+│       │   └── adapters/
+│       │       ├── anthropic.ts
+│       │       ├── openai.ts
+│       │       ├── yandexgpt.ts
+│       │       ├── gigachat.ts           #   note: OAuth token exchange + cert quirks
+│       │       └── selfhosted.ts         #   OpenAI-compatible base URL
+│       ├── transcribe/
+│       │   ├── index.ts                  #   transcribe(bytes, mime, cfg)
+│       │   ├── adapter.ts                #   interface SttAdapter { id; transcribe(bytes,mime,opts) }
+│       │   └── adapters/
+│       │       ├── openai-whisper.ts
+│       │       ├── yandex-speechkit.ts
+│       │       └── selfhosted-whisper.ts
+│       └── ingest/
+│           ├── workbook.ts               #   parseWorkbook(bytes) -> RawRow[]   (SheetJS)
+│           └── classify.ts               #   RawRow -> ParsedRow
+│
+├── components/
+│   ├── journal/
+│   │   ├── JournalApp.tsx                # MODIFIED — add "🎤 Надиктовать план" button + modal mount (~15 lines)
+│   │   ├── DictationReview.tsx           # NEW — proposal review grid + commit loop
+│   │   └── data.ts                       # MODIFIED — reuse norm(); maybe export a resolveObject helper
+│   ├── dispatcher/
+│   │   └── DictationEntry.tsx            # NEW — same entry point on the dispatcher panel
+│   └── admin/
+│       ├── KbTrainingTab.tsx             # NEW — xls upload -> staging -> diff preview -> apply
+│       ├── KbAliasTab.tsx               # NEW — alias/synonym CRUD
+│       └── KbReviewQueueTab.tsx          # NEW — low-confidence parse review
+│
+└── types/index.ts                        # MODIFIED — KbLocation, KbConstruction, KbWorkType, KbAlias,
+                                          #   KbIngestBatch, KbIngestRow, AgentParseLog, AgentCorrection,
+                                          #   AgentReviewItem, PlanDraft, AgentConfig, ProviderId
+```
 
+### Structure Rationale
+
+- **`src/lib/agent/` is server-only and provider-shaped, not domain-shaped.** It sits beside `src/lib/api/`, not inside it, because `import * as api from '@/lib/api'` in the dispatcher would otherwise auto-expose `extractPlan` as a callable RPC name. Keeping it out of the barrel is the guardrail.
+- **`knowledge.ts` *is* domain-shaped** and belongs in `src/lib/api/` — it is plain CRUD with the same shape as `journal.ts`, benefits from the dispatcher's auth + role gating for free, and its handful of extra manual `api-client.ts` wrappers are acceptable (the project already keeps ~50 in sync by hand).
+- **`agent-client.ts` is a sibling of `api-client.ts`**, not part of it: the `/api/agent/*` calls are few (~6), some send multipart bodies, some may stream — they do not fit the `call(fn, args[])` JSON shape.
+- **Adapters live two levels deep** (`extract/adapters/`, `transcribe/adapters/`) so the interface file (`adapter.ts`) sits next to its implementations and the orchestrator (`index.ts`) never imports an adapter directly — only the factory does.
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: Bespoke route beside the dispatcher (not inside it)
+
+**What:** LLM/STT/ingest endpoints are their own Next.js route handlers under `/api/agent/*`. Each repeats the ~3-line auth preamble from `/api/timesheet/export`: `verifySessionToken(req.cookies.get('gormost_token')?.value)` -> 401 if falsy, then inline `auth.role_level` check against an allow-list.
+
+**When to use:** any endpoint that (a) streams, (b) takes a non-JSON body, (c) is slow / rate-limited / costs money, or (d) must not be reachable by function-name reflection.
+
+**Trade-offs:** you re-implement the auth preamble per route (3 lines, already precedented) and you write a small typed client by hand instead of getting it from the barrel. In exchange you get streaming, multipart, per-route timeouts, and provider secrets that never touch the RPC surface.
+
+**Example:**
 ```typescript
-// HR Module types — add to existing types/index.ts
+// src/app/api/agent/extract/route.ts
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60            // LLM latency; raise on Vercel plan limits
 
-export type EmployeeStatusType = 'PRESENT' | 'SICK' | 'VACATION' | 'DAY_OFF' | 'FIRED'
+const ALLOWED: RoleLevel[] = ['ADMIN', 'BOSS', 'DISPATCHER', 'ZAMPORAB', 'HEAD']
 
-export interface EmployeeStatus {
-  id: string
-  user_id: string
-  status: EmployeeStatusType
-  date_from: string        // ISO date string (YYYY-MM-DD)
-  date_to: string | null   // ISO date string or null for open-ended
-  reason: string | null
-  created_by: string | null
-  created_at: string
+export async function POST(req: NextRequest) {
+  const auth = verifySessionToken(req.cookies.get('gormost_token')?.value)
+  if (!auth) return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+  if (!ALLOWED.includes(auth.role_level))
+    return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+
+  const { text, planDate } = await req.json() as { text: string; planDate: string }
+  const cfg = resolveAgentConfig()
+  const { drafts, parseLogId } = await extractPlan({ text, planDate, actor: auth.user_id }, cfg)
+  return NextResponse.json({ data: { drafts, parseLogId } })
+}
+```
+
+### Pattern 2: Thin adapter, thick orchestrator
+
+**What:** `LlmAdapter.complete(req: LlmRequest): Promise<LlmResponse>` is the entire provider contract. `LlmRequest = { system: string; messages: {role,content}[]; temperature?; responseFormat?: 'json'; maxTokens? }`. Everything provider-independent — prompt assembly with KB context injection, few-shot from `agent_corrections`, JSON parsing, schema validation, the "every object/service/work must resolve against KB or the row is `needs_review`" rule, confidence scoring, `agent_parse_log` write — happens in `extract/index.ts` and its pure helpers.
+
+**When to use:** always, for multi-provider layers. The moment guardrail or parsing logic leaks into an adapter, every new adapter re-implements it and they drift.
+
+**Trade-offs:** the normalized `LlmRequest` is a lowest-common-denominator — provider-specific features (Anthropic prompt caching, OpenAI structured-outputs schema, Yandex `reasoningOptions`) are either ignored or smuggled through an `opts` bag. Acceptable here: the task is "return JSON matching this shape," which every provider does.
+
+**Example:**
+```typescript
+// src/lib/agent/extract/adapter.ts
+export interface LlmAdapter {
+  id: ProviderId
+  complete(req: LlmRequest): Promise<LlmResponse>   // { text, usage?, modelConfidence? }
 }
 
-export const EMPLOYEE_STATUS_CONFIG: Record<EmployeeStatusType, { label: string; color: string; bg: string }> = {
-  PRESENT:  { label: 'На работе',   color: '#22c55e', bg: 'bg-green-500/20 border-green-500/30' },
-  SICK:     { label: 'Больничный',  color: '#ef4444', bg: 'bg-red-500/20 border-red-500/30' },
-  VACATION: { label: 'Отпуск',      color: '#3b82f6', bg: 'bg-blue-500/20 border-blue-500/30' },
-  DAY_OFF:  { label: 'Отгул',       color: '#f97316', bg: 'bg-orange-500/20 border-orange-500/30' },
-  FIRED:    { label: 'Уволен',      color: '#64748b', bg: 'bg-slate-500/20 border-slate-500/30' },
+// src/lib/agent/index.ts
+export function getExtractor(cfg = resolveAgentConfig()): LlmAdapter {
+  switch (cfg.llm.provider) {
+    case 'anthropic':  return anthropicAdapter(cfg.llm)
+    case 'openai':     return openaiAdapter(cfg.llm)
+    case 'yandexgpt':  return yandexAdapter(cfg.llm)
+    case 'gigachat':   return gigachatAdapter(cfg.llm)
+    case 'selfhosted': return selfhostedAdapter(cfg.llm)   // OpenAI-compatible
+  }
 }
 ```
 
-### Extended User type
+### Pattern 3: Config resolution in one file, env is the source
 
-The `User` interface in `src/types/index.ts` needs two new optional fields:
+**What:** `resolveAgentConfig()` reads `AGENT_LLM_PROVIDER`, `AGENT_LLM_MODEL`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_API_KEY` (and STT equivalents, plus provider-specific `AGENT_YANDEX_FOLDER_ID`, `AGENT_GIGACHAT_SCOPE`, …), returns a typed `AgentConfig` with sane defaults, and is the *only* place `process.env.AGENT_*` is read. Follows the existing `src/lib/supabase.ts` pattern (`?? fallback ?? fallback`).
 
+**When to use:** any time "swap provider via env without code change" is a hard requirement, as stated in PROJECT.md.
+
+**Trade-offs:** a bad env value fails at request time, not build time. Mitigate with a `validateAgentConfig()` called once and surfaced on an admin "AI status" strip.
+
+**Example:**
 ```typescript
-export interface User {
-  // ...existing fields...
-  date_hired: string | null   // ISO date
-  date_fired: string | null   // ISO date
+// src/lib/agent/config.ts
+export interface AgentConfig {
+  llm: { provider: ProviderId; model: string; baseUrl?: string; apiKey: string; extra: Record<string,string> }
+  stt: { provider: SttProviderId; model?: string; apiKey: string; extra: Record<string,string> }
+  thresholds: { autoAccept: number; review: number }   // e.g. 0.8 / 0.5
+}
+export function resolveAgentConfig(): AgentConfig {
+  const provider = (process.env.AGENT_LLM_PROVIDER ?? 'anthropic') as ProviderId
+  return {
+    llm: {
+      provider,
+      model: process.env.AGENT_LLM_MODEL ?? DEFAULT_MODEL[provider],
+      baseUrl: process.env.AGENT_LLM_BASE_URL,
+      apiKey: process.env.AGENT_LLM_API_KEY ?? '',
+      extra: {
+        folderId: process.env.AGENT_YANDEX_FOLDER_ID ?? '',
+        gigachatScope: process.env.AGENT_GIGACHAT_SCOPE ?? 'GIGACHAT_API_PERS',
+      },
+    },
+    stt: { /* … AGENT_STT_* … */ } as AgentConfig['stt'],
+    thresholds: {
+      autoAccept: Number(process.env.AGENT_CONF_ACCEPT ?? 0.8),
+      review:     Number(process.env.AGENT_CONF_REVIEW ?? 0.5),
+    },
+  }
 }
 ```
 
-### PANELS update in `src/types/index.ts`
+### Pattern 4: Bridge catalog with soft foreign keys
 
-```typescript
-// Add to PANELS array (after transport, before complaints):
-{
-  id: 'hr', path: '/hr', title: 'HR-модуль',
-  subtitle: 'Состав смены · Статусы · Табель',
-  emoji: '👥',
-  roles: ['ADMIN', 'BOSS', 'ZAMPORAB'],
-  color: 'from-teal-600/40 to-teal-800/40 border-teal-500/30',
-  roleLabel: 'HR-менеджер',
-},
-```
+**What:** the KB tables are the agent's own vocabulary. Where a KB row is known to correspond to a row in an existing catalog, a nullable text/uuid column records it (`kb_locations.journal_object_id`, `kb_locations.main_object_id`, `kb_work_types.main_work_type_id`, `kb_work_types.work_permit_type_id`). Nothing is enforced with a hard FK to the legacy trees (avoids coupling migrations and cascade surprises); the journal `object_id` FK on `daily_plan_items` is the only hard link, and it is satisfied by creating a `journal_objects` row on the fly — the pattern `JournalApp.resolveObjectId()` already uses.
 
----
+**When to use:** when a new subsystem needs to *reference* established data without owning it or migrating it.
 
-## New API Functions
+**Trade-offs:** referential integrity across the bridge is the app's job, not the DB's. Stale bridge columns are possible (a `journal_objects` row deleted out from under a `kb_locations` link). Acceptable at this scale; a nightly reconcile check can flag orphans.
 
-All HR queries go into `src/lib/api.ts` following the established file-per-domain grouping pattern.
+### Pattern 5: Proposal -> review gate -> existing write path
 
-### Section: `// ============ EMPLOYEE STATUS ============`
+**What:** the agent never writes `daily_plan_items` directly from the model output. It writes `agent_parse_log` (+ `agent_review_queue` rows for low-confidence drafts) and returns drafts to the client. The human accepts/edits in `DictationReview.tsx`, and only the accept action calls the *existing* `createDailyPlanItem()` — once per row, `published` omitted (defaults false).
 
-```typescript
-// Fetch all status records for a user (history)
-fetchEmployeeStatusHistory(userId: string): Promise<EmployeeStatus[]>
+**When to use:** always, for "agent proposes, human disposes" as PROJECT.md mandates ("человек проверяет и публикует").
 
-// Fetch current status for a single user (date_from <= today, date_to >= today or null)
-fetchCurrentEmployeeStatus(userId: string): Promise<EmployeeStatus | null>
-
-// Fetch current statuses for all users (bulk, for EmployeeList / TodaySummary)
-fetchAllCurrentStatuses(date?: string): Promise<Record<string, EmployeeStatus>>
-
-// Set new status for a user (creates new record, closing prior open-ended record)
-setEmployeeStatus(
-  userId: string,
-  status: EmployeeStatusType,
-  dateFrom: string,
-  dateTo: string | null,
-  reason: string | null,
-  createdBy: string
-): Promise<EmployeeStatus | null>
-
-// Fetch status records for a date range (for AttendanceGrid and PeriodReport)
-fetchStatusesForPeriod(
-  dateFrom: string,
-  dateTo: string,
-  serviceId?: string
-): Promise<EmployeeStatus[]>
-
-// Hire a user: set date_hired on users table
-hireEmployee(userId: string, dateHired: string, updatedBy: string): Promise<User | null>
-
-// Fire a user: set date_fired + is_active=false + insert FIRED status record
-fireEmployee(userId: string, dateFired: string, reason: string, updatedBy: string): Promise<boolean>
-```
-
-**Integration note:** `setEmployeeStatus` must call `logAction()` (same pattern as `updateRequest`, `approveRequest`) with action type `'SET_EMPLOYEE_STATUS'` and entity type `'employee_status'`.
-
-**Integration note:** `fireEmployee` reuses the existing `updateUser()` function for the `is_active: false` + `date_fired` update, then appends a `FIRED` status record, then logs to changelog.
+**Trade-offs:** an extra click per dictation. That is the point.
 
 ---
 
 ## Data Flow
 
-### HR Panel Load Sequence
+### Dictation -> drafts -> review -> daily_plan_items
 
 ```
-hr/page.tsx: loadData()
-  → fetchUsers(activeOnly=false)        // include recently fired (date_fired within 30 days)
-  → fetchServices()                     // for grouping by service
-  → fetchAllCurrentStatuses(today)      // bulk: one query, returns map of user_id → status
-  ↓
-  Merge: users + statuses → enriched employee list
-  Group: by service_id
-  ↓
-  Render:
-    <TodaySummary>          (counts from enriched list)
-    <EmployeeList>          (grouped by service)
-      <EmployeeCard>        (per employee — shows StatusBadge + action button)
+[user dictates or pastes Russian free text in /journal or /dispatcher]
+        │
+        ├─ voice ─► MediaRecorder (webm/opus)  ──►  POST /api/agent/transcribe  (multipart)
+        │                                              │  verifySessionToken + role
+        │                                              │  getTranscriber(cfg).transcribe(bytes)
+        │                                              ▼
+        │                                           { text }
+        │                                              │
+        └─ paste ──────────────────────────────────────┤
+                                                       ▼
+                                POST /api/agent/extract  { text, planDate }
+                                   │  verifySessionToken + role (ADMIN/BOSS/DISPATCHER/ZAMPORAB/HEAD)
+                                   │
+                                   ▼
+                          src/lib/agent/extract/index.ts  extractPlan()
+                                   │
+                   ┌───────────────┼───────────────────────────────────┐
+                   │ 1. buildKbIndex()  ← fetch kb_locations,           │
+                   │      kb_work_types, kb_aliases  (Supabase)         │
+                   │ 2. buildExtractPrompt(kbSlice, text, fewShot←      │
+                   │      agent_corrections)                            │
+                   │ 3. getExtractor(cfg).complete(LlmRequest)  ─► LLM  │
+                   │ 4. parseModelJson(raw) -> PlanDraft[]              │
+                   │ 5. validateDrafts(drafts, kbIndex)   [guardrails]  │
+                   │      · object not KB-resolvable  -> reviewStatus   │
+                   │      · service not in 5 services -> drop/flag      │
+                   │      · crew counts clamped to sane range           │
+                   │      · one dictation split across services kept    │
+                   │ 6. scoreDraft() -> confidence 0..1                 │
+                   │ 7. recordParse() -> agent_parse_log (PROPOSED)     │
+                   │    + agent_review_queue rows for conf < review     │
+                   └───────────────┬───────────────────────────────────┘
+                                   ▼
+                    { drafts: PlanDraft[], parseLogId }
+                                   │
+                                   ▼
+               DictationReview.tsx  (editable grid, N rows)
+                 · per row: object | service | work | period | workers/foremen/itr/vehicles
+                 · confidence chip · исходная фраза shown · edit / delete / reassign service
+                                   │
+                 ┌─────────────────┴─────────────────────────┐
+                 │ human edits a field ≠ model value          │
+                 │   -> POST /api/agent/correction            │
+                 │        -> agent_corrections row            │
+                 │   -> optional "запомнить синоним"          │
+                 │        -> /api/db createKbAlias            │
+                 └─────────────────┬─────────────────────────┘
+                                   ▼
+              "Создать черновики"  — for each accepted draft:
+                 objectId = kbLocation.journal_object_id
+                          ?? fuzzyMatch(objects, norm(draft.objectRef))
+                          ?? await createJournalObject({ name, category_id:'OTHER', … })
+                 await createDailyPlanItem({
+                   plan_date: planDate, shift_type: draft.period,
+                   object_id: objectId, service_id: draft.serviceId,
+                   work_text: draft.workText,
+                   required_workers/foremen/itr/vehicles, specialties,
+                   created_by: session.user_id            // NO `published` -> defaults false
+                 })
+                                   │
+                                   ▼
+              await reload()   (useLoadData) — rows appear in the journal as ordinary
+              unpublished draft rows. Manual "📢 Опубликовать смену" unchanged.
+              PATCH agent_parse_log.outcome = 'COMMITTED' (or 'DISCARDED')
 ```
 
-### Status Change Flow (EmployeeCard "Change Status" button)
+### xls training flow (ADMIN)
 
 ```
-User clicks status button in EmployeeCard
-  → EmployeeCard calls onStatusChange(userId, newStatus, dateFrom, dateTo, reason)
-  → hr/page.tsx handler calls setEmployeeStatus(...)
-  → setEmployeeStatus inserts into employee_status, logs to changelog
-  → loadData() re-runs
-  → HR panel re-renders with updated statuses
+[ADMIN uploads Титул / Конструктив / Годовой план .xlsx in /admin KbTrainingTab]
+        │
+        ▼
+POST /api/agent/ingest  (multipart)   verifySessionToken + role==='ADMIN'
+        │  parseWorkbook(bytes)  [SheetJS]  -> RawRow[]   + sheetKind detection
+        │  classify(row)  -> ParsedRow { entityType, canonicalName, serviceGuess, unit, area }
+        │  insert kb_ingest_batches (STAGED) + kb_ingest_rows (decision=PENDING, diff vs existing)
+        ▼
+   { batchId, rowCount }
+        │
+        ▼
+KbTrainingTab: staging table with per-row diff preview (CREATE / MERGE / SKIP)
+        │  ADMIN adjusts decisions
+        ▼
+POST /api/db applyKbIngestBatch(batchId)   (plain CRUD, dispatcher is fine here)
+        │  for each row: write kb_locations / kb_constructions / kb_work_types
+        │  stamp kb_ingest_rows.decision + applied_at + target_id
+        │  kb_ingest_batches.status = APPLIED | PARTIALLY_APPLIED
+        ▼
+KB populated. Aliases seeded from a synonyms column if present; more added in KbAliasTab.
 ```
 
-### AttendanceGrid / PeriodReport Load (tab switch)
+### State management (client)
 
-```
-User switches to "Табель" or "Отчёт" tab in hr/page.tsx
-  → loadData already loaded users + services
-  → Lazy-load: fetchStatusesForPeriod(firstOfMonth, today)
-  → AttendanceGrid renders employee x day matrix
-  → PeriodReport renders grouped totals (sick days, vacation days, etc.)
-```
+Unchanged pattern: every panel page stays a thin orchestrator; `DictationReview` holds its own local draft-array state; commit calls `reload()` from `useLoadData`, never raw `loadData`. Errors surface through the existing `guard()` / `useConfirm()` mechanism already in `JournalApp`.
 
 ---
 
-## Component Boundaries
+## New vs Modified — Database
 
-### `hr/page.tsx` (orchestrator — ~60 lines)
-
-Responsibilities:
-- AuthGuard with `['ADMIN', 'BOSS', 'ZAMPORAB']`
-- State: `users`, `services`, `statuses` (map), `activeTab`, `selectedDate`, `periodRange`
-- `loadData()` fetching users + services + current statuses
-- Tab management: overview / attendance / report
-- Pass callbacks to components (onStatusChange, onHire, onFire)
-
-Does NOT contain: any JSX for individual employee cards, grids, or stat widgets.
-
-### `hr/components/EmployeeList.tsx`
-
-Responsibilities: Groups enriched employee objects by `service_id`, renders one section per service, iterates employees within each section. Delegates individual card rendering to `EmployeeCard`.
-
-Props: `{ employees: EnrichedEmployee[]; services: Service[]; onStatusChange: fn }`
-
-### `hr/components/EmployeeCard.tsx`
-
-Responsibilities: Displays one employee row/card — name, position, phone, current `StatusBadge`, and a button/dropdown to change status. Opens an inline form or modal for status selection.
-
-Props: `{ employee: EnrichedEmployee; onStatusChange: fn }`
-
-### `hr/components/StatusBadge.tsx`
-
-Responsibilities: Purely presentational. Renders colored badge from `EMPLOYEE_STATUS_CONFIG`. Reusable in AttendanceGrid cells too.
-
-Props: `{ status: EmployeeStatusType; size?: 'sm' | 'md' }`
-
-### `hr/components/TodaySummary.tsx`
-
-Responsibilities: Counts present/absent/sick/vacation from enriched list. Renders KPI cards (matches existing KPICards visual style from dispatcher panel). No data fetching.
-
-Props: `{ employees: EnrichedEmployee[] }`
-
-### `hr/components/AttendanceGrid.tsx`
-
-Responsibilities: Renders a month grid (rows = employees, columns = days). Fetches its own period data via `fetchStatusesForPeriod` when `month` prop changes (acceptable for lazy-loaded tab content).
-
-Props: `{ users: User[]; month: string /* YYYY-MM */ }`
-
-### `hr/components/PeriodReport.tsx`
-
-Responsibilities: Renders aggregated totals for date range — sick days / vacation days / fired during period, grouped by service. Fetches its own data via `fetchStatusesForPeriod`.
-
-Props: `{ users: User[]; services: Service[]; dateFrom: string; dateTo: string }`
-
----
-
-## Integration Points with Existing Tables
-
-### Reads from `users` (existing, no schema change needed for reads)
-
-- `fetchUsers(activeOnly=false)` — already exists in `api.ts`, just pass `false`
-- HR panel needs to show fired employees during transition period: query `WHERE is_active = false AND date_fired >= (today - 30 days)` — this requires a new function `fetchRecentlyFiredUsers()` or extending `fetchUsers`
-
-### Reads from `services` (existing, unchanged)
-
-- `fetchServices()` already exists. HR uses it directly for grouping.
-
-### Writes to `users` (extend existing `updateUser()`)
-
-- `hireEmployee` calls `updateUser(userId, { date_hired: date })`
-- `fireEmployee` calls `updateUser(userId, { is_active: false, date_fired: date })`
-- No new update function needed — `updateUser()` already accepts `Partial<User>`
-
-### Writes to `changelog` (existing, unchanged)
-
-- All HR write operations call `logAction()` with appropriate action types
-- Convention: action types = `'SET_EMPLOYEE_STATUS'`, `'HIRE_EMPLOYEE'`, `'FIRE_EMPLOYEE'`
-
-### New table `employee_status` (new)
-
-- All reads/writes via new functions in `api.ts` HR section
-- No joins needed at DB level — merge in TypeScript (consistent with existing pattern in `fetchPeopleStats`)
-
----
-
-## Helper Type: EnrichedEmployee
-
-This is a runtime-constructed type (not a DB entity) that merges User + current EmployeeStatus:
-
-```typescript
-// Constructed in hr/page.tsx, not stored in DB
-export interface EnrichedEmployee extends User {
-  currentStatus: EmployeeStatus | null
-}
+All new tables get, **in the same migration that creates them**:
+```sql
+ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS anon_all_<t> ON <t>;
+CREATE POLICY anon_all_<t> ON <t> FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ```
+(Migration `050_journal_rls_policies.sql` is the cautionary tale: RLS on + zero policies = silent denial. Auth is enforced at the API layer via `verifySessionToken` + role checks, not RLS — consistent with the whole schema.)
+
+### New tables
+
+| Table | Purpose | Key columns | Notes |
+|-------|---------|-------------|-------|
+| `kb_locations` | Canonical участок objects from Титул | `id uuid pk`, `canonical_name text`, `inv_no text`, `address text`, `area_m2 numeric`, `category_id text ref journal_object_categories`, **`journal_object_id uuid null`**, **`main_object_id text null`**, `created_by`, timestamps | bridge cols nullable, no hard FK to legacy `objects` |
+| `kb_constructions` | Конструктивные элементы from Конструктив | `id uuid pk`, `kb_location_id uuid ref kb_locations`, `name text`, `finish_type text`, `area_m2 numeric`, `unit text`, **`main_construction_id text null`** | |
+| `kb_work_types` | Vocabulary of work phrasings + **service mapping** | `id uuid pk`, `canonical_name text`, **`service_id text ref services`**, `unit text`, `typical_period text check (DAY|NIGHT|AROUND)`, `typical_workers/foremen/itr/vehicles smallint`, `typical_specialties jsonb`, **`main_work_type_id text null`**, **`work_permit_type_id text null ref work_permit_types`** | the `service_id` column is the core "чья служба" value |
+| `kb_aliases` | Synonyms / abbreviations | `id uuid pk`, `alias_norm text` (normalized via same `norm()` rule), `entity_type text check (location|construction|work_type|service)`, `entity_id text`, `weight smallint default 100`, `source text check (seed|manual|learned)`, `created_by`, `created_at`; `unique(alias_norm, entity_type)` | "борт. камень"="БК", "ЭВ №3"="аварийный выход 3" |
+| `kb_ingest_batches` | One row per uploaded workbook | `id uuid pk`, `filename text`, `sheet_kind text check (TITUL|KONSTRUKTIV|GODOVOI|UNKNOWN)`, `uploaded_by text`, `status text check (STAGED|PARTIALLY_APPLIED|APPLIED|DISCARDED)`, `row_count int`, `created_at` | |
+| `kb_ingest_rows` | Staging rows for diff preview | `id uuid pk`, `batch_id uuid ref kb_ingest_batches on delete cascade`, `raw jsonb`, `parsed jsonb`, `target_table text`, `target_id text null`, `decision text check (PENDING|CREATE|MERGE|SKIP)`, `confidence numeric`, `diff jsonb`, `applied_at timestamptz null` | |
+| `agent_parse_log` | Every dictation / extraction | `id uuid pk`, `source text check (VOICE|PASTE)`, `input_text text`, `transcript_raw text null`, `provider text`, `model text`, `raw_output text`, `drafts jsonb`, `latency_ms int`, `token_cost jsonb null`, `plan_date date`, `outcome text check (PROPOSED|COMMITTED|DISCARDED)`, `created_by text`, `created_at` | audit + few-shot corpus |
+| `agent_corrections` | Learn-from-correction | `id uuid pk`, `parse_log_id uuid ref agent_parse_log`, `draft_index smallint`, `field text`, `model_value text`, `human_value text`, `source_phrase text`, `created_by`, `created_at` | feeds few-shot + alias proposals |
+| `agent_review_queue` | Low-confidence items needing a human | `id uuid pk`, `parse_log_id uuid ref agent_parse_log`, `draft_index smallint`, `reason text`, `status text check (OPEN|RESOLVED|DISMISSED)`, `resolved_by text null`, `resolved_at timestamptz null`, `created_at` | lightweight table (not a view) so items have their own lifecycle |
+
+Suggested migration split: `053_agent_kb_catalog.sql` (kb_locations, kb_constructions, kb_work_types, kb_aliases), `054_agent_ingest_staging.sql` (kb_ingest_batches, kb_ingest_rows), `055_agent_parse_log.sql` (agent_parse_log, agent_corrections, agent_review_queue). Each self-contained with rollback + `anon_all_*`.
+
+### Modified tables
+
+| Table | Change | Migration notes |
+|-------|--------|-----------------|
+| `daily_plan_items` | OPTIONAL: add `source text not null default 'MANUAL'` (`MANUAL`\|`AGENT`) and `parse_log_id uuid null` for traceability | `ALTER TABLE` only; the existing `anon_all_daily_plan_items` policy (`FOR ALL`) already covers new columns — no new policy needed. Default keeps all existing rows and the manual flow untouched. |
+| none else | The three existing catalogs, `work_plans`, `requests` are **not touched** | Explicit non-goal for v3.0 |
 
 ---
 
-## What Is Modified vs New
+## Integration Points
 
-### Modified (minimal, surgical changes)
+### External Services
 
-| File | Change | Scope |
-|------|--------|-------|
-| `src/types/index.ts` | Add `EmployeeStatusType`, `EmployeeStatus`, `EMPLOYEE_STATUS_CONFIG` interfaces/constants | Additive only |
-| `src/types/index.ts` | Add `date_hired`, `date_fired` to `User` interface | Additive only |
-| `src/types/index.ts` | Add HR entry to `PANELS` array | One new object |
-| `src/lib/api.ts` | Add `// ============ EMPLOYEE STATUS ============` section (~80 lines) | Additive only |
+| Service | Integration pattern | Notes / gotchas |
+|---------|--------------------|-----------------|
+| Anthropic Messages API | `fetch` in `extract/adapters/anthropic.ts`; `x-api-key` + `anthropic-version` headers; ask for JSON in the prompt | No SDK dependency needed. Strongest Russian free-text extraction of the set. Prompt caching available if KB context is large. |
+| OpenAI Chat Completions | `fetch`; `Authorization: Bearer`; `response_format:{type:'json_object'}` | Also the template for any OpenAI-compatible self-hosted model (vLLM, LM Studio) — just change `baseUrl`. |
+| YandexGPT (`llm.api.cloud.yandex.net`) | `fetch`; `Authorization: Api-Key <key>` or IAM token; requires `folderId` in the model URI (`gpt://<folder>/yandexgpt/latest`) | Data-residency-friendly for a Russian gov entity. No official JS SDK — raw REST. |
+| GigaChat (Sber) | `fetch`; OAuth2 client-credentials token exchange first (`scope=GIGACHAT_API_PERS`), then `Bearer`; Russian TLS root cert may be needed on the server | Most friction of the five (token lifecycle + certs). Isolate all of it in `gigachat.ts`. |
+| Self-hosted LLM | OpenAI-compatible `baseUrl` via `selfhosted.ts` | Zero cost, full data control; quality depends on the model. |
+| OpenAI Whisper / self-hosted Whisper | `POST` audio bytes multipart to `/audio/transcriptions` | Handles Russian well. Self-hosted `faster-whisper` behind an OpenAI-compatible shim reuses the same adapter. |
+| Yandex SpeechKit STT | `fetch`; OGG/Opus or LPCM; `folderId`; short-audio vs async long-audio endpoints | Best Russian STT accuracy; same data-residency argument. |
+| Browser MediaRecorder | Client-only, no dependency; record `audio/webm;codecs=opus`, POST blob to `/api/agent/transcribe` | Safari needs `audio/mp4` fallback; keep clips short (<2 min) for the sync STT endpoint. |
+| SheetJS (`xlsx`) | `parseWorkbook()` in `ingest/workbook.ts` | **New dependency — requires user sign-off** per CLAUDE.md "don't install new major dependencies without asking". Alternative: ask ADMIN to save-as-CSV and parse with a hand-rolled splitter (brittle for merged cells). Recommend SheetJS. |
 
-### New (no existing code touched)
+### Internal Boundaries
 
-| File | Description |
-|------|-------------|
-| `src/app/hr/page.tsx` | HR panel orchestrator |
-| `src/components/hr/EmployeeList.tsx` | Employee list grouped by service |
-| `src/components/hr/EmployeeCard.tsx` | Individual employee card with status action |
-| `src/components/hr/StatusBadge.tsx` | Colored status badge (reusable) |
-| `src/components/hr/TodaySummary.tsx` | Today's attendance KPI cards |
-| `src/components/hr/AttendanceGrid.tsx` | Monthly attendance grid |
-| `src/components/hr/PeriodReport.tsx` | Date range summary report |
-| `supabase/migrations/001_add_hr_module.sql` | DB migration for employee_status table + users columns |
-
----
-
-## Optimal Build Order
-
-Build order is dictated by dependency direction: DB → TypeScript types → API functions → page orchestrator → UI components.
-
-### Phase 1: DB Foundation
-
-1. Write `supabase/migrations/001_add_hr_module.sql`
-2. Human runs migration in Supabase SQL Editor
-3. Verify table + indexes exist via Supabase dashboard
-
-**Why first:** All other steps depend on the schema. TypeScript types must match actual columns. Cannot test API functions without the table.
-
-### Phase 2: TypeScript Types
-
-4. Add `EmployeeStatusType`, `EmployeeStatus`, `EMPLOYEE_STATUS_CONFIG` to `src/types/index.ts`
-5. Extend `User` interface with `date_hired`, `date_fired`
-6. Add HR entry to `PANELS` array
-7. Run `npx tsc --noEmit` — must pass before proceeding
-
-**Why second:** All API functions and components import from `@/types`. Type errors here cascade everywhere.
-
-### Phase 3: API Layer
-
-8. Add HR section to `src/lib/api.ts`:
-   - `fetchAllCurrentStatuses()`
-   - `fetchEmployeeStatusHistory()`
-   - `setEmployeeStatus()` (most complex — closes prior records, logs action)
-   - `fetchStatusesForPeriod()`
-   - `hireEmployee()`, `fireEmployee()`
-9. Run `npx tsc --noEmit` — must pass
-
-**Why third:** Page and components call these functions. They can be tested mentally by reading the code before the UI exists.
-
-### Phase 4: UI Components (leaf-first)
-
-10. `StatusBadge.tsx` — purely presentational, no dependencies on other new components
-11. `TodaySummary.tsx` — receives pre-computed props, no data fetching
-12. `EmployeeCard.tsx` — uses StatusBadge, calls onStatusChange callback
-13. `EmployeeList.tsx` — uses EmployeeCard, groups data
-14. `AttendanceGrid.tsx` — fetches own data, uses StatusBadge
-15. `PeriodReport.tsx` — fetches own data
-
-**Why leaf-first:** Each component can be implemented and mentally verified without its parent existing. Avoids blocking on page.tsx until all children are ready.
-
-### Phase 5: Page Orchestrator
-
-16. `src/app/hr/page.tsx` — wire all components together, implement loadData
-17. Run `npm run build` — must pass before commit
-
-**Why last:** page.tsx is the integration point. Writing it last means all imports already exist and TypeScript can verify the entire call chain.
-
-### Phase 6: Manual QA
-
-18. Deploy to Vercel (auto-deploy from main after commit)
-19. Test as ZAMPORAB role: can see HR panel, can change statuses
-20. Test as BOSS role: can see HR panel
-21. Test as DISPATCHER role: cannot see HR panel (not in roles list)
-22. Test attendance grid for a month with mixed statuses
-23. Test period report date range filter
+| Boundary | Communication | Considerations |
+|----------|---------------|----------------|
+| `DictationReview.tsx` ↔ `/api/agent/extract` | `agent-client.ts` `fetch` (JSON; SSE in a later polish) | mirror `api-client.ts` 401 -> `/login` redirect |
+| `DictationReview.tsx` ↔ `daily_plan_items` | via existing `createDailyPlanItem` in `api-client.ts` (dispatcher) | no new write path; `published` never set by the agent |
+| `/api/agent/*` ↔ `src/lib/agent/` | direct import (same server process) | `agent/` is `import 'server-only'` like `supabase.ts` |
+| `src/lib/agent/` ↔ Supabase | reuse the exported `supabase` client from `src/lib/supabase.ts` | KB reads for guardrails; `agent_parse_log` writes |
+| `KbTrainingTab.tsx` ↔ `knowledge.ts` (apply) | via `/api/db` dispatcher (`applyKbIngestBatch`) | plain CRUD -> dispatcher is the right call here |
+| `extract/index.ts` ↔ adapters | only through `getExtractor()` factory | orchestrator never imports a concrete adapter |
+| `agent_corrections` ↔ `extract/prompt.ts` | few-shot examples pulled at prompt-build time | cap count; most-recent-N or per-entity |
 
 ---
 
-## Anti-Patterns to Avoid
+## Anti-Patterns
 
-### Anti-Pattern 1: Inline HR Logic in Shared Components
+### Anti-Pattern 1: Adding `extractPlan` / `transcribe` to a `src/lib/api/` module
 
-**What:** Adding HR-specific code to `Header.tsx`, `AuthGuard.tsx`, or `api.ts` in ways that are interleaved with existing logic.
+**What people do:** put the LLM call in `src/lib/api/agent.ts` and re-export from `api.ts` so the client can call it through `/api/db` like everything else.
+**Why it's wrong:** the dispatcher does `func(...args)` then `NextResponse.json(...)` — no streaming, no multipart (audio would be base64 in a JSON array, hitting body limits), and every exported name is callable by any session holder, so a raw provider call becomes a reachable RPC. It also inherits no per-call timeout control.
+**Do this instead:** `/api/agent/*` route group with its own auth preamble (the `/api/timesheet/export` precedent). Keep only KB CRUD on the dispatcher.
 
-**Why bad:** Violates the project rule that shared components stay generic. Breaking `Header.tsx` affects all 8 panels simultaneously.
+### Anti-Pattern 2: Reconciling the three catalogs in this milestone
 
-**Instead:** All HR-specific code goes in `src/app/hr/`, `src/components/hr/`, and a clearly delimited section of `src/lib/api.ts`.
+**What people do:** try to merge `objects/constructions/work_types`, `journal_objects`, and `work_permit_types` into one tree so the agent has a single source.
+**Why it's wrong:** the main tree feeds live `requests`; the journal is *deliberately* decoupled from the `work_plans` funnel; work-permit is a separate curated axis. A merge is a migration touching production data paths and is its own milestone of risk.
+**Do this instead:** a fourth `kb_*` catalog with nullable bridge columns. Emit `daily_plan_items` against `journal_objects`, creating them on the fly exactly as the journal already does.
 
-### Anti-Pattern 2: Storing Current Status as Column on Users
+### Anti-Pattern 3: Writing model output straight into `daily_plan_items`
 
-**What:** Adding a `current_status` column directly to the `users` table instead of using the `employee_status` history table.
+**What people do:** `/api/agent/extract` inserts rows itself and returns "done".
+**Why it's wrong:** violates "агент только предлагает" (PROJECT.md); no human gate; a hallucinated object silently becomes a plan row; and if it also set `published` it would leak into other panels.
+**Do this instead:** persist to `agent_parse_log`, return drafts, let `DictationReview` drive `createDailyPlanItem` per accepted row with `published` unset.
 
-**Why bad:** Loses history. AttendanceGrid and PeriodReport become impossible to implement. Requires rewrite later.
+### Anti-Pattern 4: Provider `if`s scattered through extraction logic
 
-**Instead:** Use the `employee_status` table with date ranges. Derive "current status" at query time.
+**What people do:** `if (provider === 'anthropic') { headers X } else if (provider === 'yandex') { body Y }` inside `extractPlan`.
+**Why it's wrong:** adding a provider means editing the orchestrator; guardrail/parse logic gets entangled with transport; testing needs live keys.
+**Do this instead:** the only `switch(provider)` is `getExtractor()`. Orchestrator sees `LlmAdapter`. Adapters are unit-testable with a recorded HTTP fixture.
 
-### Anti-Pattern 3: Joining Tables in Supabase Queries
+### Anti-Pattern 5: Guardrails or confidence inside the adapter
 
-**What:** Using Supabase relational syntax (`select('*, users(*)')`) to join users and employee_status in a single query.
+**What people do:** each adapter validates the JSON and scores confidence its own way.
+**Why it's wrong:** N implementations that drift; the "no invented entities" rule ends up enforced for Anthropic but not YandexGPT.
+**Do this instead:** `parse.ts` + `guardrails.ts` + `confidence.ts` are provider-agnostic pure functions the orchestrator calls after `adapter.complete()`.
 
-**Why bad:** The existing codebase consistently uses separate queries + TypeScript merging (`fetchPeopleStats` is the canonical example). Mixing patterns creates inconsistency and the Supabase join syntax adds complexity.
+### Anti-Pattern 6: RLS enabled, `anon_all_*` policy forgotten
 
-**Instead:** Fetch users and statuses separately, merge in TypeScript using `Record<string, EmployeeStatus>` indexed by user_id.
+**What people do:** `CREATE TABLE` + `ENABLE ROW LEVEL SECURITY` in one migration, policy "later".
+**Why it's wrong:** the server client uses the anon key; RLS on + no policy = every read/write silently denied (migration 050 fixed exactly this for the journal).
+**Do this instead:** policy in the same migration, every time. Add it to the phase-8 checklist.
 
-### Anti-Pattern 4: Hardcoding Date Logic in Components
+### Anti-Pattern 7: Trusting the model to emit entity IDs
 
-**What:** Calling `new Date()` inside components to determine "today" for status queries.
+**What people do:** prompt asks for `journal_object_id` / `service_id` directly and the code inserts them.
+**Why it's wrong:** the model will confidently invent UUIDs and plausible-looking service codes.
+**Do this instead:** the model emits *names / phrases*; server-side `buildKbIndex()` + alias lookup + fuzzy `norm()` match resolves them to IDs, and anything unresolved becomes `reviewStatus: needs_review`.
 
-**Why bad:** Creates subtle bugs when data loaded at 23:59 is rendered at 00:01. Inconsistent timezone handling.
+### Anti-Pattern 8: Provider keys in `NEXT_PUBLIC_*`
 
-**Instead:** Compute `today` as a string (`new Date().toISOString().slice(0, 10)`) once in `page.tsx loadData()` and pass it down.
+**What people do:** reuse the `NEXT_PUBLIC_` convention out of habit.
+**Why it's wrong:** ships the key to the browser bundle.
+**Do this instead:** `AGENT_LLM_API_KEY` etc. are server-only; read only in `config.ts`; `src/lib/agent/` is `import 'server-only'`.
 
 ---
 
-## Scalability Considerations
+## Scaling Considerations
 
-The app has ~50 employees across 5 services. HR module data volumes are trivial.
+This is a ~50-100 user internal tool; request concurrency is not the constraint. The real limits:
 
-| Concern | Current scale (~50 users) | Notes |
-|---------|--------------------------|-------|
-| `employee_status` table size | ~18,000 rows/year max | Negligible. Index on (user_id, date_from DESC) handles all queries |
-| `fetchAllCurrentStatuses` query | Single query, ~50 rows returned | Fine with date index |
-| AttendanceGrid render | 50 employees x 31 days = 1,550 cells | Pure React, no performance concern |
-| PeriodReport aggregation | Done in TypeScript on ~50 x 90 days = 4,500 status records max | Negligible |
+| Concern | 0-100 users (now) | If usage grows |
+|---------|-------------------|----------------|
+| LLM latency (5-20 s / dictation) | `maxDuration=60`, show a progress spinner; SSE streaming as phase-11+ polish | queue + poll if a plan spawns many extractions |
+| LLM cost / rate limits | one extraction per dictation; cache `buildKbIndex()` per request; keep KB context trimmed to the relevant categories | per-user daily cap; cheaper model for the classify step |
+| STT clip length | cap browser recording at ~2 min, use the provider's short-audio endpoint | switch to async long-audio endpoint + polling |
+| `agent_parse_log` / `agent_corrections` growth | fine for years at this volume | periodic archive; index on `created_at`, `outcome` |
+| xls ingest | ADMIN-only, infrequent, staged | batch size guard; stream-parse very large sheets |
+| KB size for guardrail lookups | load all `kb_*` into memory maps per request | move fuzzy matching to a Postgres `pg_trgm` index; cache the index in module scope with TTL |
 
-No pagination, virtualization, or caching needed at this scale.
+### Scaling priorities
+
+1. **First bottleneck:** perceived latency of a single extraction — fix with streaming/progress UI, not infra.
+2. **Second bottleneck:** LLM spend if dictation becomes the default entry path — fix with KB-context trimming and a two-tier model (cheap classify, capable extract).
+
+---
+
+## Build Order — Phases (continuing from Phase 8)
+
+Dependency rule: **KB schema + ingest before extraction; adapter before agent UI; text before voice.**
+
+### Phase 8 — Knowledge-base schema + RLS + CRUD
+- Migrations `053`/`054`/`055`: all `kb_*` and `agent_*` tables, each with `anon_all_<table>` policy + rollback.
+- `src/lib/api/knowledge.ts` — CRUD mirroring `journal.ts` style; `export * from './api/knowledge'` in `api.ts`; manual wrappers in `api-client.ts`.
+- `src/types/index.ts` — all new interfaces.
+- Pure helper `resolveEntity(text, kbIndex)` + `norm()` reuse — **TDD, tests first** (CLAUDE.md rule).
+- Minimal `/admin` list views (read-only) to eyeball seeded data.
+- **Exit:** tables live in Supabase, CRUD reachable, `npm run build` + `npm run test` green.
+- **Depends on:** nothing.
+
+### Phase 9 — xls ingest / training tool (ADMIN)
+- **Dependency decision up front:** add SheetJS (`xlsx`) — get user sign-off.
+- `POST /api/agent/ingest` (multipart) -> `ingest/workbook.ts` + `ingest/classify.ts` -> `kb_ingest_batches` / `kb_ingest_rows`.
+- `applyKbIngestBatch()` in `knowledge.ts` (dispatcher path) -> writes `kb_*`, stamps rows.
+- `src/components/admin/KbTrainingTab.tsx` (upload -> staging -> diff preview -> apply), `KbAliasTab.tsx` (alias CRUD).
+- Seed KB from Титул / Конструктив / Годовой план.
+- **Exit:** a real workbook round-trips into `kb_*`; aliases editable.
+- **Depends on:** Phase 8.
+
+### Phase 10 — Provider-agnostic adapter layer + `extractPlan`
+- `src/lib/agent/` — `config.ts`, `types.ts`, `extract/adapter.ts`, ≥2 adapters (Anthropic + one OpenAI-compatible/self-hosted), `extract/prompt.ts`, `extract/parse.ts`, `guardrails.ts`, `confidence.ts`, `kb-index.ts`, `log.ts`.
+- `POST /api/agent/extract` (JSON in/out; streaming deferred).
+- Pure functions (`prompt`, `parse`, `guardrails`, `confidence`) — **TDD**.
+- Recommend running the `gsd-ai-integration-phase` skill to produce an AI-SPEC.md design contract for this phase.
+- **Exit:** pasted Russian text -> validated `PlanDraft[]` with confidence + `agent_parse_log` row; provider swap by env verified with a second adapter.
+- **Depends on:** Phase 8 (KB for context + guardrails).
+
+### Phase 11 — Dictation review UI (text path) + commit to drafts
+- `src/lib/agent-client.ts`.
+- `src/components/journal/DictationReview.tsx` (editable grid, confidence chips, source phrase, per-row accept/edit/reassign).
+- `JournalApp.tsx` — "🎤 Надиктовать план" button + modal mount (~15 lines, 1 import).
+- `src/components/dispatcher/DictationEntry.tsx` — same entry on `/dispatcher`.
+- Commit loop -> `createDailyPlanItem` (unpublished); `POST /api/agent/correction` -> `agent_corrections`; "запомнить синоним" -> `createKbAlias`.
+- Flip `agent_parse_log.outcome`.
+- **Exit:** paste a multi-service dictation -> review -> "Создать черновики" -> unpublished rows appear in the journal; manual publish still works; `work_plans` untouched.
+- **Depends on:** Phase 10.
+
+### Phase 12 — Voice capture + STT
+- Browser `MediaRecorder` capture component.
+- `POST /api/agent/transcribe` (multipart) -> `SttAdapter` (Whisper + Yandex SpeechKit).
+- Feeds the same Phase 11 review flow (transcript -> extract).
+- **Exit:** record in browser -> transcript -> drafts -> review.
+- **Depends on:** Phase 11.
+
+### Phase 13 (optional polish) — Learn-from-correction loop + low-confidence queue
+- Few-shot injection from `agent_corrections` into `extract/prompt.ts`.
+- `src/components/admin/KbReviewQueueTab.tsx` over `agent_review_queue`.
+- Auto-propose `kb_aliases` from repeated corrections; SSE streaming on `/api/agent/extract`; extraction metrics on the admin AI-status strip.
+- **Depends on:** Phases 11-12.
 
 ---
 
 ## Sources
 
-- Codebase inspection: `src/app/dispatcher/page.tsx` — canonical panel pattern (HIGH confidence)
-- Codebase inspection: `src/types/index.ts` — all existing types, PANELS array (HIGH confidence)
-- Codebase inspection: `src/lib/api.ts` — all existing API functions, logAction pattern (HIGH confidence)
-- Codebase inspection: `src/lib/auth.ts` — session shape, hasRole mechanism (HIGH confidence)
-- Codebase inspection: `src/components/Header.tsx` — PANELS-based navigation (HIGH confidence)
-- Codebase inspection: `src/components/AuthGuard.tsx` — role gate pattern (HIGH confidence)
-- Project documentation: `.planning/PROJECT.md` — HR module goal, feature list (HIGH confidence)
-- Project documentation: `CLAUDE.md` — architectural rules, component conventions (HIGH confidence)
+- Codebase (read 2026-09-01): `src/app/api/db/route.ts`, `src/app/api/timesheet/export/route.ts`, `src/lib/api.ts`, `src/lib/api/journal.ts`, `src/lib/api/catalog.ts`, `src/lib/api-client.ts`, `src/lib/supabase.ts`, `src/lib/logger.ts`, `src/components/journal/JournalApp.tsx`, `src/components/journal/data.ts`, `src/types/index.ts`, `supabase/migrations/042_journal_daily_plans.sql`, `043_work_permit_catalog.sql`, `050_journal_rls_policies.sql`, `052_urgent_orders.sql`
+- `CLAUDE.md`, `.planning/PROJECT.md` (v3.0 milestone section)
+- Provider REST-API shapes (Anthropic Messages, OpenAI Chat Completions / Audio, YandexGPT, GigaChat, Yandex SpeechKit) — general knowledge, MEDIUM confidence, verify exact endpoints/headers at implementation time in Phase 10/12
+
+---
+*Architecture research for: AI work-dispatcher integration into an existing Next.js 16 / Supabase app*
+*Researched: 2026-09-01*
