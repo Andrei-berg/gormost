@@ -435,7 +435,7 @@ This enforces exactly the intended rule (two aliases with the same `surface_norm
 
 **What goes wrong:** D-17 locks `typical_crew` keys to `{ workers, foremen, itr, vehicles }`, but the `daily_plan_items` **columns** are `required_workers`, `required_foremen`, `required_itr`, `required_vehicles`. An executor "matching the columns" could name the jsonb keys `required_*` and break Phase 11's EXT-05 prefill, or vice-versa.
 **Why it happens:** "exact match to `daily_plan_items` columns" in D-17 actually means the **UI `PlanItem` type** (`src/components/journal/data.ts` lines 39–42: `workers` / `foremen` / `itr` / `vehicles`), not the raw column names.
-**How to avoid:** lock the four keys in `src/lib/kb/types.ts` as `type TypicalCrew = { workers: number; foremen: number; itr: number; vehicles: number }` and add a one-line comment mapping each to its `required_*` column. A `types.ts` test can assert the key set.
+**How to avoid:** lock the four keys in `src/lib/kb/types.ts` as `type TypicalCrew = { workers: number; foremen: number; itr: number; vehicles: number }` and add a one-line comment naming them as the journal `PlanItem` crew counters (`src/components/journal/data.ts` lines 39–42) — not as the `daily_plan_items` column names, which is exactly the drift this pitfall describes. A `types.ts` test can assert the key set.
 `[VERIFIED: src/components/journal/data.ts:39-42 — workers/foremen/itr/vehicles; supabase/migrations/042_journal_daily_plans.sql:33-36 — required_workers/required_foremen/required_itr/required_vehicles]`
 
 ### Pitfall 6: Re-fragmenting the catalog (research PITFALLS.md Pitfall 11)
