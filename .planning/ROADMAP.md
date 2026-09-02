@@ -52,7 +52,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. ADMIN opens the alias manager, searches aliases, sees each alias's `source` (seed/manual/voice/correction), and gets a visible collision warning when adding a surface form that already resolves to a different canonical entity.
   4. Against a fixture set of real Russian variants ("на Лефортовском тоннеле", "борт. камень", "ЭВ №3") the pure resolver returns the correct ID via exact alias or shared normalized/lemmatized fuzzy match, and an unknown phrase returns null (no invented entity) reported as unresolved — covered by `npm run test`.
   5. Resolver scope is limited to the Гормост-Лефортово участок and every resolved object identity is a `journal_objects` row (not a parallel entity tree); the catalog map across `objects` / `journal_objects` / `work_permit_catalog` / KB is documented in ARCHITECTURE.md.
-**Plans**: TBD
+**Plans**: 9 plans
+Plans:
+- [ ] 08-01-PLAN.md — Tracer: freeze the D-07 resolver contract, build the `src/lib/kb/` module layout, resolve a phrase end-to-end via the exact-alias path
+- [ ] 08-02-PLAN.md — Vendored Russian Snowball stemmer + the D-12a lemma fixture gate + close the D-12 lemmatizer spike
+- [ ] 08-03-PLAN.md — Lock `normalize()` (D-11), the curated abbreviation dictionary (D-10) and the `preprocess()` composition (D-09)
+- [ ] 08-04-PLAN.md — `src/lib/api/knowledge.ts` CRUD + ADMIN gating + client wrappers + shared types
+- [ ] 08-05-PLAN.md — Fuzzy match ladder, vendored Dice/Levenshtein, the ~30-case D-22 fixture battery, alias-collision predicate
+- [ ] 08-06-PLAN.md — Live-schema dump, `docs/catalog-map.md` (KB-05), migrations 053 + 054 with the RLS policy
+- [ ] 08-07-PLAN.md — Гормост-Лефортово seed migration 055 + [BLOCKING] human apply of 053 → 054 → 055
+- [ ] 08-08-PLAN.md — `/admin` → «Виды работ» rebuilt as a dedicated attribute editor (D-17/D-18)
+- [ ] 08-09-PLAN.md — `/admin` → «Синонимы» alias manager with the D-13 soft collision warning + normalizer collapse
 **UI hint**: yes
 
 **Phase flags** (resolve during planning, not blockers):
@@ -147,7 +157,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 0/TBD | Not started | - |
+| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 0/9 | Planned | - |
 | 9. Excel ingest & catalog training tool | v3.0 | 0/TBD | Not started | - |
 | 10. Provider-agnostic AI layer | v3.0 | 0/TBD | Not started | - |
 | 11. Dictation extraction & review (text path) | v3.0 | 0/TBD | Not started | - |
