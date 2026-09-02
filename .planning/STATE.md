@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Планировщик-агент
 status: planning
-last_updated: "2026-09-01T13:29:30.869Z"
-last_activity: 2026-09-01
+last_updated: "2026-09-02T00:00:00.000Z"
+last_activity: 2026-09-02
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,79 +19,44 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-09-01)
 
-**Core value:** Replace WhatsApp attendance coordination with a structured HR screen — ZAMPORAB sees who is present, changes status in one click, generates monthly reports
-**Current focus:** None — v2.0 complete. Next milestone not yet scoped (candidates: журнал/планировщик + агент, наряд-допуск polish, срочные поручения polish).
+**Core value:** A dispatcher/foreman dictates or pastes work text; the agent — trained on the участок vocabulary — lays it out into day/night draft plan rows split by service; a human reviews and publishes.
+**Current focus:** Phase 8 — Knowledge base: schema, Russian resolver, catalog vocabulary
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-01 — Milestone v3.0 started
+Phase: 8 (first of 6 in v3.0) — Knowledge base — schema, Russian resolver, catalog vocabulary
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-09-02 — v3.0 roadmap created (6 phases, 8-13; 35/35 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
-
-- Total plans completed: 11 (Phase 01, milestone v1.1, Phase 02, Phase 03, Phase 04 Plans 01-04)
-- Average duration: ~6min
-- Total execution time: unknown
+- Total plans completed: 0 (this milestone)
+- Average duration: —
+- Total execution time: —
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01. UI/UX | 3/3 | - | - |
-| 02. DB Foundation | 2/2 | ~7min | ~3.5min |
-| 03. HR Panel UI | 2/3 | 19min | ~9.5min |
-| 04. Staff Management | 5/5 | ~21min | ~4.2min |
+| 8. Knowledge base | 0/TBD | - | - |
 
 *Updated after each plan completion*
-| Phase 04-staff-management P05 | 1 | 1 tasks | 1 files |
-| Phase 05-integration-bug-fixes P02 | 30 | 3 tasks | 1 files |
-| Phase 07 P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-- v1.0: 8 panels, kanban, approval chain, transport, complaints, audit log — complete
-- v1.1: EmptyState, Header LIVE counter, mobile KPI, admin hamburger — complete
-- [Research]: `employee_status` must be append-only event log — mutable design makes period reports impossible
-- [Research]: Extend `users` (add `date_hired`/`date_fired`) — do NOT create separate `employees` table
-- [Research]: Presence-by-default — no status row today means "Na rabote"
-- [Research]: ZAMPORAB edits own service only; ADMIN edits all services
-- [Research]: HEAD gets read-only access to own service HR panel
-- [Phase 02-db-foundation]: employee_status is append-only event log — no updated_at column; all status changes are new INSERTs
-- [Phase 02-db-foundation]: date_hired/date_fired added to existing users table — no separate employees table needed
-- [Phase 02-02]: Presence-by-default encoded in fetchAllCurrentStatuses client-side (Map merge) — no SQL DEFAULT or trigger needed
-- [Phase 02-02]: setEmployeeStatus is INSERT-only — no UPDATE path exists for employee_status (protects Phase 05 period report correctness)
-- [Phase 02-02]: fireEmployee calls setEmployeeStatus best-effort — users.is_active=false is authoritative dismissal; Uvolen status row is supplementary audit log
-- [Phase 03]: EmployeeCard stubbed inline in ServiceSection — Plan 02 extracts it as a standalone file
-- [Phase 03]: HEAD role: canEdit=false + service_id filter in page.tsx — fully read-only view of own service
-- [Phase 03-core-hr-panel-ui]: Reason add-on fires second setEmployeeStatus INSERT — not UPDATE — preserving append-only log
-- [Phase 03-core-hr-panel-ui]: Uvolen excluded from CLICKABLE_STATUSES — dismissal flow is Phase 04 scope
-- [Phase 04-01]: user_id FK columns are TEXT (not UUID) — critical match with existing users.user_id column type
-- [Phase 04-01]: Partial unique index (WHERE ended_at IS NULL) implements SCD Type 2 "one active record" constraint
-- [Phase 04-01]: UNIQUE(name, COALESCE(grade, '')) on professions handles NULL grade for ITR roles (PostgreSQL pattern)
-- [Phase 04-01]: employee_status CHECK constraint replaced via DROP+ADD (only idempotent pattern in PostgreSQL)
-- [Phase 04-04]: EmployeeDetailCard is self-contained — fetches its own EmployeeDetail on mount via useEffect(userId), no data passed from parent beyond userId
-- [Phase 04-04]: DismissedSection is inline in page.tsx — simple collapsible list with name + date_fired, no separate component needed
-- [Phase 04-04]: Employee name styled as button element for proper accessibility (keyboard navigation, screen readers)
-- [Phase 04-05]: CLICKABLE_STATUSES split into DAILY_STATUSES (4) and EXTENDED_STATUSES (6) for two-row button layout; Uvolen excluded from both
-- [Phase 05-01]: ABSENT_STATUSES covers all 10 non-working statuses; Na_rabote is the only working status
-- [Phase 05-01]: HireModal service dropdown has no default — user must explicitly choose to prevent silent null assignments
-- [Phase 05-02]: Seeded employees assigned to SRV-STR as placeholder — correct service assignments unknown from roster data; admin must reassign via /hr
-- [Phase 05-02]: Dismissed employees (is_active=false) intentionally left with service_id=NULL — DismissedSection does not filter by service_id
-- [Phase 07-01]: StatusPopup view-swap: replaces status list with reason input in same popup container — keeps compact footprint in table rows
-- [Phase 07-01]: HRTableView receives services prop to resolve service_id → emoji + name display
-- [Phase 07-02]: HRToolbar placed between SummaryPanel and hire button — SummaryPanel uses visibleEmployees (not filteredEmployees) so totals are unaffected by search/filter
-- [Phase 07-02]: filteredEmployees feeds both grouped (card view) and HRTableView (table view) — single source of truth
-- [Phase 07-02]: Default view is 'cards' — preserves existing ServiceSection behavior for users who never use the toolbar
+Full log in PROJECT.md. Recent decisions affecting current work:
 
-### Roadmap Evolution
-
-- Phase 07 added: HR table view — compact list with search, filters and inline status editing
+- [v3.0 research]: resolve-don't-generate — the LLM only segments text into work-lines; a deterministic resolver maps each field to a real catalog ID or `null`; guardrails live above the provider adapter.
+- [v3.0 research]: the KB is an enrichment layer keyed to `journal_objects`, not a standalone 4th catalog — the agent's only write sink is unpublished `daily_plan_items`.
+- [v3.0 research]: structured output = prompt-instructed JSON + Zod safeParse + one repair retry, uniform across all providers (no `generateObject` / constrained decoding).
+- [v3.0 roadmap]: 6 phases (8-13). Future-item phases (low-confidence review queue, eval calibration, cost/drift monitoring) deliberately NOT created — those requirements are v3.x.
+- [v3.0 roadmap]: TST-01 mapped to Phase 13 as suite consolidation; every phase still TDDs its own pure logic per CLAUDE.md.
 
 ### Pending Todos
 
@@ -99,14 +64,22 @@ None yet.
 
 ### Blockers/Concerns
 
-- None open. Historical (all resolved in shipped v2.0):
-  - `xlsx` dependency was avoided — export implemented via print forms + 1С export instead
-  - Mobile nav overflow with added panels — handled in June 2026 UI overhaul
-- Phase dirs 01–07 archived to `.planning/milestones/v2.0-phases/` (2026-09-01). No git tag created —
-  HEAD is far past v2.0, so a `v2.0` tag at HEAD would be inaccurate.
+- [Phase 10] Verify the Vercel plan for gormost.vercel.app — Hobby's ~10s timeout is a blocker for the LLM/STT routes as designed.
+- [Phase 9] SheetJS `xlsx` is a new major dependency — needs user sign-off.
+- [Phase 8] No verified JS Russian lemmatization library — spike needed; stemming-only fallback acceptable.
+- [Phase 8] Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.
+- [Phase 10] v1 default provider (Anthropic+Groq vs Yandex/self-hosted) undecided — pending confirmed deployment constraint.
+
+## Deferred Items
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| v3.x | Low-confidence review queue + one-click curate | Deferred | v3.0 roadmap |
+| v3.x | Confidence-threshold auto-calibration, drift & cost monitoring, budget kill-switch | Deferred | v3.0 roadmap |
+| v3.x | Second LLM/STT adapter wired to prove the abstraction | Deferred | v3.0 roadmap |
 
 ## Session Continuity
 
-Last session: 2026-09-01
-Stopped at: v2.0 reconciliation — planning docs synced to production state; no new milestone started (user deferred scoping)
+Last session: 2026-09-02
+Stopped at: v3.0 roadmap created — ROADMAP.md + STATE.md written, REQUIREMENTS.md traceability filled
 Resume file: None

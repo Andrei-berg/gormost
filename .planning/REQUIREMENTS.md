@@ -109,12 +109,53 @@ Guiding principle — **resolve, don't generate:** LLM только сегмен
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(filled by roadmap)_ | | |
+| KB-01 | Phase 8 | Pending |
+| KB-02 | Phase 8 | Pending |
+| KB-03 | Phase 8 | Pending |
+| KB-04 | Phase 8 | Pending |
+| KB-05 | Phase 8 | Pending |
+| IMP-01 | Phase 9 | Pending |
+| IMP-02 | Phase 9 | Pending |
+| IMP-03 | Phase 9 | Pending |
+| IMP-04 | Phase 9 | Pending |
+| IMP-05 | Phase 9 | Pending |
+| IMP-06 | Phase 9 | Pending |
+| AI-01 | Phase 10 | Pending |
+| AI-02 | Phase 10 | Pending |
+| AI-03 | Phase 10 | Pending |
+| AI-04 | Phase 10 | Pending |
+| AI-05 | Phase 10 | Pending |
+| AI-06 | Phase 10 | Pending |
+| AI-07 | Phase 10 | Pending |
+| AI-08 | Phase 10 | Pending |
+| EXT-01 | Phase 11 | Pending |
+| EXT-02 | Phase 11 | Pending |
+| EXT-03 | Phase 11 | Pending |
+| EXT-04 | Phase 11 | Pending |
+| EXT-05 | Phase 11 | Pending |
+| REV-01 | Phase 11 | Pending |
+| REV-02 | Phase 11 | Pending |
+| REV-03 | Phase 11 | Pending |
+| REV-04 | Phase 11 | Pending |
+| REV-05 | Phase 11 | Pending |
+| VOICE-01 | Phase 12 | Pending |
+| VOICE-02 | Phase 12 | Pending |
+| VOICE-03 | Phase 12 | Pending |
+| LOOP-01 | Phase 13 | Pending |
+| LOOP-02 | Phase 13 | Pending |
+| TST-01 | Phase 13 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 35 total (KB 5 · IMP 6 · AI 8 · EXT 5 · REV 5 · VOICE 3 · LOOP 2 · TST 1)
-- Mapped to phases: _(pending roadmap)_
+- Mapped to phases: 35 / 35 ✓ — no orphans, no duplicates
+  - Phase 8 — Knowledge base (KB): KB-01..05
+  - Phase 9 — Excel ingest & training tool (IMP): IMP-01..06
+  - Phase 10 — Provider-agnostic AI layer (AI): AI-01..08
+  - Phase 11 — Dictation extraction & review (EXT + REV): EXT-01..05, REV-01..05
+  - Phase 12 — Voice capture & transcription (VOICE): VOICE-01..03
+  - Phase 13 — Learn-from-correction loop & test suite (LOOP + TST): LOOP-01, LOOP-02, TST-01
 
 ---
 
 *Requirements defined: 2026-09-01 — milestone v3.0 «Планировщик-агент», after research (SUMMARY.md).*
+*Traceability filled: 2026-09-02 — roadmap created (Phases 8-13).*
