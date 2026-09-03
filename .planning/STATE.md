@@ -5,15 +5,15 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-09-03T09:22:49.756Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-09-03T09:32:34.228Z"
 last_activity: 2026-09-03
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-09-03 — Phase 08 execution started
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 08 P01 | 60 | 3 tasks | 11 files |
 | Phase 08 P02 | 15 | 3 tasks | 4 files |
 | Phase 08 P03 | 7 | 3 tasks | 6 files |
+| Phase 08 P04 | ~6min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [Phase ?]: Phase 8 D-11 normalize() locked: full rule set (number-marker №/N/#/no+digit -> glued «№», dash-variant collapse, quote + trailing-punct strip), rule order proven by an idempotence loop over the case table
 - [Phase ?]: Phase 8 D-10 expandAbbreviations() is a 13-entry curated dictionary exported as the ABBREVIATIONS эталон constant; site-abbreviation expansions (гтр/ктр/ттк/зб) are starter guesses needing a human eyeball at 08-07
 - [Phase ?]: Phase 8 D-09 preprocess() locked as a single variant-free code path (one export), proven identical for catalog names / alias surfaces / dictation text / Excel cells by an anti-variant test
+- [Phase ?]: 08-04: KB persistence layer (src/lib/api/knowledge.ts) shipped with the three-edit house pattern; all four mutations ADMIN-gated, drift guarded by knowledge.gating.test.ts
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-03T09:22:41.898Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-09-03T09:32:34.214Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None

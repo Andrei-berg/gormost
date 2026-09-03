@@ -66,7 +66,7 @@ Plans:
 
 - [x] 08-02-PLAN.md — Vendored Russian Snowball stemmer + the D-12a lemma fixture gate + close the D-12 lemmatizer spike
 - [x] 08-03-PLAN.md — Lock `normalize()` (D-11), the curated abbreviation dictionary (D-10) and the `preprocess()` composition (D-09)
-- [ ] 08-04-PLAN.md — `src/lib/api/knowledge.ts` CRUD + ADMIN gating + client wrappers + shared types
+- [x] 08-04-PLAN.md — `src/lib/api/knowledge.ts` CRUD + ADMIN gating + client wrappers + shared types
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
