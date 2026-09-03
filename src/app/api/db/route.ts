@@ -13,6 +13,14 @@ const ROLE_RESTRICTED: Record<string, RoleLevel[]> = {
   createUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
   updateUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
   deleteUser: ['ADMIN', 'BOSS', 'HR', 'ZAMPORAB'],
+  // ── KB (Phase 8, D-20) — ADMIN-only mutations. src/lib/api/knowledge.ts is
+  //    barrel-exported so /api/db reaches every function by name; the reads
+  //    (fetchEntityAliases, findAliasCollisions) stay open like fetchWorkTypes.
+  //    knowledge.gating.test.ts fails the build if a mutation is added ungated.
+  createEntityAlias: ['ADMIN'],
+  updateEntityAlias: ['ADMIN'],
+  deleteEntityAlias: ['ADMIN'],
+  updateWorkTypeAttributes: ['ADMIN'],
 }
 
 function serialize(data: unknown): unknown {

@@ -22,6 +22,7 @@ import type {
   AuthSession, RoleLevel, AlertLevel, SystemAlert, HomeCounters,
   JournalObjectCategory, JournalObject, DailyPlanItem, JournalShiftHeader,
   WorkPermitType, WorkPermitServiceType, ResolvedWorkPermitType,
+  EntityAlias, CanonicalType, TypicalPeriod, TypicalCrew,
 } from '@/types'
 
 export interface StatusWithUser extends EmployeeStatus {
@@ -979,4 +980,46 @@ export function removeServiceWorkPermitType(serviceId: string, typeId: string): 
 
 export function fetchServiceWorkPermitTypes(serviceId: string): Promise<ResolvedWorkPermitType[]> {
   return call('fetchServiceWorkPermitTypes', [serviceId])
+}
+
+// ============ KNOWLEDGE BASE ============
+// One hand-written wrapper per src/lib/api/knowledge.ts export, kept in sync
+// manually (CLAUDE.md § API & Auth). knowledge.gating.test.ts fails the build if
+// a function gains no wrapper here. Mutations are ADMIN-gated in
+// src/app/api/db/route.ts.
+
+export function fetchEntityAliases(): Promise<EntityAlias[]> {
+  return call('fetchEntityAliases', [])
+}
+
+export function createEntityAlias(a: Partial<EntityAlias>): Promise<EntityAlias | null> {
+  return call('createEntityAlias', [a])
+}
+
+export function updateEntityAlias(id: string, patch: Partial<EntityAlias>): Promise<EntityAlias | null> {
+  return call('updateEntityAlias', [id, patch])
+}
+
+export function deleteEntityAlias(id: string): Promise<boolean> {
+  return call('deleteEntityAlias', [id])
+}
+
+export function findAliasCollisions(
+  surfaceNorm: string,
+  canonicalType: CanonicalType,
+  canonicalId: string,
+): Promise<EntityAlias[]> {
+  return call('findAliasCollisions', [surfaceNorm, canonicalType, canonicalId])
+}
+
+export function updateWorkTypeAttributes(
+  workTypeId: string,
+  attrs: {
+    service_id?: string | null
+    unit?: string | null
+    typical_period?: TypicalPeriod | null
+    typical_crew?: TypicalCrew | null
+  },
+): Promise<boolean> {
+  return call('updateWorkTypeAttributes', [workTypeId, attrs])
 }
