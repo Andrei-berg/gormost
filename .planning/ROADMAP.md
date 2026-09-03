@@ -71,7 +71,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 08-05-PLAN.md — Fuzzy match ladder, vendored Dice/Levenshtein, the ~30-case D-22 fixture battery, alias-collision predicate
-- [ ] 08-06-PLAN.md — Live-schema dump, `docs/catalog-map.md` (KB-05), migrations 053 + 054 with the RLS policy
+- [x] 08-06-PLAN.md — Live-schema dump, `docs/catalog-map.md` (KB-05), migrations 053 + 054 with the RLS policy
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

@@ -5,15 +5,15 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: Completed 08-05-PLAN.md
-last_updated: "2026-09-03T09:49:34.448Z"
+stopped_at: Completed 08-06-PLAN.md
+last_updated: "2026-09-03T10:01:14.260Z"
 last_activity: 2026-09-03
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-09-03 — Phase 08 execution started
 
-Progress: [████░░░░░░] 44%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████░░░░░░] 44%
 | Phase 08 P03 | 7 | 3 tasks | 6 files |
 | Phase 08 P04 | ~6min | 3 tasks | 6 files |
 | Phase 08 P05 | ~15min | 3 tasks | 9 files |
+| Phase 08 P06 | 6 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [Phase ?]: 08-05: fuzzy resolver weights LEMMA 0.65 / TRIGRAM 0.35, score capped 0.94, thresholds low 0.6 / high 0.85 / tieMargin 0.08 — calibrated against the 33-case D-22 battery so plausible-but-absent phrases stay unresolved (T-08-01)
 - [Phase ?]: 08-05: similarity primitives (dice, levenshtein) vendored zero-import — string-similarity is deprecated, dice-coefficient drags n-gram; keeps src/lib/kb pure and package.json untouched
 - [Phase ?]: 08-05: alias surfaces indexed as fuzzy entries carrying ADMIN weight; weight only orders/tiebreaks candidates, never promotes a below-low fuzzy score to resolved (D-15)
+- [Phase ?]: 08-06: docs/catalog-map.md (D-05) written — 4-store reconciliation (admin tree / journal / work-permit / KB enrichment); object identity for the resolver = journal_objects.id, canonical_id polymorphic targets documented, daily_plan_items has no work_type_id. Clears the pre-Phase-9 catalog-map blocker.
+- [Phase ?]: 08-06: migrations 053 (work_types +service_id/unit/typical_period/typical_crew, journal_objects +inv_no/area_m2/title_meta) + 054 (entity_aliases, unique expression index, anon_all policy) written against verbatim live schema (dumped 2026-09-03, matches D-01/D-03/D-14 exactly). Not applied — apply is 08-07's gate.
+- [Phase ?]: 08-06: work_types live shape confirmed via Supabase Management API (MCP unreachable from spawned executor): work_type_id PK, construction_id FK, work_name, created_at; RLS DISABLED so no anon_all_work_types policy needed.
 
 ### Pending Todos
 
@@ -91,7 +95,7 @@ None yet.
 - [Phase 10] Verify the Vercel plan for gormost.vercel.app — Hobby's ~10s timeout is a blocker for the LLM/STT routes as designed.
 - [Phase 9] SheetJS `xlsx` is a new major dependency — needs user sign-off.
 - [Phase 8] No verified JS Russian lemmatization library — spike needed; stemming-only fallback acceptable.
-- [Phase 8] Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.
+- [Phase 8] ~~Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.~~ RESOLVED 2026-09-03 (08-06): `docs/catalog-map.md` written (D-05 redirected it out of the stale ARCHITECTURE.md), pointed to from CLAUDE.md.
 - [Phase 10] v1 default provider (Anthropic+Groq vs Yandex/self-hosted) undecided — pending confirmed deployment constraint.
 
 ## Deferred Items
@@ -104,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-03T09:49:26.148Z
-Stopped at: Completed 08-05-PLAN.md
+Last session: 2026-09-03T10:01:04.450Z
+Stopped at: Completed 08-06-PLAN.md
 Resume file: None
