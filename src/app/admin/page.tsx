@@ -13,6 +13,7 @@ import {
 import type { UserWithAssignment, Service, Category, GObject, Construction, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 import ShiftTab from '@/components/admin/ShiftTab'
 import WorkTypeAttributesTab from '@/components/admin/WorkTypeAttributesTab'
+import AliasManagerTab from '@/components/admin/AliasManagerTab'
 import { useConfirm } from '@/components/ConfirmDialog'
 
 const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
@@ -32,7 +33,7 @@ const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
   { value: 'DRIVER',          label: 'Водитель',           defaultPosition: 'Водитель' },
 ]
 
-type Tab = 'users' | 'shifts' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'changelog'
+type Tab = 'users' | 'shifts' | 'services' | 'categories' | 'objects' | 'constructions' | 'work_types' | 'aliases' | 'changelog'
 
 export default function AdminPage() {
   return (
@@ -53,6 +54,7 @@ function Content({ session }: { session: AuthSession }) {
     { id: 'objects', label: 'Объекты', emoji: '🏗️' },
     { id: 'constructions', label: 'Конструктивы', emoji: '🧱' },
     { id: 'work_types', label: 'Виды работ', emoji: '🔧' },
+    { id: 'aliases', label: 'Синонимы', emoji: '🔗' },
     { id: 'changelog', label: 'Журнал', emoji: '📋' },
   ]
 
@@ -79,6 +81,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'objects' && <ObjectsTab />}
       {tab === 'constructions' && <ConstructionsTab />}
       {tab === 'work_types' && <WorkTypeAttributesTab />}
+      {tab === 'aliases' && <AliasManagerTab />}
       {tab === 'changelog' && <ChangelogTab />}
     </div>
   )

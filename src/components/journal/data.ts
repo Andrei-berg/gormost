@@ -93,9 +93,11 @@ export const CATEGORIES: Category[] = [
 // Category used for objects created on the fly (refine later in admin).
 export const QUICK_CATEGORY = 'OTHER'
 
-// Normalize for fuzzy object matching: lowercase, ё→е, collapse spaces.
-export const norm = (s: string) =>
-  s.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
+// Normalize for fuzzy object matching. Re-pointed at the test-locked KB
+// normalizer (08-09 Task 2) so the journal object combobox and the resolver
+// share one canonical implementation. Revert = restore the local
+// lowercase/ё-fold/collapse-spaces definition — a one-line change.
+export { normalize as norm } from '@/lib/kb/normalize'
 
 // Names match the `services` table in the main program (canonical).
 export const SERVICES: ServiceRef[] = [
