@@ -202,6 +202,7 @@ After boss confirms plans, the site foreman:
 - `src/lib/workSchedule.ts` — **`SHIFT_HOURS` эталон** (распорядок дня: hours/phases/colours)
 - `src/lib/journalStats.ts` — `aggregateJournal()` for the boss «План дня» dashboard
 - `src/types/index.ts` — all TypeScript types + STATUS_CONFIG, PANELS, SERVICE_META
+- `docs/catalog-map.md` — living map of the 4 reference-data stores (admin tree / journal catalog / work-permit catalog / KB enrichment), their cross-refs, and which store owns object identity for the resolver (`journal_objects.id`)
 - `src/components/ConfirmDialog.tsx` — DialogProvider + useConfirm() (replaces window.confirm/alert)
 - `src/components/DataState.tsx` — PanelLoader skeleton + DataErrorBanner
 - `src/components/Header.tsx` — navigation header (hamburger menu)
