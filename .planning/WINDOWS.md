@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 0
 waived_count: 0
-fixed_count: 3
+fixed_count: 4
 total_count: 4
-last_updated: 2026-09-03T09:22:54.438Z
+last_updated: 2026-09-03T09:49:26.544Z
 ---
 
 # Broken Windows Ledger
@@ -18,7 +18,7 @@ last_updated: 2026-09-03T09:22:54.438Z
 | 1 | 08 | stub | src/lib/kb/stem.ts | 12 | stem() returns token unchanged (identity) — Snowball RU algorithm lands in plan 08-02 | fixed |  | 2026-09-03T08:48:48.537Z | 2026-09-03T09:06:32.365Z |
 | 2 | 08 | todo | src/lib/kb/expandAbbreviations.ts | 11 | 4-entry seed abbreviation dictionary — grown in plan 08-03 | fixed |  | 2026-09-03T08:48:48.657Z | 2026-09-03T09:22:54.319Z |
 | 3 | 08 | todo | src/lib/kb/normalize.ts | 12 | code-point rules only; №/dash/quote/punct/numeric-token rules land in plan 08-03 | fixed |  | 2026-09-03T08:48:48.779Z | 2026-09-03T09:22:54.438Z |
-| 4 | 08 | stub | src/lib/kb/resolve.ts | 46 | resolver ladder step 3 (fuzzy) returns unresolved — fuzzy layer lands in plan 08-05 | open |  | 2026-09-03T08:48:48.896Z |  |
+| 4 | 08 | stub | src/lib/kb/resolve.ts | 46 | resolver ladder step 3 (fuzzy) returns unresolved — fuzzy layer lands in plan 08-05 | fixed |  | 2026-09-03T08:48:48.896Z | 2026-09-03T09:49:26.544Z |
 
 ````json
 [
@@ -65,10 +65,10 @@ last_updated: 2026-09-03T09:22:54.438Z
     "file": "src/lib/kb/resolve.ts",
     "line": 46,
     "description": "resolver ladder step 3 (fuzzy) returns unresolved — fuzzy layer lands in plan 08-05",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-03T08:48:48.896Z",
-    "resolved_at": null
+    "resolved_at": "2026-09-03T09:49:26.544Z"
   }
 ]
 ````
