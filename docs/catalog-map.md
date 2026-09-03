@@ -147,6 +147,59 @@ Polymorphic surface-form → canonical-entity table. Full DDL in
 
 ---
 
+## Seeded Гормост-Лефортово vocabulary (migration 055, Plan 08-07)
+
+**Starter data.** Migration `055_kb_seed_lefortovo.sql` hand-seeds the участок
+vocabulary so the resolver has real targets. Phase 9 Excel/Титул ingest dedups on the
+normalized + lemmatized name (IMP-05, D-21) and **refines** these rows — it does not
+create a parallel catalog. All rows carry deterministic ids so a re-run is a no-op.
+
+### `journal_object_categories` — new row
+
+| id | name | emoji | sort_order |
+|----|------|-------|-----------|
+| `BRIDGE` | Мосты | 🌉 | 6 |
+
+Created ready but **seeded with no objects** — the KB-05 scope names "мосты участка"
+but no authoritative bridge names are recorded in the planning artifacts. A human adds
+the bridge `journal_objects` rows under this category.
+
+### `journal_objects` — 8 seeded rows (deterministic uuids `10000000-0000-4000-8000-0000000000NN`)
+
+| uuid tail | name | category |
+|-----------|------|----------|
+| `…01` | Лефортовский тоннель (левая труба) | `TUN` |
+| `…02` | Лефортовский тоннель (правая труба) | `TUN` |
+| `…03` | Шереметьевский тоннель | `TUN` |
+| `…04` | Митьковский тоннель | `TUN` |
+| `…05` | Нижегородский тоннель | `TUN` |
+| `…06` | Пешеходный тоннель ТТК | `PED` |
+| `…07` | Защитный блок ЛТР | `OTHER` |
+| `…08` | Защитный блок ГТР | `OTHER` |
+
+The 2 pre-existing live rows (`Административное здание ГБУ «Гормост»`, `ТЕСТ — Туннель №3 (демо)`)
+are out of the KB-05 scope and left untouched — no collision with the seeded ids.
+
+### `work_types` — starter attribution (5 live rows, all attributed)
+
+`WORK-LIGHT-BULB` / `WORK-ELEC-CHECK` → `SRV-ENG`; `WORK-VENT-FILTER` / `WORK-VENT-CLEAN`
+→ `SRV-VENT`; `WORK-FIRE-TEST` → `SRV-FIRE`. Each gets `unit`, `typical_period`
+(`DAY`|`NIGHT`) and `typical_crew` `{ workers, foremen, itr, vehicles }`. D-21 asks for
+~10-15; the live catalog is demo-scale (5 rows) so all 5 are attributed and Phase 9
+brings the real work catalog.
+
+### `entity_aliases` — 28 `source='seed'` rows
+
+17 object surfaces (declensions, `ЛТР`/`ЗБ`/`ТТК` abbreviation forms, short forms),
+6 service surfaces, 5 work-type surfaces. Every `surface_norm` is
+`preprocess(surface_raw).normalized` from `src/lib/kb/preprocess.ts`, asserted by
+`src/lib/kb/seed-aliases.test.ts` (which parses the migration file). Site-abbreviation
+expansions (`ГТР → гагаринский тоннель`, `ТТК → третье транспортное кольцо`, `ЗБ →
+защитный блок`) come from `src/lib/kb/expandAbbreviations.ts` and are still
+executor best-guesses pending a human eyeball (08-03 coverage D3).
+
+---
+
 ## Live `work_types` DDL as dumped 2026-09-03
 
 Obtained via the Supabase Management API (`POST /v1/projects/{ref}/database/query`) against
