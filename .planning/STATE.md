@@ -5,15 +5,15 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-09-03T10:01:14.260Z"
+stopped_at: 08-07 HALTED at Task 3 — human must apply migrations 053→054→055 in Supabase SQL Editor
+last_updated: "2026-09-03T10:13:09.669Z"
 last_activity: 2026-09-03
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -97,6 +97,7 @@ None yet.
 - [Phase 8] No verified JS Russian lemmatization library — spike needed; stemming-only fallback acceptable.
 - [Phase 8] ~~Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.~~ RESOLVED 2026-09-03 (08-06): `docs/catalog-map.md` written (D-05 redirected it out of the stale ARCHITECTURE.md), pointed to from CLAUDE.md.
 - [Phase 10] v1 default provider (Anthropic+Groq vs Yandex/self-hosted) undecided — pending confirmed deployment constraint.
+- [Phase 8] 08-07 HALTED: migrations 053/054/055 not applied. Human applies 053→054→055 in Supabase SQL Editor (project wwwtsvboqffzbnliuiun), then reports: work_types has service_id/unit/typical_period/typical_crew; entity_aliases count >=25 via anon key; 8 journal_objects with created_by='migration-055'. Phase 8 verification + plans 08-08/08-09 UI checks are a false green until then.
 
 ## Deferred Items
 
@@ -108,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-03T10:01:04.450Z
-Stopped at: Completed 08-06-PLAN.md
-Resume file: None
+Last session: 2026-09-03T10:13:09.519Z
+Stopped at: 08-07 HALTED at Task 3 — human must apply migrations 053→054→055 in Supabase SQL Editor
+Resume file: .planning/phases/08-knowledge-base-schema-russian-resolver-catalog-vocabulary/08-07-SUMMARY.md
