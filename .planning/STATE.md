@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Планировщик-агент
-current_phase: 8
-current_phase_name: Knowledge base — schema, Russian resolver, catalog vocabulary
+current_phase: 08
+current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-09-02T13:11:45.273Z"
-last_activity: 2026-09-02
-last_activity_desc: v3.0 roadmap created (6 phases, 8-13; 35/35 requirements mapped)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-09-03T08:48:41.606Z"
+last_activity: 2026-09-03
+last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** A dispatcher/foreman dictates or pastes work text; the agent — trained on the участок vocabulary — lays it out into day/night draft plan rows split by service; a human reviews and publishes.
-**Current focus:** Phase 8 — Knowledge base: schema, Russian resolver, catalog vocabulary
+**Current focus:** Phase 08 — knowledge-base-schema-russian-resolver-catalog-vocabulary
 
 ## Current Position
 
-Phase: 8 (first of 6 in v3.0) — Knowledge base — schema, Russian resolver, catalog vocabulary
-Plan: — (not yet planned)
+Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-09-02 — v3.0 roadmap created (6 phases, 8-13; 35/35 requirements mapped)
+Last activity: 2026-09-03 — Phase 08 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 11%
 
 ## Performance Metrics
 
@@ -49,6 +49,11 @@ Progress: [░░░░░░░░░░] 0%
 | 8. Knowledge base | 0/TBD | - | - |
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 08 P01 | 60 | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -61,6 +66,8 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [v3.0 research]: structured output = prompt-instructed JSON + Zod safeParse + one repair retry, uniform across all providers (no `generateObject` / constrained decoding).
 - [v3.0 roadmap]: 6 phases (8-13). Future-item phases (low-confidence review queue, eval calibration, cost/drift monitoring) deliberately NOT created — those requirements are v3.x.
 - [v3.0 roadmap]: TST-01 mapped to Phase 13 as suite consolidation; every phase still TDDs its own pure logic per CLAUDE.md.
+- [Phase ?]: Phase 8 resolver contract (D-07) + object identity (D-02) frozen: proceed-as-locked, published verbatim as src/lib/kb/types.ts
+- [Phase ?]: src/lib/kb/ is a pure client-safe lib (D-08), enforced by a filesystem-enumerated purity.test.ts guard
 
 ### Pending Todos
 
@@ -84,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-02T10:19:16.235Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-knowledge-base-schema-russian-resolver-catalog-vocabulary/08-CONTEXT.md
+Last session: 2026-09-03T08:48:41.592Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None

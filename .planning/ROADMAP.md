@@ -60,7 +60,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Tracer: freeze the D-07 resolver contract, build the `src/lib/kb/` module layout, resolve a phrase end-to-end via the exact-alias path
+- [x] 08-01-PLAN.md — Tracer: freeze the D-07 resolver contract, build the `src/lib/kb/` module layout, resolve a phrase end-to-end via the exact-alias path
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

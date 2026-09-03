@@ -13,10 +13,10 @@ Guiding principle — **resolve, don't generate:** LLM только сегмен
 
 ### KB — База знаний (каталог + алиасы)
 
-- [ ] **KB-01**: Система создаёт таблицу `entity_aliases` (`surface` нормализованный, `canonical_type` object|construction|work_type|service, `canonical_id`, `scope_object_id?`, `weight`, `source` seed|manual|voice|correction, `created_by`) с политикой `anon_all_entity_aliases`
+- [x] **KB-01**: Система создаёт таблицу `entity_aliases` (`surface` нормализованный, `canonical_type` object|construction|work_type|service, `canonical_id`, `scope_object_id?`, `weight`, `source` seed|manual|voice|correction, `created_by`) с политикой `anon_all_entity_aliases`
 - [ ] **KB-02**: Система добавляет к `work_types` атрибуты для агента — `service_id` (чья служба), `unit` (ед.изм.), `typical_period` (день/ночь/сутки), `typical_crew` (jsonb: рабочие/мастера/ИТР/техника); редактируются в `/admin` → «Виды работ»
 - [ ] **KB-03**: ADMIN ведёт алиасы (CRUD): поиск, показ `source`, предупреждение о коллизии «одна фраза → два разных каноника»
-- [ ] **KB-04**: Резолвер сопоставляет фразу с сущностью каталога по точному алиасу + нечёткому совпадению через общий пайплайн русской нормализации/лемматизации (ё→е, `№`, сокращения, падежи), применяемый одинаково к каталогу, алиасам, диктовке и ячейкам Excel; нет совпадения выше порога → поле 🔴, остаётся свободным текстом, сущность НЕ выдумывается
+- [x] **KB-04**: Резолвер сопоставляет фразу с сущностью каталога по точному алиасу + нечёткому совпадению через общий пайплайн русской нормализации/лемматизации (ё→е, `№`, сокращения, падежи), применяемый одинаково к каталогу, алиасам, диктовке и ячейкам Excel; нет совпадения выше порога → поле 🔴, остаётся свободным текстом, сущность НЕ выдумывается
 - [ ] **KB-05**: Охват каталога — только участок Гормост-Лефортово (транспортные тоннели ЛТР + Шереметьевский/Митьковский/Нижегородский, пешеходные тоннели ТТК участка, ЗБ ЛТР/ГТР, мосты участка); связь базы знаний с журнальным каталогом (`journal_objects`), а не отдельный четвёртый остров сущностей
 
 ### IMP — Инструмент обучения (импорт из Excel)
@@ -109,10 +109,10 @@ Guiding principle — **resolve, don't generate:** LLM только сегмен
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KB-01 | Phase 8 | Pending |
+| KB-01 | Phase 8 | Complete |
 | KB-02 | Phase 8 | Pending |
 | KB-03 | Phase 8 | Pending |
-| KB-04 | Phase 8 | Pending |
+| KB-04 | Phase 8 | Complete |
 | KB-05 | Phase 8 | Pending |
 | IMP-01 | Phase 9 | Pending |
 | IMP-02 | Phase 9 | Pending |
@@ -146,6 +146,7 @@ Guiding principle — **resolve, don't generate:** LLM только сегмен
 | TST-01 | Phase 13 | Pending |
 
 **Coverage:**
+
 - v3.0 requirements: 35 total (KB 5 · IMP 6 · AI 8 · EXT 5 · REV 5 · VOICE 3 · LOOP 2 · TST 1)
 - Mapped to phases: 35 / 35 ✓ — no orphans, no duplicates
   - Phase 8 — Knowledge base (KB): KB-01..05
