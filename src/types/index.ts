@@ -3,6 +3,22 @@
 // Matches real Supabase schema
 // ============================================
 
+// KB resolver contract types (D-07 / D-08) are defined ONCE in the pure,
+// client-safe module src/lib/kb/types.ts (Plan 08-01) and re-exported here so
+// existing `import type { ... } from '@/types'` call sites keep working without
+// duplication. The dependency direction is kb -> types only: this file re-exports
+// FROM the kb tree, it never lets the kb tree import a value from '@/types'
+// (that would violate the D-08 purity guard). Both edges are `import type`, so
+// nothing runtime-cyclic is emitted.
+//
+// TypicalCrew keys are exactly { workers, foremen, itr, vehicles } — the
+// human-facing crew counters the journal PlanItem type carries
+// (src/components/journal/data.ts), NOT the daily_plan_items required_* column
+// names. The key set is frozen (D-17, RESEARCH Pitfall 5); never rename it to
+// match DB columns and never invent a translation layer.
+import type { CanonicalType, TypicalCrew, TypicalPeriod, EntityAlias } from '@/lib/kb/types'
+export type { CanonicalType, TypicalCrew, TypicalPeriod, EntityAlias }
+
 export type RoleLevel = 'ADMIN' | 'BOSS' | 'ZAMPORAB' | 'HEAD' | 'DISPATCHER' | 'FOREMAN' | 'TRANSPORT' | 'COMPLAINTS' | 'WORKER' | 'CHIEF_ENGINEER' | 'SPECIALIST' | 'HR' | 'DRIVER' | 'SAFETY_ENGINEER'
 export type RequestStatus = 'NEW' | 'PLANNED' | 'IN_PROGRESS' | 'CHECKING' | 'DONE'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
@@ -73,6 +89,13 @@ export interface WorkType {
   construction_id: string
   work_name: string
   created_at: string
+  // KB enrichment columns (migration 053, D-01). Optional + nullable: rows read
+  // before the migration runs carry undefined; written only through the narrow
+  // ADMIN-gated updateWorkTypeAttributes writer, never a generic update.
+  service_id?: string | null
+  unit?: string | null
+  typical_period?: TypicalPeriod | null
+  typical_crew?: TypicalCrew | null
 }
 
 export interface Request {
@@ -1057,6 +1080,12 @@ export interface JournalObject {
   address: string
   created_by?: string | null
   created_at?: string
+  // Титул enrichment columns (migration 053, D-03). Added empty in Phase 8;
+  // Phase 9 populates them from the Титул spreadsheet. Optional + nullable so
+  // rows read before the migration keep compiling.
+  inv_no?: string | null
+  area_m2?: number | null
+  title_meta?: Record<string, unknown>
 }
 
 // Состав по специальностям — optional detailed crew breakdown (11д+3эл+3итр).
