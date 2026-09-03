@@ -75,7 +75,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 08-07-PLAN.md — Гормост-Лефортово seed migration 055 + [BLOCKING] human apply of 053 → 054 → 055
+- [x] 08-07-PLAN.md — Гормост-Лефортово seed migration 055 + [BLOCKING] human apply of 053 → 054 → 055
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -200,7 +200,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 0/9 | Planned | - |
+| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 7/9 | In Progress | - |
 | 9. Excel ingest & catalog training tool | v3.0 | 0/TBD | Not started | - |
 | 10. Provider-agnostic AI layer | v3.0 | 0/TBD | Not started | - |
 | 11. Dictation extraction & review (text path) | v3.0 | 0/TBD | Not started | - |

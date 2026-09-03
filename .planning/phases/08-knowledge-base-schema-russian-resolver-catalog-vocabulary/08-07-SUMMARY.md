@@ -13,15 +13,15 @@ requires:
   - phase: 08-06
     provides: "migrations 053 (work_types/journal_objects columns) + 054 (entity_aliases table + anon_all policy) — 055 seeds into that schema"
 provides:
-  - "supabase/migrations/055_kb_seed_lefortovo.sql — BRIDGE category, 8 canonical journal_objects (deterministic uuids 10000000-0000-4000-8000-0000000000NN), starter work_types attribution for the 5 live rows, 28 source='seed' entity_aliases. Idempotent, WHAT/WHY header + commented ROLLBACK. NOT applied."
+  - "supabase/migrations/055_kb_seed_lefortovo.sql — BRIDGE category, 8 canonical journal_objects (deterministic uuids 10000000-0000-4000-8000-0000000000NN), starter work_types attribution for the 5 live rows, 28 source='seed' entity_aliases. Idempotent, WHAT/WHY header + commented ROLLBACK. APPLIED to project wwwtsvboqffzbnliuiun 2026-09-03 (with 053 + 054), no errors; 4 confirmation queries passed."
   - "src/lib/kb/seed-aliases.test.ts — parses migration 055 as text and asserts every surface_norm literal == preprocess(surface_raw).normalized, source='seed', canonical_type valid, no duplicate (surface_norm, canonical_type), every insert uses ON CONFLICT, typical_crew has the 4 locked keys"
   - "docs/catalog-map.md — seeded-vocabulary section marking it starter data Phase 9 ingest dedups against (IMP-05)"
 affects: [08-08, 08-09, phase-09, phase-11]
 
 actuals:
-  tokens: 8000
-  tasks: 2      # Task 1 (confirm list) + Task 2 (migration + test). Task 3 = blocking human-apply gate, NOT executed.
-  commits: 1    # 2c929ab (feat). Plan-metadata docs commit is this file.
+  tokens: 10000
+  tasks: 3      # Task 1 (confirm list) + Task 2 (migration + test) + Task 3 (human apply gate — discharged: human applied 053→054→055, 4 verification queries passed).
+  commits: 2    # 2c929ab (feat) + a578916 (docs). Plan-metadata docs commit (this file, post-apply) is a third.
 
 tech-stack:
   added: []
@@ -50,7 +50,7 @@ key-decisions:
 patterns-established:
   - "A seed migration's normalized-key column is bound to the shipped normalizer by a test that reads the .sql file — divergence between seed-time and query-time preprocessing (08-RESEARCH Pitfall 2) is caught in npm run test, not in the UI"
 
-requirements-completed: []  # KB-01/KB-02/KB-05 are NOT yet satisfied by this plan — they require the human apply (Task 3). Marked complete only after the orchestrator relays a successful apply.
+requirements-completed: [KB-01, KB-02, KB-05]  # Satisfied 2026-09-03 — human applied migrations 053→054→055 in the Supabase SQL Editor; all four post-apply verification queries passed (see "Human apply — Task 3 discharged" below).
 
 coverage:
   - id: D1
@@ -61,10 +61,10 @@ coverage:
         ref: "grep: 055 has 'on conflict' x3, WHAT:/WHY: header, ROLLBACK block; 8 journal_objects inserts; BRIDGE category insert; 5 work_types UPDATEs keyed on work_type_id"
         status: pass
       - kind: manual_procedural
-        ref: "Task 3 human apply in Supabase SQL Editor — journal_objects names match this list, entity_aliases count >= 25, 4 new work_types columns present"
-        status: unknown
+        ref: "Task 3 human apply in Supabase SQL Editor — 8 journal_objects with created_by='migration-055' and the exact expected names, entity_aliases count = 28 (>= 25), 4 new work_types columns present, 5 attributed work_types rows"
+        status: pass
     human_judgment: true
-    rationale: "The object list was confirmed by the standing-policy default, not an explicit human diff against live rows; the human validates it at the apply gate. The migration is also not yet applied — KB-05's live-schema half is unverified until Task 3 completes."
+    rationale: "The object list was confirmed by the standing-policy default; the human accepted it as-is at the apply gate (ЛТР as two objects, empty BRIDGE category accepted). Migrations 053→054→055 applied without error 2026-09-03; the four confirmation queries returned exactly the expected shape."
   - id: D2
     description: "Every seeded entity_aliases.surface_norm literal equals preprocess(surface_raw).normalized computed by the shipped pipeline (D-14, D-09)"
     requirement: KB-01
@@ -95,27 +95,28 @@ coverage:
     requirement: KB-01
     verification:
       - kind: manual_procedural
-        ref: "08-07 Task 3 blocking human-action gate — three confirmation queries reported back to the orchestrator"
-        status: unknown
+        ref: "08-07 Task 3 blocking human-action gate — four confirmation queries reported back 2026-09-03: (a) work_types cols service_id/unit/typical_period/typical_crew present; (b) entity_aliases count = 28 through anon key (anon_all_entity_aliases live); (c) 8 journal_objects created_by='migration-055' with exact expected names; (d) 5 attributed work_types rows correct"
+        status: pass
     human_judgment: true
-    rationale: "The agent cannot execute migrations (CLAUDE.md § Database). This is the plan's blocking human-apply gate; the phase HALTS here until the human returns the three query results."
+    rationale: "The agent cannot execute migrations (CLAUDE.md § Database). The human applied 053→054→055 in the Supabase SQL Editor with no error; all four confirmation queries passed. Gate discharged."
 
 # Metrics
 duration: ~8min
 completed: 2026-09-03
-status: halted
+status: complete
 ---
 
-# Phase 8 Plan 07: Гормост-Лефортово seed migration 055 + surface_norm binding test — HALTED at the human-apply gate
+# Phase 8 Plan 07: Гормост-Лефортово seed migration 055 + surface_norm binding test — COMPLETE
 
-**Migration `055_kb_seed_lefortovo.sql` is written and committed — a `BRIDGE` category, 8 canonical `journal_objects` (Лефортовский тоннель left/right tube, Шереметьевский, Митьковский, Нижегородский, Пешеходный тоннель ТТК, ЗБ ЛТР, ЗБ ГТР), starter attribution for all 5 live `work_types`, and 28 `source='seed'` `entity_aliases` whose `surface_norm` literals are provably `preprocess(surface_raw).normalized` (asserted by `src/lib/kb/seed-aliases.test.ts`, which parses the .sql). The plan is now HALTED at Task 3 — the human must apply `053 → 054 → 055` in the Supabase SQL Editor before Phase 8 verification is meaningful.**
+**Migration `055_kb_seed_lefortovo.sql` is written, committed, and — as of 2026-09-03 — applied to the live database. It seeds a `BRIDGE` category, 8 canonical `journal_objects` (Лефортовский тоннель left/right tube, Шереметьевский, Митьковский, Нижегородский, Пешеходный тоннель ТТК, ЗБ ЛТР, ЗБ ГТР), starter attribution for all 5 live `work_types`, and 28 `source='seed'` `entity_aliases` whose `surface_norm` literals are provably `preprocess(surface_raw).normalized` (asserted by `src/lib/kb/seed-aliases.test.ts`, which parses the .sql). The human applied `053 → 054 → 055` in the Supabase SQL Editor with no errors; all four post-apply confirmation queries passed. KB-01 / KB-02 / KB-05 are satisfied.**
 
 ## Performance
 
-- **Duration:** ~8 min (code portion)
+- **Duration:** ~8 min (code portion); Task 3 human-apply gate discharged 2026-09-03
 - **Started:** 2026-09-03T10:03Z
 - **Halted at checkpoint:** 2026-09-03T10:11Z
-- **Tasks:** 2 of 3 (Task 3 is the blocking human-apply gate — not executed by the agent)
+- **Resumed / apply confirmed:** 2026-09-03 (human applied 053→054→055, 4 verification queries passed)
+- **Tasks:** 3 of 3 (Task 3 = blocking human-apply gate, executed by the human, confirmed by query)
 - **Files modified:** 3 (2 created, 1 modified)
 
 ## Accomplishments
@@ -130,11 +131,11 @@ status: halted
 
 ## Task Commits
 
-1. **Task 1: confirm the authoritative Гормост-Лефортово object list** — checkpoint, resolved by standing-policy default, no commit (list recorded above + in `docs/catalog-map.md`)
+1. **Task 1: confirm the authoritative Гормост-Лефортово object list** — checkpoint, resolved by standing-policy default, no commit (list recorded above + in `docs/catalog-map.md`); the two open seed choices were accepted as-is by the human at the Task 3 gate
 2. **Task 2: migration 055 (seed) + bind alias surfaces to the shipped pipeline** — `2c929ab` (feat)
-3. **Task 3: [BLOCKING] human applies 053 → 054 → 055** — NOT executed; the plan halts here
+3. **Task 3: [BLOCKING] human applies 053 → 054 → 055** — discharged 2026-09-03: human applied all three files in the Supabase SQL Editor for project `wwwtsvboqffzbnliuiun` with no errors; all four confirmation queries passed (see "Human apply — Task 3 discharged" below). Migration-writing commit: `a578916` (docs, HALTED marker).
 
-**Plan metadata:** _(this docs commit)_
+**Plan metadata:** _(this docs commit — post-apply, flips status halted → complete)_
 
 ## Files Created/Modified
 
@@ -166,39 +167,48 @@ See frontmatter `key-decisions`. Highlights:
 
 - **Vitest suppresses `console.log`** — the surface-norm generator wrote its output to a scratchpad file instead. The generator (`_seedgen.test.ts`) was deleted before the commit; only `seed-aliases.test.ts` (the real binding test) ships.
 
-## User Setup Required
+## Human apply — Task 3 discharged (2026-09-03)
 
-**YES — this plan halts at a blocking human-action gate. See "CHECKPOINT REACHED" below.**
+The human applied, in the Supabase SQL Editor for project `wwwtsvboqffzbnliuiun`, one at a time and in order:
 
-The human must apply, in the Supabase SQL Editor for project `wwwtsvboqffzbnliuiun`, one at a time and in order:
+1. `supabase/migrations/053_kb_work_type_attributes.sql` — **applied without error**
+2. `supabase/migrations/054_entity_aliases.sql` — **applied without error**
+3. `supabase/migrations/055_kb_seed_lefortovo.sql` — **applied without error**
 
-1. `supabase/migrations/053_kb_work_type_attributes.sql`
-2. `supabase/migrations/054_entity_aliases.sql`
-3. `supabase/migrations/055_kb_seed_lefortovo.sql`
+No `NULLS NOT DISTINCT` syntax error in 054; no FK / missing-column failure in 055.
 
-Then run three confirmation queries and report the results back:
-- `select column_name from information_schema.columns where table_name = 'work_types' and column_name in ('service_id','unit','typical_period','typical_crew');` — expect all 4.
-- `select count(*) from entity_aliases;` — expect **>= 25** (28 seeded). A count of 0 with no error means `anon_all_entity_aliases` is missing / RLS is blocking.
-- `select id, name, category_id from journal_objects where created_by = 'migration-055' order by id;` — expect the 8 names listed above.
+**Four confirmation queries — all passed:**
 
-Known failure modes: a syntax error near a uniqueness clause in 054 → the file still uses `NULLS NOT DISTINCT` (it should not); 055 failing on a FK / missing column → 053 or 054 did not actually apply. If any file errors, paste the exact text and the phase stays halted.
+- **(a) `work_types` columns** — `service_id`, `unit`, `typical_period`, `typical_crew` all present. ✅
+- **(b) `entity_aliases` row count** — `select count(*) from public.entity_aliases` = **28** through the anon-key client, proving the `anon_all_entity_aliases` policy is live (a non-zero read). ✅ (KB-01 SC#1)
+- **(c) seeded `journal_objects`** — **8 rows** with `created_by = 'migration-055'`, exact expected names: Лефортовский тоннель (левая труба), Лефортовский тоннель (правая труба), Шереметьевский тоннель, Митьковский тоннель, Нижегородский тоннель, Пешеходный тоннель ТТК, Защитный блок ЛТР, Защитный блок ГТР. ✅
+- **(d) attributed `work_types`** — **5 rows** (WORK-ELEC-CHECK, WORK-FIRE-TEST, WORK-LIGHT-BULB, WORK-VENT-CLEAN, WORK-VENT-FILTER) with correct `service_id` / `typical_period` / `typical_crew`. ✅
+
+**Accepted seed defaults (confirmed as-is by the human at the gate, no change requested):**
+
+- **ЛТР seeded as two `journal_objects` rows** (левая труба / правая труба) — accepted.
+- **`BRIDGE` category created empty** ('Мосты', 🌉, sort_order 6) — accepted; a human adds the authoritative bridge rows later. KB-05's "мосты участка" clause is carried by the ready-but-empty category.
+
+Both were the plan's open Task 1 choices; the human ratified them at the apply gate, which is where the plan placed the final object-list review.
 
 ## Next Phase Readiness
 
-- **08-08 / 08-09** (admin «Виды работ» rebuild + «Синонимы» tab): the columns and table their `knowledge.ts` writers target are defined in migration form; the tabs can be built against the types now, but **UI verification is a false green until Task 3 applies the schema**.
-- **Phase 9** (Excel/Титул ingest): `docs/catalog-map.md` carries the seeded-object list + the starter-data / dedup note.
-- **Blocker:** migrations `053 → 054 → 055` are unapplied. `requirements-completed` is intentionally empty — KB-01/KB-02/KB-05 flip to complete only after the orchestrator relays a successful human apply and the post-apply confirmation queries pass.
+- **08-08 / 08-09** (admin «Виды работ» rebuild + «Синонимы» tab): the schema (`work_types` enrichment columns + `entity_aliases` table + `anon_all_entity_aliases` policy) is **live** — UI verification against the real database is now meaningful. The 5 attributed `work_types` and 28 seed aliases give both tabs real rows to render.
+- **Phase 9** (Excel/Титул ingest): `docs/catalog-map.md` carries the seeded-object list + the starter-data / dedup note; Phase 9 ingest dedups against these rows on the normalized+lemmatized name (IMP-05).
+- **No blocker.** Migrations `053 → 054 → 055` applied without error 2026-09-03; all four confirmation queries passed. KB-01 / KB-02 / KB-05 marked complete.
+- **BRIDGE category is empty** — a human must add the authoritative Гормост-Лефортово bridge names when they are established (Phase 9 ingest or manual `/journal` entry). Not a blocker for Phase 8.
 
 ## Self-Check: PASSED
 
 - `supabase/migrations/055_kb_seed_lefortovo.sql` — FOUND (126 lines, `on conflict` x3, WHAT/WHY, ROLLBACK)
 - `src/lib/kb/seed-aliases.test.ts` — FOUND (8 assertions, all pass)
 - `docs/catalog-map.md` — seeded-vocabulary section present (+53 lines)
-- Commit `2c929ab` — FOUND in `git log`
+- Commits `2c929ab` (feat) + `a578916` (docs) — FOUND in `git log`
 - Scratch generator `_seedgen.test.ts` — removed (not in `git status`, not in tree)
-- `npm run test` 519 pass / `npx vitest run src/lib/kb` 416 pass / `tsc` clean / `lint` 0 errors 47 warnings / `build` green
-- No migration executed by the agent — live `entity_aliases` still absent (table created by 054, unapplied)
+- **Post-apply re-run of the code gates (2026-09-03):** `npm run test` **519 pass** (18 files) / `npm run build` green / `npm run lint` **0 errors / 47 warnings** (baseline unchanged) / `npx tsc --noEmit` clean
+- `src/lib/kb/seed-aliases.test.ts` still green — it parses the migration file, not the live DB, so the apply does not affect it
+- **Task 3 discharged:** human applied migrations `053 → 054 → 055` in the Supabase SQL Editor with no errors; 4 confirmation queries passed (`work_types` has the 4 new columns; `entity_aliases` count = 28 via anon key; 8 `journal_objects` with `created_by='migration-055'` and exact expected names; 5 attributed `work_types` rows)
 
 ---
 *Phase: 08-knowledge-base-schema-russian-resolver-catalog-vocabulary*
-*Halted at the human-apply gate: 2026-09-03*
+*Completed — human-apply gate discharged: 2026-09-03*

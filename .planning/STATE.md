@@ -5,8 +5,8 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: 08-07 HALTED at Task 3 — human must apply migrations 053→054→055 in Supabase SQL Editor
-last_updated: "2026-09-03T10:13:09.669Z"
+stopped_at: Completed 08-07-PLAN.md — migrations 053→054→055 applied, KB-01/02/05 complete
+last_updated: "2026-09-03T11:26:45.973Z"
 last_activity: 2026-09-03
 last_activity_desc: Phase 08 execution started
 progress:
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-09-03 — Phase 08 execution started
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 67%
 | Phase 08 P04 | ~6min | 3 tasks | 6 files |
 | Phase 08 P05 | ~15min | 3 tasks | 9 files |
 | Phase 08 P06 | 6 | 3 tasks | 4 files |
+| Phase 08 P07 | ~8min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [Phase ?]: 08-06: docs/catalog-map.md (D-05) written — 4-store reconciliation (admin tree / journal / work-permit / KB enrichment); object identity for the resolver = journal_objects.id, canonical_id polymorphic targets documented, daily_plan_items has no work_type_id. Clears the pre-Phase-9 catalog-map blocker.
 - [Phase ?]: 08-06: migrations 053 (work_types +service_id/unit/typical_period/typical_crew, journal_objects +inv_no/area_m2/title_meta) + 054 (entity_aliases, unique expression index, anon_all policy) written against verbatim live schema (dumped 2026-09-03, matches D-01/D-03/D-14 exactly). Not applied — apply is 08-07's gate.
 - [Phase ?]: 08-06: work_types live shape confirmed via Supabase Management API (MCP unreachable from spawned executor): work_type_id PK, construction_id FK, work_name, created_at; RLS DISABLED so no anon_all_work_types policy needed.
+- [Phase ?]: 08-07: migrations 053→054→055 applied to Supabase (wwwtsvboqffzbnliuiun) 2026-09-03 — work_types enrichment cols live, entity_aliases table + anon_all policy live (28 seed aliases readable via anon key), 8 Гормост-Лефортово journal_objects seeded (created_by=migration-055), 5 work_types attributed. ЛТР seeded as 2 objects, BRIDGE category created empty — both accepted by human at apply gate. KB-01/KB-02/KB-05 complete.
 
 ### Pending Todos
 
@@ -97,7 +99,7 @@ None yet.
 - [Phase 8] No verified JS Russian lemmatization library — spike needed; stemming-only fallback acceptable.
 - [Phase 8] ~~Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.~~ RESOLVED 2026-09-03 (08-06): `docs/catalog-map.md` written (D-05 redirected it out of the stale ARCHITECTURE.md), pointed to from CLAUDE.md.
 - [Phase 10] v1 default provider (Anthropic+Groq vs Yandex/self-hosted) undecided — pending confirmed deployment constraint.
-- [Phase 8] 08-07 HALTED: migrations 053/054/055 not applied. Human applies 053→054→055 in Supabase SQL Editor (project wwwtsvboqffzbnliuiun), then reports: work_types has service_id/unit/typical_period/typical_crew; entity_aliases count >=25 via anon key; 8 journal_objects with created_by='migration-055'. Phase 8 verification + plans 08-08/08-09 UI checks are a false green until then.
+- [Phase 8] ~~08-07 HALTED: migrations 053/054/055 not applied.~~ RESOLVED 2026-09-03: human applied 053→054→055 in the Supabase SQL Editor (project wwwtsvboqffzbnliuiun) with no errors. Confirmed by query: work_types has service_id/unit/typical_period/typical_crew; entity_aliases count = 28 via anon key (anon_all_entity_aliases live); 8 journal_objects with created_by='migration-055' and exact expected names; 5 attributed work_types rows. ЛТР seeded as 2 objects + empty BRIDGE category — accepted by human. KB-01/KB-02/KB-05 complete. Plans 08-08/08-09 UI checks now verify against real schema.
 
 ## Deferred Items
 
@@ -109,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-03T10:13:09.519Z
-Stopped at: 08-07 HALTED at Task 3 — human must apply migrations 053→054→055 in Supabase SQL Editor
-Resume file: .planning/phases/08-knowledge-base-schema-russian-resolver-catalog-vocabulary/08-07-SUMMARY.md
+Last session: 2026-09-03T11:26:45.823Z
+Stopped at: Completed 08-07-PLAN.md — migrations 053→054→055 applied, KB-01/02/05 complete
+Resume file: None
