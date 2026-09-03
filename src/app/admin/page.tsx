@@ -8,11 +8,11 @@ import {
   fetchCategories, createCategory, updateCategory, deleteCategory,
   fetchObjects, createObject, updateObject, deleteObject,
   fetchConstructions, createConstruction, updateConstruction, deleteConstruction,
-  fetchWorkTypes, createWorkType, updateWorkType, deleteWorkType,
   fetchChangelog
 } from '@/lib/api-client'
-import type { UserWithAssignment, Service, Category, GObject, Construction, WorkType, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
+import type { UserWithAssignment, Service, Category, GObject, Construction, ChangelogEntry, AuthSession, RoleLevel } from '@/types'
 import ShiftTab from '@/components/admin/ShiftTab'
+import WorkTypeAttributesTab from '@/components/admin/WorkTypeAttributesTab'
 import { useConfirm } from '@/components/ConfirmDialog'
 
 const ROLES: { value: RoleLevel; label: string; defaultPosition: string }[] = [
@@ -78,7 +78,7 @@ function Content({ session }: { session: AuthSession }) {
       {tab === 'categories' && <CategoriesTab />}
       {tab === 'objects' && <ObjectsTab />}
       {tab === 'constructions' && <ConstructionsTab />}
-      {tab === 'work_types' && <WorkTypesTab />}
+      {tab === 'work_types' && <WorkTypeAttributesTab />}
       {tab === 'changelog' && <ChangelogTab />}
     </div>
   )
@@ -614,20 +614,6 @@ function ConstructionsTab() {
       { key: 'construction_name', label: 'Название' },
     ]}
     onFetch={load} onCreate={createConstruction} onUpdate={updateConstruction} onDelete={deleteConstruction} />
-}
-
-function WorkTypesTab() {
-  const [items, setItems] = useState<WorkType[]>([])
-  const [cons, setCons] = useState<Construction[]>([])
-  const load = useCallback(async () => { const [w, c] = await Promise.all([fetchWorkTypes(), fetchConstructions()]); setItems(w); setCons(c) }, [])
-  useEffect(() => { load() }, [load])
-  return <CrudTab title="Виды работ" items={items} idKey="work_type_id" nameKey="work_name"
-    fields={[
-      { key: 'work_type_id', label: 'ID' },
-      { key: 'construction_id', label: 'Конструктив', options: cons.map(c => ({ value: c.construction_id, label: c.construction_name })) },
-      { key: 'work_name', label: 'Название работы' },
-    ]}
-    onFetch={load} onCreate={createWorkType} onUpdate={updateWorkType} onDelete={deleteWorkType} />
 }
 
 function ChangelogTab() {

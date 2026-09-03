@@ -1,8 +1,8 @@
 'use client'
 import { useCallback, useMemo, useState } from 'react'
-import type { WorkType, Construction, Service, TypicalCrew, TypicalPeriod } from '@/types'
+import type { WorkType, Construction, GObject, Service, TypicalCrew, TypicalPeriod } from '@/types'
 import {
-  fetchWorkTypes, fetchConstructions, fetchServices,
+  fetchWorkTypes, fetchConstructions, fetchObjects, fetchServices,
   createWorkType, deleteWorkType, updateWorkTypeAttributes,
 } from '@/lib/api-client'
 import { useLoadData } from '@/lib/useLoadData'
@@ -15,6 +15,9 @@ import { SHIFT_HOURS } from '@/lib/workSchedule'
 // its unit, typical period and typical crew are; buildKbIndex only loads rows
 // whose service_id is non-null, so this tab is what grows the agent vocabulary.
 // Persistence goes through the ADMIN-gated updateWorkTypeAttributes (Plan 08-04).
+// D-18: search, «Без службы»/«Не заполнено» chips, a construction→object
+// breadcrumb per row and a single «Проставить службу выбранным» bulk action keep
+// a long catalog navigable; anything richer is v3.x.
 
 const UNIT_SUGGESTIONS = ['м²', 'п.м.', 'шт.', 'м³', 'компл.', 'т']
 const PERIODS: TypicalPeriod[] = ['DAY', 'NIGHT', 'AROUND']
@@ -43,16 +46,36 @@ const normCrew = (c: TypicalCrew): TypicalCrew => ({
 const crewEqual = (a: TypicalCrew | null | undefined, b: TypicalCrew) =>
   !!a && a.workers === b.workers && a.foremen === b.foremen && a.itr === b.itr && a.vehicles === b.vehicles
 
+const chipCls = (active: boolean) =>
+  `px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+    active ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
+  }`
+
 export default function WorkTypeAttributesTab() {
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [constructions, setConstructions] = useState<Construction[]>([])
+  const [objects, setObjects] = useState<GObject[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [showCreate, setShowCreate] = useState(false)
 
+  const [search, setSearch] = useState('')
+  const [chipNoService, setChipNoService] = useState(false)
+  const [chipIncomplete, setChipIncomplete] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkService, setBulkService] = useState('')
+  const [bulkRunning, setBulkRunning] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState(0)
+
   const loadFn = useCallback(async () => {
-    const [w, c, s] = await Promise.all([fetchWorkTypes(), fetchConstructions(), fetchServices()])
+    // fetchObjects joins in for the row breadcrumb — constructions carry only
+    // object_id, so a meaningful construction→object breadcrumb (D-18) needs the
+    // object names. Still one Promise.all on tab mount.
+    const [w, c, o, s] = await Promise.all([
+      fetchWorkTypes(), fetchConstructions(), fetchObjects(), fetchServices(),
+    ])
     setWorkTypes(w)
     setConstructions(c)
+    setObjects(o)
     setServices(s)
   }, [])
   const { loading, error, reload } = useLoadData(loadFn)
@@ -61,6 +84,66 @@ export default function WorkTypeAttributesTab() {
     () => new Map(constructions.map(c => [c.construction_id, c])),
     [constructions],
   )
+  const objById = useMemo(() => new Map(objects.map(o => [o.object_id, o])), [objects])
+
+  const crumb = useCallback(
+    (wt: WorkType): { construction: string; object: string } => {
+      const c = consById.get(wt.construction_id)
+      const o = c ? objById.get(c.object_id) : undefined
+      return {
+        construction: c?.construction_name ?? wt.construction_id,
+        object: o?.object_name ?? '',
+      }
+    },
+    [consById, objById],
+  )
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return workTypes.filter(wt => {
+      if (chipNoService && wt.service_id) return false
+      if (chipIncomplete && wt.typical_period && wt.typical_crew) return false
+      if (!q) return true
+      const bc = crumb(wt)
+      return (
+        wt.work_name.toLowerCase().includes(q) ||
+        wt.work_type_id.toLowerCase().includes(q) ||
+        bc.construction.toLowerCase().includes(q) ||
+        bc.object.toLowerCase().includes(q)
+      )
+    })
+  }, [workTypes, search, chipNoService, chipIncomplete, crumb])
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every(wt => selected.has(wt.work_type_id))
+  const toggleAllVisible = () =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (allVisibleSelected) filtered.forEach(wt => next.delete(wt.work_type_id))
+      else filtered.forEach(wt => next.add(wt.work_type_id))
+      return next
+    })
+  const toggleOne = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const runBulkService = async () => {
+    if (!bulkService || selected.size === 0) return
+    setBulkRunning(true)
+    setBulkProgress(0)
+    const ids = [...selected]
+    for (let i = 0; i < ids.length; i++) {
+      await updateWorkTypeAttributes(ids[i], { service_id: bulkService })
+      setBulkProgress(i + 1)
+    }
+    setBulkRunning(false)
+    setSelected(new Set())
+    setBulkService('')
+    await reload()
+  }
 
   if (loading) return <PanelLoader />
 
@@ -75,7 +158,9 @@ export default function WorkTypeAttributesTab() {
       </datalist>
 
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-white">Виды работ ({workTypes.length})</h2>
+        <h2 className="text-lg font-bold text-white">
+          Виды работ ({filtered.length} / {workTypes.length})
+        </h2>
         <button
           onClick={() => setShowCreate(v => !v)}
           className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
@@ -94,10 +179,70 @@ export default function WorkTypeAttributesTab() {
         />
       )}
 
+      {/* Search + filter chips */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск по названию, ID, конструктиву или объекту…"
+          className="flex-1 min-w-[220px] bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+        />
+        <button onClick={() => setChipNoService(v => !v)} className={chipCls(chipNoService)}>
+          Без службы
+        </button>
+        <button onClick={() => setChipIncomplete(v => !v)} className={chipCls(chipIncomplete)}>
+          Не заполнено
+        </button>
+      </div>
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 p-3 glass rounded-xl">
+          <span className="text-sm text-white/70">Выбрано: {selected.size}</span>
+          <select
+            value={bulkService}
+            onChange={e => setBulkService(e.target.value)}
+            disabled={bulkRunning}
+            className="form-select text-sm px-3 py-1.5"
+          >
+            <option value="">Выберите службу…</option>
+            {services.map(s => (
+              <option key={s.service_id} value={s.service_id}>
+                {s.service_name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={runBulkService}
+            disabled={!bulkService || bulkRunning}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium disabled:opacity-50"
+          >
+            {bulkRunning
+              ? `Проставить службу выбранным… ${bulkProgress}/${selected.size}`
+              : 'Проставить службу выбранным'}
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            disabled={bulkRunning}
+            className="text-xs text-white/40 hover:text-white/70 disabled:opacity-50"
+          >
+            Сбросить
+          </button>
+        </div>
+      )}
+
       <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10">
+              <th className="px-3 py-2 text-left text-xs text-white/40">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleAllVisible}
+                  aria-label="Выбрать все видимые"
+                />
+              </th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Вид работ</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Служба</th>
               <th className="px-3 py-2 text-left text-xs text-white/40">Ед. изм.</th>
@@ -107,7 +252,7 @@ export default function WorkTypeAttributesTab() {
             </tr>
           </thead>
           <tbody>
-            {workTypes.map(wt => (
+            {filtered.map(wt => (
               <AttrRow
                 // Key on the persisted attributes so the row remounts (and its
                 // local edit state re-seeds from props) after any save or the
@@ -116,14 +261,16 @@ export default function WorkTypeAttributesTab() {
                 key={`${wt.work_type_id}:${wt.service_id ?? ''}:${wt.unit ?? ''}:${wt.typical_period ?? ''}:${JSON.stringify(wt.typical_crew ?? null)}`}
                 wt={wt}
                 services={services}
-                construction={consById.get(wt.construction_id) ?? null}
+                crumb={crumb(wt)}
+                checked={selected.has(wt.work_type_id)}
+                onToggle={() => toggleOne(wt.work_type_id)}
                 onReload={reload}
               />
             ))}
-            {workTypes.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-12 text-center text-white/20">
-                  Нет видов работ
+                <td colSpan={7} className="px-3 py-12 text-center text-white/20">
+                  {workTypes.length === 0 ? 'Нет видов работ' : 'Ничего не найдено'}
                 </td>
               </tr>
             )}
@@ -138,12 +285,16 @@ export default function WorkTypeAttributesTab() {
 function AttrRow({
   wt,
   services,
-  construction,
+  crumb,
+  checked,
+  onToggle,
   onReload,
 }: {
   wt: WorkType
   services: Service[]
-  construction: Construction | null
+  crumb: { construction: string; object: string }
+  checked: boolean
+  onToggle: () => void
   onReload: () => Promise<void>
 }) {
   const confirmDialog = useConfirm()
@@ -187,11 +338,16 @@ function AttrRow({
   return (
     <tr className="border-b border-white/5 align-top hover:bg-white/3">
       <td className="px-3 py-3">
+        <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Выбрать ${wt.work_name}`} />
+      </td>
+
+      <td className="px-3 py-3">
         <div className="text-white/90">{wt.work_name}</div>
         <div className="text-[11px] text-white/30 font-mono">{wt.work_type_id}</div>
-        {construction && (
-          <div className="text-[11px] text-white/40 mt-0.5">{construction.construction_name}</div>
-        )}
+        <div className="text-[11px] text-white/40 mt-0.5">
+          {crumb.construction}
+          {crumb.object && <span className="text-white/25"> → {crumb.object}</span>}
+        </div>
       </td>
 
       <td className="px-3 py-3">
