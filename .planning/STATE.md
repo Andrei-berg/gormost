@@ -5,10 +5,10 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: Completed 08-08-PLAN.md
-last_updated: "2026-09-03T11:39:31.776Z"
+stopped_at: 08-09 Tasks 1-2 committed — blocked on Task 3 UAT (blocking human-verify)
+last_updated: "2026-09-03T15:37:00.000Z"
 last_activity: 2026-09-03
-last_activity_desc: Phase 08 execution started
+last_activity_desc: 08-09 alias manager built, tab wired, normalizers collapsed; awaiting KB-03 UAT
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
-Plan: 9 of 9
-Status: Ready to execute
-Last activity: 2026-09-03 — Phase 08 execution started
+Plan: 9 of 9 (Tasks 1-2 done, Task 3 UAT checkpoint pending)
+Status: Executing Phase 08 — 08-09 blocked on blocking human-verify checkpoint
+Last activity: 2026-09-03 — 08-09 alias manager built + normalizers collapsed; awaiting KB-03 UAT
 
 Progress: [█████████░] 89%
 
@@ -88,6 +88,9 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [Phase ?]: 08-06: migrations 053 (work_types +service_id/unit/typical_period/typical_crew, journal_objects +inv_no/area_m2/title_meta) + 054 (entity_aliases, unique expression index, anon_all policy) written against verbatim live schema (dumped 2026-09-03, matches D-01/D-03/D-14 exactly). Not applied — apply is 08-07's gate.
 - [Phase ?]: 08-06: work_types live shape confirmed via Supabase Management API (MCP unreachable from spawned executor): work_type_id PK, construction_id FK, work_name, created_at; RLS DISABLED so no anon_all_work_types policy needed.
 - [Phase ?]: 08-07: migrations 053→054→055 applied to Supabase (wwwtsvboqffzbnliuiun) 2026-09-03 — work_types enrichment cols live, entity_aliases table + anon_all policy live (28 seed aliases readable via anon key), 8 Гормост-Лефортово journal_objects seeded (created_by=migration-055), 5 work_types attributed. ЛТР seeded as 2 objects, BRIDGE category created empty — both accepted by human at apply gate. KB-01/KB-02/KB-05 complete.
+- [Phase ?]: 08-09: pre-existing untracked AliasManagerTab.tsx (~588 lines) evaluated against the Task 1 spec — already satisfied every acceptance criterion (tsc/lint/build/test green, findAliasCollisions-before-createEntityAlias ordering, all four source badges, zero raw-HTML/window dialog/isLight/eslint-disable), committed as-is.
+- [Phase ?]: 08-09: journal `norm` collapsed onto `@/lib/kb/normalize` via `export { normalize as norm }` in journal/data.ts — one canonical normalizer. Two consumers (ObjectCombobox.tsx, AddItemModal.tsx), export name preserved so revert is a one-liner. Plan said "only consumer is ObjectCombobox" — AddItemModal also imports it; both signature-compatible, no action needed.
+- [Phase ?]: 08-09: «Синонимы» tab (🔗) registered in /admin after «Виды работ». Task 3 is a blocking human-verify UAT for KB-03 (collision soft-warning end-to-end + /journal suggest eyeball) — NOT self-approved; returned to orchestrator.
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-03T11:39:31.760Z
-Stopped at: Completed 08-08-PLAN.md
-Resume file: None
+Last session: 2026-09-03T15:37:00.000Z
+Stopped at: 08-09 Tasks 1-2 committed (660739e, b675db4); Task 3 blocking human-verify UAT pending
+Resume file: .planning/phases/08-knowledge-base-schema-russian-resolver-catalog-vocabulary/08-09-PLAN.md (Task 3)
