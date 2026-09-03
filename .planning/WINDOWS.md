@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 0
+open_count: 1
 waived_count: 0
 fixed_count: 4
-total_count: 4
-last_updated: 2026-09-03T09:49:26.544Z
+total_count: 5
+last_updated: 2026-09-03T11:39:31.181Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,7 @@ last_updated: 2026-09-03T09:49:26.544Z
 | 2 | 08 | todo | src/lib/kb/expandAbbreviations.ts | 11 | 4-entry seed abbreviation dictionary — grown in plan 08-03 | fixed |  | 2026-09-03T08:48:48.657Z | 2026-09-03T09:22:54.319Z |
 | 3 | 08 | todo | src/lib/kb/normalize.ts | 12 | code-point rules only; №/dash/quote/punct/numeric-token rules land in plan 08-03 | fixed |  | 2026-09-03T08:48:48.779Z | 2026-09-03T09:22:54.438Z |
 | 4 | 08 | stub | src/lib/kb/resolve.ts | 46 | resolver ladder step 3 (fuzzy) returns unresolved — fuzzy layer lands in plan 08-05 | fixed |  | 2026-09-03T08:48:48.896Z | 2026-09-03T09:49:26.544Z |
+| 5 | 08 | unrun-verify | src/components/admin/WorkTypeAttributesTab.tsx |  | KB-02 browser UAT (08-08 Task 3): set service/unit/period/crew → reload → persist; chips/search/breadcrumb/bulk; create+delete via in-app dialog; light mode readable | open |  | 2026-09-03T11:39:31.181Z |  |
 
 ````json
 [
@@ -69,6 +70,18 @@ last_updated: 2026-09-03T09:49:26.544Z
     "reason": "",
     "recorded_at": "2026-09-03T08:48:48.896Z",
     "resolved_at": "2026-09-03T09:49:26.544Z"
+  },
+  {
+    "id": 5,
+    "kind": "unrun-verify",
+    "phase": "08",
+    "file": "src/components/admin/WorkTypeAttributesTab.tsx",
+    "line": null,
+    "description": "KB-02 browser UAT (08-08 Task 3): set service/unit/period/crew → reload → persist; chips/search/breadcrumb/bulk; create+delete via in-app dialog; light mode readable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-03T11:39:31.181Z",
+    "resolved_at": null
   }
 ]
 ````

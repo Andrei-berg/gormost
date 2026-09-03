@@ -79,7 +79,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 08-08-PLAN.md — `/admin` → «Виды работ» rebuilt as a dedicated attribute editor (D-17/D-18)
+- [x] 08-08-PLAN.md — `/admin` → «Виды работ» rebuilt as a dedicated attribute editor (D-17/D-18)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
