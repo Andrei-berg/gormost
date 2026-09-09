@@ -5,15 +5,15 @@ milestone_name: Планировщик-агент
 current_phase: 08
 current_phase_name: knowledge-base-schema-russian-resolver-catalog-vocabulary
 status: executing
-stopped_at: 08-09 Tasks 1-2 committed — blocked on Task 3 UAT (blocking human-verify)
-last_updated: "2026-09-03T15:37:00.000Z"
-last_activity: 2026-09-03
-last_activity_desc: 08-09 alias manager built, tab wired, normalizers collapsed; awaiting KB-03 UAT
+stopped_at: Completed 08-09-PLAN.md
+last_updated: "2026-09-09T00:00:00.000Z"
+last_activity: 2026-09-09
+last_activity_desc: 08-09 complete — «Синонимы» alias manager shipped, KB-03 UAT approved, normalizers collapsed
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
-Plan: 9 of 9 (Tasks 1-2 done, Task 3 UAT checkpoint pending)
-Status: Executing Phase 08 — 08-09 blocked on blocking human-verify checkpoint
-Last activity: 2026-09-03 — 08-09 alias manager built + normalizers collapsed; awaiting KB-03 UAT
+Plan: 9 of 9 — all plans complete
+Status: Phase 08 execution complete — ready for phase verification
+Last activity: 2026-09-09 — 08-09 complete: «Синонимы» alias manager + normalizer collapse, KB-03 UAT approved
 
-Progress: [█████████░] 89%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 89%
 | Phase 08 P06 | 6 | 3 tasks | 4 files |
 | Phase 08 P07 | ~8min | 3 tasks | 3 files |
 | Phase 08 P08 | 6min | 3 tasks | 2 files |
+| Phase 08 P09 | ~14min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,7 +91,8 @@ Full log in PROJECT.md. Recent decisions affecting current work:
 - [Phase ?]: 08-07: migrations 053→054→055 applied to Supabase (wwwtsvboqffzbnliuiun) 2026-09-03 — work_types enrichment cols live, entity_aliases table + anon_all policy live (28 seed aliases readable via anon key), 8 Гормост-Лефортово journal_objects seeded (created_by=migration-055), 5 work_types attributed. ЛТР seeded as 2 objects, BRIDGE category created empty — both accepted by human at apply gate. KB-01/KB-02/KB-05 complete.
 - [Phase ?]: 08-09: pre-existing untracked AliasManagerTab.tsx (~588 lines) evaluated against the Task 1 spec — already satisfied every acceptance criterion (tsc/lint/build/test green, findAliasCollisions-before-createEntityAlias ordering, all four source badges, zero raw-HTML/window dialog/isLight/eslint-disable), committed as-is.
 - [Phase ?]: 08-09: journal `norm` collapsed onto `@/lib/kb/normalize` via `export { normalize as norm }` in journal/data.ts — one canonical normalizer. Two consumers (ObjectCombobox.tsx, AddItemModal.tsx), export name preserved so revert is a one-liner. Plan said "only consumer is ObjectCombobox" — AddItemModal also imports it; both signature-compatible, no action needed.
-- [Phase ?]: 08-09: «Синонимы» tab (🔗) registered in /admin after «Виды работ». Task 3 is a blocking human-verify UAT for KB-03 (collision soft-warning end-to-end + /journal suggest eyeball) — NOT self-approved; returned to orchestrator.
+- [Phase ?]: 08-09: «Синонимы» tab (🔗) registered in /admin after «Виды работ». Task 3 KB-03 UAT APPROVED on gormost.vercel.app 2026-09-09 — 28 seeded aliases listed (RLS live), search by surface + canonical works, collision soft-warning keeps both rows, true duplicate rejected with readable message, in-place weight/scope edit + delete OK, light mode OK, /journal object combobox still suggests correctly after the norm re-point. No defects.
+- [Phase ?]: 08-09: Supabase Security Advisor reports 29 PRE-EXISTING project-wide RLS findings (policy_exists_rls_disabled / rls_disabled_in_public on categories/objects/constructions/requests/services/work_types/shifts/vehicles/schedules; rls_enabled_no_policy on work_permit_types / work_permit_service_types). entity_aliases NOT flagged. Recommend a separate whole-app RLS hardening migration — out of scope for phase 08.
 
 ### Pending Todos
 
@@ -109,12 +111,13 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
+| hardening | Whole-app RLS hardening migration — 29 pre-existing Advisor findings on legacy public tables (see 08-09 decision) | Deferred | 2026-09-09 (08-09) |
 | v3.x | Low-confidence review queue + one-click curate | Deferred | v3.0 roadmap |
 | v3.x | Confidence-threshold auto-calibration, drift & cost monitoring, budget kill-switch | Deferred | v3.0 roadmap |
 | v3.x | Second LLM/STT adapter wired to prove the abstraction | Deferred | v3.0 roadmap |
 
 ## Session Continuity
 
-Last session: 2026-09-03T15:37:00.000Z
-Stopped at: 08-09 Tasks 1-2 committed (660739e, b675db4); Task 3 blocking human-verify UAT pending
-Resume file: .planning/phases/08-knowledge-base-schema-russian-resolver-catalog-vocabulary/08-09-PLAN.md (Task 3)
+Last session: 2026-09-09T00:00:00.000Z
+Stopped at: Completed 08-09-PLAN.md — Phase 08 all 9 plans done, KB-03 UAT approved
+Resume file: None
