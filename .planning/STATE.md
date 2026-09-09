@@ -8,7 +8,7 @@ status: executing
 stopped_at: Completed 08-09-PLAN.md
 last_updated: "2026-09-09T00:00:00.000Z"
 last_activity: 2026-09-09
-last_activity_desc: 08-09 complete — «Синонимы» alias manager shipped, KB-03 UAT approved, normalizers collapsed
+last_activity_desc: Phase 08 verified 5/5; code review found CR-01 blocker — migration 056 written, awaiting human apply before phase close
 progress:
   total_phases: 1
   completed_phases: 0
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 
 Phase: 08 (knowledge-base-schema-russian-resolver-catalog-vocabulary) — EXECUTING
 Plan: 9 of 9 — all plans complete
-Status: Phase 08 execution complete — ready for phase verification
-Last activity: 2026-09-09 — 08-09 complete: «Синонимы» alias manager + normalizer collapse, KB-03 UAT approved
+Status: Phase 08 verified 5/5 — HELD before phase-close on CR-01 (migration 056 awaiting human apply in Supabase SQL Editor)
+Last activity: 2026-09-09 — phase verification passed; code-review CR-01 blocker fix written (migration 056)
 
 Progress: [██████████] 100%
 
@@ -106,6 +106,7 @@ None yet.
 - [Phase 8] ~~Reconciliation between the three existing catalogs (`objects`/`journal_objects`/`work_permit_catalog`) is undocumented — must write the catalog map into ARCHITECTURE.md before Phase 9.~~ RESOLVED 2026-09-03 (08-06): `docs/catalog-map.md` written (D-05 redirected it out of the stale ARCHITECTURE.md), pointed to from CLAUDE.md.
 - [Phase 10] v1 default provider (Anthropic+Groq vs Yandex/self-hosted) undecided — pending confirmed deployment constraint.
 - [Phase 8] ~~08-07 HALTED: migrations 053/054/055 not applied.~~ RESOLVED 2026-09-03: human applied 053→054→055 in the Supabase SQL Editor (project wwwtsvboqffzbnliuiun) with no errors. Confirmed by query: work_types has service_id/unit/typical_period/typical_crew; entity_aliases count = 28 via anon key (anon_all_entity_aliases live); 8 journal_objects with created_by='migration-055' and exact expected names; 5 attributed work_types rows. ЛТР seeded as 2 objects + empty BRIDGE category — accepted by human. KB-01/KB-02/KB-05 complete. Plans 08-08/08-09 UI checks now verify against real schema.
+- [Phase 8] 08-REVIEW CR-01 (BLOCKER): live `uq_entity_aliases_surface` = (surface_norm, canonical_type, coalesce(scope_object_id::text,'')) — omits `canonical_id`, so the D-13 confirmed-collision path (both rows persist) throws a unique_violation instead. Confirmed against live DB 2026-09-09. Fix written = migration `056_entity_aliases_collision_unique_fix.sql` (adds canonical_id to the key; strictly more permissive, safe on existing data; true exact-dupe still rejected). **Awaiting human apply in Supabase SQL Editor.** Phase 08 close HELD until 056 applied + collision path re-verified. 7 code-review WARNINGs (WorkTypeAttributesTab error handling, alias-mutation input whitelist, normalize() parentheses vs 055 seed, resolver single-generic-word over-match) tracked as post-phase hardening — non-blocking.
 
 ## Deferred Items
 
