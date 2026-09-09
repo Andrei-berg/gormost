@@ -34,7 +34,7 @@ explicit human click, and it never touches `requests`, `work_plans`, statuses, �
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 8: Knowledge base — schema, Russian resolver, catalog vocabulary** — KB tables + alias manager + deterministic phrase→catalog-ID resolver keyed to the journal catalog
+- [x] **Phase 8: Knowledge base — schema, Russian resolver, catalog vocabulary** — KB tables + alias manager + deterministic phrase→catalog-ID resolver keyed to the journal catalog (completed 2026-09-09)
 - [ ] **Phase 9: Excel ingest & catalog training tool (ADMIN)** — upload Титул/Конструктив/Годовой план → staging → 3-way diff → checkbox commit
 - [ ] **Phase 10: Provider-agnostic AI layer — adapters, guardrails, parse log, eval harness** — `extractPlan` / `transcribe` interfaces, swappable by env, with every guardrail above the adapter
 - [ ] **Phase 11: Dictation extraction & review — text path to unpublished drafts** — paste Russian text → per-service draft rows with confidence chips → editable preview → «Создать черновики»
@@ -83,7 +83,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 08-09-PLAN.md — `/admin` → «Синонимы» alias manager with the D-13 soft collision warning + normalizer collapse
+- [x] 08-09-PLAN.md — `/admin` → «Синонимы» alias manager with the D-13 soft collision warning + normalizer collapse
 
 **UI hint**: yes
 
@@ -200,7 +200,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 7/9 | In Progress | - |
+| 8. Knowledge base — schema, resolver, vocabulary | v3.0 | 9/9 | Complete    | 2026-09-09 |
 | 9. Excel ingest & catalog training tool | v3.0 | 0/TBD | Not started | - |
 | 10. Provider-agnostic AI layer | v3.0 | 0/TBD | Not started | - |
 | 11. Dictation extraction & review (text path) | v3.0 | 0/TBD | Not started | - |

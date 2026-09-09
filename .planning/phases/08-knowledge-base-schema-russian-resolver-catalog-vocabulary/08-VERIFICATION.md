@@ -113,7 +113,22 @@ None outstanding. The two UI-behaviour success criteria (SC#2 «Виды раб�
 
 No gaps. All 5 ROADMAP success criteria are verified against the codebase, all 5 KB requirements are satisfied, `npm run test` (519 tests) and `npm run build` both pass, and the two UI success criteria carry recorded human-UAT approval.
 
+### Post-Verification Addendum (2026-09-09) — code review CR-01
+
+The `gsd-code-review` pass on the 36 phase-modified source files raised one blocker:
+
+- **CR-01** — migration 054's `uq_entity_aliases_surface` unique index keyed only `(surface_norm, canonical_type, coalesce(scope_object_id::text,''))`, omitting `canonical_id`. This made the D-13 "confirmed collision → both rows persist" path impossible: the second `createEntityAlias` insert hit a `unique_violation`. Confirmed against the live DB. Partially undermined SC#3 (the warning showed, but "add anyway" failed).
+
+**Resolution:** migration `056_entity_aliases_collision_unique_fix.sql` adds `canonical_id` to the index key. Applied by the human in the Supabase SQL Editor on 2026-09-09 and re-verified against the live DB:
+- index is now `(surface_norm, canonical_type, coalesce(scope_object_id::text,''), canonical_id)`;
+- two distinct canonicals for one surface now coexist (D-13 collision path ✓);
+- an exact duplicate (same `canonical_id`) is still rejected (UAT step 5 ✓);
+- 28 seed aliases intact.
+
+SC#3 now fully verified. The 7 code-review WARNINGs are non-blocking and carried forward as a post-phase hardening pass (see STATE.md Blockers/Concerns).
+
 ---
 
 _Verified: 2026-09-09T12:30:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Addendum: 2026-09-09 — CR-01 resolved via migration 056, re-verified against live DB_
